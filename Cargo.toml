@@ -1,0 +1,33 @@
+[package]
+name          = "tsec"
+version       = "1.0.0"
+edition       = "2021"
+description   = "TSEC — Tactical Security Enumeration & Compromise Framework"
+license       = "MIT"
+
+[[bin]]
+name = "tsec"
+path = "src/main.rs"
+
+[dependencies]
+crossterm       = "0.27"
+dialoguer       = { version = "0.11", features = ["history"] }
+anyhow          = "1"
+serde           = { version = "1", features = ["derive"] }
+toml            = "0.8"
+chrono          = { version = "0.4", features = ["serde"] }
+regex           = "1"
+serde_json      = "1"
+clap            = { version = "4", features = ["derive"] }
+unicode-width   = "0.1"
+rand            = "0.8"
+reqwest         = { version = "0.12", features = ["blocking", "socks", "json"] }
+hostname        = "0.4"
+lazy_static     = "1.4"
+ctrlc           = "3.4"
+
+[profile.release]
+opt-level      = 3
+lto            = true
+codegen-units  = 1
+strip          = true

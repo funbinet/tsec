@@ -1,0 +1,13 @@
+# Ignore build directories and editor configs
+/target/
+**/*.rs.bk
+
+# Ignore user configuration generated during testing locally
+/opt/
+*.log
+
+# Ignore output directory dumps if ran locally
+/output/
+
+# Secrets
+.env

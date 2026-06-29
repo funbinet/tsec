@@ -1,0 +1,80 @@
+--- src/ui/menu.rs
++++ src/ui/menu.rs
+@@ -51,8 +51,17 @@
+ 
+ // ── Core boxed menu ────────────────────────────────────────────────────────
+ 
++pub enum BoxedMenuResult {
++    Selected(usize),
++    TimeoutOverride(usize),
++    Back,
++    Home,
++    Exit,
++}
++
+ /// Draw a full-terminal-width box menu with a centred title and navigate with
+-/// arrow/j/k keys.  Returns `Some(index)` on Enter, `None` on Esc/q.
+-fn run_boxed_menu(title: &str, items: &[String]) -> Result<Option<usize>> {
++/// arrow/j/k keys.  Returns `BoxedMenuResult`.
++fn run_boxed_menu(title: &str, items: &[String]) -> Result<BoxedMenuResult> {
+     let term_cols = terminal_width();
+ 
+     // Total box width = term_cols (fills the whole terminal row)
+@@ -88,6 +97,8 @@
+     let mut selected  = 0usize;
+     let max_visible   = 18usize;
+     let mut prev_rows = 0u16;
++    let mut digit_buffer = String::new();
++    let mut last_digit_time = std::time::Instant::now();
+ 
+     let result = loop {
+         let visible = items.len().min(max_visible);
+@@ -153,23 +164,48 @@
+         let _ = stdout.flush();
+ 
+         // ── Key handling ───────────────────────────────────────────────────
+-        if let Event::Key(key) = event::read()? {
+-            if key.kind == KeyEventKind::Press {
++        if crossterm::event::poll(std::time::Duration::from_millis(50))? {
++            if let Event::Key(key) = event::read()? {
++                if key.kind == KeyEventKind::Press || key.kind == KeyEventKind::Repeat {
++                    match key.code {
++                        KeyCode::Up   | KeyCode::Char('k') => {
++                            if selected > 0 { selected -= 1; }
++                        }
++                        KeyCode::Down | KeyCode::Char('j') => {
++                            if selected + 1 < items.len() { selected += 1; }
++                        }
++                        KeyCode::Enter => { break BoxedMenuResult::Selected(selected); }
++                        KeyCode::Esc | KeyCode::Char('q') => { break BoxedMenuResult::Back; }
++                        KeyCode::Char('<') => { break BoxedMenuResult::Back; }
++                        KeyCode::Char('#') => { break BoxedMenuResult::Home; }
++                        KeyCode::Char('x') => { break BoxedMenuResult::Exit; }
++                        KeyCode::Char('T') | KeyCode::Char('t') => { break BoxedMenuResult::TimeoutOverride(selected); }
++                        KeyCode::Char(c) if c.is_ascii_digit() => {
++                            if key.kind == KeyEventKind::Press {
++                                digit_buffer.push(c);
++                                last_digit_time = std::time::Instant::now();
++                            }
++                        }
++                        KeyCode::Char('c') if key.modifiers.contains(KeyModifiers::CONTROL) => {
++                            let _ = execute!(stdout, cursor::Show, ResetColor);
++                            let _ = terminal::disable_raw_mode();
++                            std::process::exit(0);
++                        }
++                        _ => {}
++                    }
++                }
++            }
++        } else {
++            // Check digit buffer timeout
++            if !digit_buffer.is_empty() && last_digit_time.elapsed() > std::time::Duration::from_millis(400) {
++                if let Ok(num) = digit_buffer.parse::<usize>() {
++                    if num > 0 && num <= items.len() {
++                        break BoxedMenuResult::Selected(num - 1);
++                    }
++                }
++                digit_buffer.clear();
+             }
+         }
+     };
