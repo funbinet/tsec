@@ -603,7 +603,7 @@ pub const TOOLS: &[Tool] = &[
             },
             Mode {
                 name: "Hash Analysis",
-                cmd_template: r#"cat {log_file} \| grep 'jnettop' \| asleap -C {challenge} -R {response} -W {wordlist} > {output_file}"#,
+                cmd_template: r#"cat {log_file} | grep 'jnettop' | asleap -C {challenge} -R {response} -W {wordlist} > {output_file}"#,
                 inputs: &[InputKind::Custom("Log File", "log_file"), InputKind::Custom("Challenge", "challenge"), InputKind::Custom("Response", "response"), InputKind::Wordlist],
                 output_format: OutputFormat::Lines,
                 file_ext: "txt",

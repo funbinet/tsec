@@ -105,6 +105,7 @@ pub struct Tool {
     /// Executable name looked up in PATH.
     pub binary: &'static str,
     /// Brief description of the tool's capabilities.
+    #[allow(dead_code)]
     pub description: &'static str,
     /// At least four distinct modes.
     pub modes: &'static [Mode],

