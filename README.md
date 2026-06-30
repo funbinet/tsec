@@ -1,11 +1,13 @@
-# TSEC FRAMEWORK — Tactical Security Enumeration & Compromise
+# TSEC FRAMEWORK
+##Tactical Security Enumeration & Compromise
 
-> **The definitive command-line reference for offensive security operations.**
-> **10 Phases | 100 Tools | 1,000+ Commands — Every command saves output.**
 >
-> *Authorized Security Testing Only. Unauthorized access to computer systems is illegal.*
+>
+> **The definitive command-line reference for offensive security operations.**
+> **10 Phases | 100 Tools | 1,000+ Commands**
+>
+>
 
----
 
 ## Table of Contents
 
