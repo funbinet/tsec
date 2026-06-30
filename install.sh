@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# TSEC Installer v1.0.0
+# TSEC Installer v2.0.0
 
 set -e
 

@@ -1,7 +1,7 @@
 # TSEC FRAMEWORK — Tactical Security Enumeration & Compromise
 
 > **The definitive command-line reference for offensive security operations.**
-> **10 Phases | 100 Tools | 1,000 Commands — Every command saves output.**
+> **10 Phases | 100 Tools | 1,000+ Commands — Every command saves output.**
 >
 > *Authorized Security Testing Only. Unauthorized access to computer systems is illegal.*
 
@@ -163,21 +163,26 @@ Phase (1-10) -> Tool (1-10 per phase) -> Mode (1-10 per tool) -> Command
 | 9 | Browse | `sherlock {username} --browse` | BROWSER |
 | 10 | All Sites + Export | `sherlock {username} --csv --json --output /opt/tsec/output/1.6.10_sherlock_full` | ALL |
 
-## Tool 1.7 — SpiderFoot
-*Automated OSINT and threat intelligence platform.*
+## Tool 1.7 — Sn1per
+*Professional automated reconnaissance and penetration testing framework with 50+ integrated tools. Pure CLI, no GUI.*
 
 | Mode | Name | Command | Output |
 |------|------|---------|--------|
-| 1 | Target Scan | `spiderfoot -s {target} -o /opt/tsec/output/1.7.1_spiderfoot_{target}.json` | JSON |
-| 2 | Module List | `spiderfoot -M > /opt/tsec/output/1.7.2_spiderfoot_modules.txt` | TXT |
-| 3 | Specific Modules | `spiderfoot -s {target} -m sfp_dns,sfp_webframework,sfp_portscan_tcp -o /opt/tsec/output/1.7.3_spiderfoot_select.json` | JSON |
-| 4 | Active Scan | `spiderfoot -s {target} -n -o /opt/tsec/output/1.7.4_spiderfoot_active.json` | JSON |
-| 5 | DNS Scan Only | `spiderfoot -s {target} -t DNS -o /opt/tsec/output/1.7.5_spiderfoot_dns.json` | JSON |
-| 6 | Correlation | `spiderfoot -s {target} -c -o /opt/tsec/output/1.7.6_spiderfoot_correlation.json` | JSON |
-| 7 | Names Only | `spiderfoot -s {target} -F -o /opt/tsec/output/1.7.7_spiderfoot_names.json` | JSON |
-| 8 | Use Proxy | `spiderfoot -s {target} -x {proxy} -o /opt/tsec/output/1.7.8_spiderfoot_proxy.json` | JSON |
-| 9 | Exclude Modules | `spiderfoot -s {target} -m sfp_dns,sfp_subdomain -o /opt/tsec/output/1.7.9_spiderfoot_exclude.json` | JSON |
-| 10 | Full Recon | `spiderfoot -s {target} -a -c -o /opt/tsec/output/1.7.10_spiderfoot_full.json` | JSON |
+| 1 | Recon Only | `sniper -t {target} -m recon -w {workspace} > {output_file} 2>&1` | TXT |
+| 2 | Stealth Recon | `sniper -t {target} -m stealth -w {workspace} > {output_file} 2>&1` | TXT |
+| 3 | Full Web Audit | `sniper -t {target} -m webscan -w {workspace} > {output_file} 2>&1` | TXT |
+| 4 | OSINT Deep Dive | `sniper -t {target} -m osint -w {workspace} > {output_file} 2>&1` | TXT |
+| 5 | Port Scan + Service Enum | `sniper -t {target} -m portscan -w {workspace} > {output_file} 2>&1` | TXT |
+| 6 | Web App Brute Force | `sniper -t {target} -m brute -w {workspace} > {output_file} 2>&1` | TXT |
+| 7 | Airstrike Multi-Target | `sniper -f {file} -m airstrike -w {workspace} > {output_file} 2>&1` | TXT |
+| 8 | Nuke Everything | `sniper -t {target} -m nuke -w {workspace} > {output_file} 2>&1` | TXT |
+| 9 | Report Generation | `sniper -t {target} -m report -w {workspace} > {output_file} 2>&1` | TXT |
+| 10 | Active Discovery | `sniper -t {target} -m active -w {workspace} > {output_file} 2>&1` | TXT |
+| 11 | Vulnerability Scan | `sniper -t {target} -m vulnscan -w {workspace} > {output_file} 2>&1` | TXT |
+| 12 | Subdomain Takeover | `sniper -t {target} -m takeover -w {workspace} > {output_file} 2>&1` | TXT |
+| 13 | CMS Identification + Exploit | `sniper -t {target} -m cms -w {workspace} > {output_file} 2>&1` | TXT |
+| 14 | GitHub Secrets Hunt | `sniper -t {target} -m github -w {workspace} > {output_file} 2>&1` | TXT |
+| 15 | Full Lethal Chain | `sniper -t {target} -m recon -w {workspace} > {output_file} ...` | TXT |
 
 ## Tool 1.8 — OWASP Amass (Intel Mode)
 *Deep intelligence gathering including ASN, routing, and infrastructure mapping.*
@@ -1779,6 +1784,19 @@ Example: /opt/tsec/output/6.1.1_mimikatz_passwords.txt
 
 ## Usage Notes
 
+### Interactive Menu Navigation
+
+- **Up**: `u` or `Up Arrow`
+- **Down**: `j` or `Down Arrow`
+- **Back/Previous**: `h`, `q`, `<` or `Left Arrow`
+- **Select/Next**: `k`, `Enter`, or `Right Arrow`
+- **Exit**: `x`
+- **Home**: `#`
+
+### Graceful Interrupts
+
+If a tool is taking too long to execute, you can safely press `Ctrl+C`. The framework will stop the running tool, preserve the data gathered so far, and return you back to the interactive menu without exiting the entire framework. Pressing `Ctrl+C` while in the menu will exit the framework and trigger the anonymity teardown sequence.
+
 ### Prerequisites
 
 - All tools must be installed and accessible in `$PATH`
@@ -1820,6 +1838,6 @@ Example: /opt/tsec/output/6.1.1_mimikatz_passwords.txt
 
 ---
 
-*The TSEC Framework — Version 1.0*
-*Last Updated: 2026-06-29*
-*Total Coverage: 10 Phases | 100 Tools | 1,000 Commands*
+*The TSEC Framework — Version 2.0.0*
+*Last Updated: 2026-06-30*
+*Total Coverage: 10 Phases | 100 Tools | 1,000+ Commands*

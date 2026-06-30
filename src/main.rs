@@ -30,6 +30,8 @@ struct SpoofState {
     anonymity_enabled: bool,
 }
 
+pub static IS_EXECUTING: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
 fn main() -> Result<()> {
     // 1. Ensure config and output dirs exist; load config.
     let mut cfg = Config::load_or_create()?;
@@ -64,6 +66,12 @@ fn main() -> Result<()> {
     // ── Setup Ctrl+C Handler ──────────────────────────────────────────
     let spoof_state_ctrlc = std::sync::Arc::clone(&spoof_state);
     ctrlc::set_handler(move || {
+        // If a tool is executing, ignore SIGINT so the framework survives
+        // while the child process handles the interrupt.
+        if crate::IS_EXECUTING.load(std::sync::atomic::Ordering::SeqCst) {
+            return;
+        }
+
         if let Ok(logger) = Logger::open("/opt/tsec/logs/tsec.log") {
             logger.info("Caught SIGINT (Ctrl+C). Executing teardown sequence...");
             if let Ok(state) = spoof_state_ctrlc.lock() {
@@ -312,11 +320,13 @@ fn run_workflow(
     // 4. Execute — through anonymity layer or direct.
     let spinner = ui::spinner::Spinner::start("EXECUTING");
 
+    crate::IS_EXECUTING.store(true, std::sync::atomic::Ordering::SeqCst);
     let result = if cfg.anonymity.enabled {
         anonymity::wrapper::run_anonymized(&cmd, cfg.timeout_secs(), &cfg.anonymity, proxy_mgr)
     } else {
         executor::run_command(&cmd, cfg.timeout_secs())
     };
+    crate::IS_EXECUTING.store(false, std::sync::atomic::Ordering::SeqCst);
 
     spinner.stop();
 

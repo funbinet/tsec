@@ -168,15 +168,18 @@ fn run_boxed_menu(title: &str, items: &[String]) -> Result<BoxedMenuResult> {
             if let Event::Key(key) = event::read()? {
                 if key.kind == KeyEventKind::Press || key.kind == KeyEventKind::Repeat {
                     match key.code {
-                        KeyCode::Up   | KeyCode::Char('k') => {
+                        KeyCode::Up | KeyCode::Char('u') => {
                             if selected > 0 { selected -= 1; }
                         }
                         KeyCode::Down | KeyCode::Char('j') => {
                             if selected + 1 < items.len() { selected += 1; }
                         }
-                        KeyCode::Enter => { break BoxedMenuResult::Selected(selected); }
-                        KeyCode::Esc | KeyCode::Char('q') => { break BoxedMenuResult::Back; }
-                        KeyCode::Char('<') => { break BoxedMenuResult::Back; }
+                        KeyCode::Enter | KeyCode::Right | KeyCode::Char('k') => {
+                            break BoxedMenuResult::Selected(selected);
+                        }
+                        KeyCode::Esc | KeyCode::Left | KeyCode::Char('h') | KeyCode::Char('q') | KeyCode::Char('<') => {
+                            break BoxedMenuResult::Back;
+                        }
                         KeyCode::Char('#') => { break BoxedMenuResult::Home; }
                         KeyCode::Char('x') => { break BoxedMenuResult::Exit; }
                         KeyCode::Char('T') | KeyCode::Char('t') => { break BoxedMenuResult::TimeoutOverride(selected); }
