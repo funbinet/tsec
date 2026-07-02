@@ -501,7 +501,7 @@ pub const TOOLS: &[Tool] = &[
     Tool {
         name: "Sn1per",
         binary: "sniper",
-        description: "Professional automated reconnaissance and penetration testing framework with 50+ integrated tools. Pure CLI, no GUI. Installs: nuclei, httpx, subfinder, amass, ffuf, gau, puredns, cmsmap, dirsearch, metasploit, brutex, blackwidow, arachni, massdns, altdns, dnscan, censys-subdomain-finder, gitGrabber, SecretFinder, LinkFinder, Shocker, SSH-Audit, Jexboss, Wig, CORStest, Vulscan, Metagoofil, Smuggler, findsploit, GooHak, and more.",
+        description: "Professional automated reconnaissance and penetration testing framework with 50+ integrated tools. Pure CLI, no GUI. Installs: nuclei, httpx-pd, subfinder, amass, ffuf, gau, puredns, cmsmap, dirsearch, metasploit, brutex, blackwidow, arachni, massdns, altdns, dnscan, censys-subdomain-finder, gitGrabber, SecretFinder, LinkFinder, Shocker, SSH-Audit, Jexboss, Wig, CORStest, Vulscan, Metagoofil, Smuggler, findsploit, GooHak, and more.",
         modes: &[
             Mode {
                 name: "Recon Only",
