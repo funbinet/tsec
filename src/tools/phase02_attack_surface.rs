@@ -143,7 +143,7 @@ pub const TOOLS: &[Tool] = &[
                 name: "Lethal Full Chain",
                 cmd_template: r#"nmap -sn -T4 --max-retries 1 --send-ip {target} -oN {output_file}.hostup && sudo nmap -sS -p- -T4 --open --min-rate 1000 {target} -oN {output_file}.tcp && sudo nmap -sU --top-ports 100 --open -T4 {target} -oN {output_file}.udp && sudo nmap -sS -A --open -T4 {target} -oN {output_file}.full && sudo nmap -sS -A --open -T4 {target} -oX {output_file}.xml && sudo nmap -sS -sV --open -T4 {target} -oG {output_file}.grep && sudo nmap -p 443,465,587,993,995,8443 --script=ssl-enum-ciphers,ssl-heartbleed,ssl-cert --open -T4 {target} -oN {output_file}.ssl && sudo nmap -p 445 --script=smb-enum-shares,smb-vuln-ms17-010 --open -T4 {target} -oN {output_file}.smb && cat {output_file}.grep | awk '/Host:/{print $2}' | cut -d'(' -f1 | httpx-pd -silent -sc -title -tech-detect > {output_file}.httpx && cat {output_file}.httpx | awk '{print $1}' | nuclei -l - -severity critical,high -json > {output_file}.nuclei && cat {output_file}.httpx | awk '{print $1}' > /tmp/nmap_lethal_eyewitness.txt && eyewitness --web -f /tmp/nmap_lethal_eyewitness.txt --threads 20 --timeout 15 -d {output_file}.eyewitness && cat {output_file}.full | grep -oP 'OS:\s*\K[^,]+' | sort | uniq -c | sort -rn > {output_file}.os_stats.txt && cat {output_file}.tcp | grep -oP '(\d+)/tcp\s+open\s+\K[^ ]+' | sort | uniq -c | sort -rn > {output_file}.service_stats.txt && cat {output_file}.ssl | grep -oP 'TLSv[\d.]+|SSLv[\d.]+' | sort | uniq -c | sort -rn > {output_file}.tls_stats.txt"#,
                 inputs: &[InputKind::Target],
-                output_format: OutputFormat::lines,
+                output_format: OutputFormat::Lines,
                 file_ext: "txt",
             },
         ],
