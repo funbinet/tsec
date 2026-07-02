@@ -526,8 +526,11 @@ pub const TOOLS: &[Tool] = &[
     Tool {
         name: "theHarvester",
         binary: "theharvester",
-        description: "Email harvesting and OSINT gathering from search engines and public sources.",
+        description: "Email harvesting and OSINT gathering from 30+ search engines, social media platforms, certificate transparency logs, and public sources. Supports DNS resolution, virtual host discovery, subdomain takeover detection, TLD expansion, and API integrations with Shodan, Hunter.io, IntelX, Censys, and BinaryEdge.",
         modes: &[
+            // ═══════════════════════════════════════════════════════════════
+            // CORE HARVESTING MODES
+            // ═══════════════════════════════════════════════════════════════
             Mode {
                 name: "Full Harvest",
                 cmd_template: r#"theharvester -d {domain} -b all -f {output_file}"#,
@@ -536,6 +539,45 @@ pub const TOOLS: &[Tool] = &[
                 file_ext: "html",
             },
             Mode {
+                name: "Full Harvest Text",
+                cmd_template: r#"theharvester -d {domain} -b all -o {output_file}"#,
+                inputs: &[InputKind::Domain],
+                output_format: OutputFormat::Lines,
+                file_ext: "txt",
+            },
+            Mode {
+                name: "Full Harvest JSON",
+                cmd_template: r#"theharvester -d {domain} -b all -o {output_file} --format json"#,
+                inputs: &[InputKind::Domain],
+                output_format: OutputFormat::Json,
+                file_ext: "json",
+            },
+            Mode {
+                name: "Full Harvest XML",
+                cmd_template: r#"theharvester -d {domain} -b all -o {output_file} --format xml"#,
+                inputs: &[InputKind::Domain],
+                output_format: OutputFormat::Raw,
+                file_ext: "xml",
+            },
+            Mode {
+                name: "Full Harvest Limit",
+                cmd_template: r#"theharvester -d {domain} -b all -l {limit} -f {output_file}"#,
+                inputs: &[InputKind::Domain, InputKind::Custom("Limit", "limit")],
+                output_format: OutputFormat::Raw,
+                file_ext: "html",
+            },
+            Mode {
+                name: "Full Harvest Start",
+                cmd_template: r#"theharvester -d {domain} -b all -s {start} -f {output_file}"#,
+                inputs: &[InputKind::Domain, InputKind::Custom("Start Index", "start")],
+                output_format: OutputFormat::Raw,
+                file_ext: "html",
+            },
+
+            // ═══════════════════════════════════════════════════════════════
+            // SEARCH ENGINE MODES
+            // ═══════════════════════════════════════════════════════════════
+            Mode {
                 name: "Google Only",
                 cmd_template: r#"theharvester -d {domain} -b google -f {output_file}"#,
                 inputs: &[InputKind::Domain],
@@ -543,36 +585,114 @@ pub const TOOLS: &[Tool] = &[
                 file_ext: "html",
             },
             Mode {
-                name: "Bing + LinkedIn",
-                cmd_template: r#"theharvester -d {domain} -b bing,linkedin -f {output_file}"#,
+                name: "Bing Only",
+                cmd_template: r#"theharvester -d {domain} -b bing -f {output_file}"#,
                 inputs: &[InputKind::Domain],
                 output_format: OutputFormat::Raw,
                 file_ext: "html",
             },
             Mode {
-                name: "Shodan Integration",
-                cmd_template: r#"theharvester -d {domain} -b shodan -f {output_file}"#,
+                name: "DuckDuckGo Only",
+                cmd_template: r#"theharvester -d {domain} -b duckduckgo -f {output_file}"#,
                 inputs: &[InputKind::Domain],
                 output_format: OutputFormat::Raw,
                 file_ext: "html",
             },
             Mode {
-                name: "Limit Results",
-                cmd_template: r#"theharvester -d {domain} -b all -l {limit} -f {output_file}"#,
-                inputs: &[InputKind::Domain, InputKind::Custom("Limit", "limit")],
+                name: "Yahoo Only",
+                cmd_template: r#"theharvester -d {domain} -b yahoo -f {output_file}"#,
+                inputs: &[InputKind::Domain],
                 output_format: OutputFormat::Raw,
                 file_ext: "html",
             },
             Mode {
-                name: "DNS TLD Expansion",
+                name: "Baidu Only",
+                cmd_template: r#"theharvester -d {domain} -b baidu -f {output_file}"#,
+                inputs: &[InputKind::Domain],
+                output_format: OutputFormat::Raw,
+                file_ext: "html",
+            },
+            Mode {
+                name: "Ask Only",
+                cmd_template: r#"theharvester -d {domain} -b ask -f {output_file}"#,
+                inputs: &[InputKind::Domain],
+                output_format: OutputFormat::Raw,
+                file_ext: "html",
+            },
+            Mode {
+                name: "Search Engine Combo",
+                cmd_template: r#"theharvester -d {domain} -b google,bing,duckduckgo,yahoo,baidu,ask -f {output_file}"#,
+                inputs: &[InputKind::Domain],
+                output_format: OutputFormat::Raw,
+                file_ext: "html",
+            },
+
+            // ═══════════════════════════════════════════════════════════════
+            // SOCIAL MEDIA & PROFESSIONAL MODES
+            // ═══════════════════════════════════════════════════════════════
+            Mode {
+                name: "LinkedIn Only",
+                cmd_template: r#"theharvester -d {domain} -b linkedin -f {output_file}"#,
+                inputs: &[InputKind::Domain],
+                output_format: OutputFormat::Raw,
+                file_ext: "html",
+            },
+            Mode {
+                name: "Twitter Only",
+                cmd_template: r#"theharvester -d {domain} -b twitter -f {output_file}"#,
+                inputs: &[InputKind::Domain],
+                output_format: OutputFormat::Raw,
+                file_ext: "html",
+            },
+            Mode {
+                name: "GitHub Only",
+                cmd_template: r#"theharvester -d {domain} -b github -f {output_file}"#,
+                inputs: &[InputKind::Domain],
+                output_format: OutputFormat::Raw,
+                file_ext: "html",
+            },
+            Mode {
+                name: "Trello Only",
+                cmd_template: r#"theharvester -d {domain} -b trello -f {output_file}"#,
+                inputs: &[InputKind::Domain],
+                output_format: OutputFormat::Raw,
+                file_ext: "html",
+            },
+            Mode {
+                name: "Social Media Combo",
+                cmd_template: r#"theharvester -d {domain} -b linkedin,twitter,github,trello -f {output_file}"#,
+                inputs: &[InputKind::Domain],
+                output_format: OutputFormat::Raw,
+                file_ext: "html",
+            },
+
+            // ═══════════════════════════════════════════════════════════════
+            // CERTIFICATE & DNS MODES
+            // ═══════════════════════════════════════════════════════════════
+            Mode {
+                name: "Certificate Transparency",
+                cmd_template: r#"theharvester -d {domain} -b crtsh -f {output_file}"#,
+                inputs: &[InputKind::Domain],
+                output_format: OutputFormat::Raw,
+                file_ext: "html",
+            },
+            Mode {
+                name: "CertSpotter",
+                cmd_template: r#"theharvester -d {domain} -b certspotter -f {output_file}"#,
+                inputs: &[InputKind::Domain],
+                output_format: OutputFormat::Raw,
+                file_ext: "html",
+            },
+            Mode {
+                name: "Censys Certificates",
+                cmd_template: r#"theharvester -d {domain} -b censys -f {output_file}"#,
+                inputs: &[InputKind::Domain],
+                output_format: OutputFormat::Raw,
+                file_ext: "html",
+            },
+            Mode {
+                name: "DNS Brute Force",
                 cmd_template: r#"theharvester -d {domain} -c -f {output_file}"#,
-                inputs: &[InputKind::Domain],
-                output_format: OutputFormat::Raw,
-                file_ext: "html",
-            },
-            Mode {
-                name: "Virtual Host Check",
-                cmd_template: r#"theharvester -d {domain} -v -f {output_file}"#,
                 inputs: &[InputKind::Domain],
                 output_format: OutputFormat::Raw,
                 file_ext: "html",
@@ -585,6 +705,147 @@ pub const TOOLS: &[Tool] = &[
                 file_ext: "html",
             },
             Mode {
+                name: "DNS Lookup with Server",
+                cmd_template: r#"theharvester -d {domain} -n -dns {dns_server} -f {output_file}"#,
+                inputs: &[InputKind::Domain, InputKind::Custom("DNS Server", "dns_server")],
+                output_format: OutputFormat::Raw,
+                file_ext: "html",
+            },
+            Mode {
+                name: "Virtual Host Check",
+                cmd_template: r#"theharvester -d {domain} -v -f {output_file}"#,
+                inputs: &[InputKind::Domain],
+                output_format: OutputFormat::Raw,
+                file_ext: "html",
+            },
+            Mode {
+                name: "Virtual Host DNS",
+                cmd_template: r#"theharvester -d {domain} -v -n -f {output_file}"#,
+                inputs: &[InputKind::Domain],
+                output_format: OutputFormat::Raw,
+                file_ext: "html",
+            },
+            Mode {
+                name: "TLD Expansion",
+                cmd_template: r#"theharvester -d {domain} -c -f {output_file}"#,
+                inputs: &[InputKind::Domain],
+                output_format: OutputFormat::Raw,
+                file_ext: "html",
+            },
+
+            // ═══════════════════════════════════════════════════════════════
+            // THREAT INTELLIGENCE & OSINT MODES
+            // ═══════════════════════════════════════════════════════════════
+            Mode {
+                name: "Shodan Integration",
+                cmd_template: r#"theharvester -d {domain} -b shodan -f {output_file}"#,
+                inputs: &[InputKind::Domain],
+                output_format: OutputFormat::Raw,
+                file_ext: "html",
+            },
+            Mode {
+                name: "Shodan with API Key",
+                cmd_template: r#"theharvester -d {domain} -b shodan -s {shodan_key} -f {output_file}"#,
+                inputs: &[InputKind::Domain, InputKind::Custom("Shodan API Key", "shodan_key")],
+                output_format: OutputFormat::Raw,
+                file_ext: "html",
+            },
+            Mode {
+                name: "Hunter.io",
+                cmd_template: r#"theharvester -d {domain} -b hunter -f {output_file}"#,
+                inputs: &[InputKind::Domain],
+                output_format: OutputFormat::Raw,
+                file_ext: "html",
+            },
+            Mode {
+                name: "Hunter.io with API Key",
+                cmd_template: r#"theharvester -d {domain} -b hunter -h {hunter_key} -f {output_file}"#,
+                inputs: &[InputKind::Domain, InputKind::Custom("Hunter API Key", "hunter_key")],
+                output_format: OutputFormat::Raw,
+                file_ext: "html",
+            },
+            Mode {
+                name: "IntelX",
+                cmd_template: r#"theharvester -d {domain} -b intelx -f {output_file}"#,
+                inputs: &[InputKind::Domain],
+                output_format: OutputFormat::Raw,
+                file_ext: "html",
+            },
+            Mode {
+                name: "IntelX with API Key",
+                cmd_template: r#"theharvester -d {domain} -b intelx -x {intelx_key} -f {output_file}"#,
+                inputs: &[InputKind::Domain, InputKind::Custom("IntelX API Key", "intelx_key")],
+                output_format: OutputFormat::Raw,
+                file_ext: "html",
+            },
+            Mode {
+                name: "Censys",
+                cmd_template: r#"theharvester -d {domain} -b censys -f {output_file}"#,
+                inputs: &[InputKind::Domain],
+                output_format: OutputFormat::Raw,
+                file_ext: "html",
+            },
+            Mode {
+                name: "Censys with API Key",
+                cmd_template: r#"theharvester -d {domain} -b censys -y {censys_id}:{censys_secret} -f {output_file}"#,
+                inputs: &[InputKind::Domain, InputKind::Custom("Censys ID", "censys_id"), InputKind::Custom("Censys Secret", "censys_secret")],
+                output_format: OutputFormat::Raw,
+                file_ext: "html",
+            },
+            Mode {
+                name: "BinaryEdge",
+                cmd_template: r#"theharvester -d {domain} -b binaryedge -f {output_file}"#,
+                inputs: &[InputKind::Domain],
+                output_format: OutputFormat::Raw,
+                file_ext: "html",
+            },
+            Mode {
+                name: "BinaryEdge with API Key",
+                cmd_template: r#"theharvester -d {domain} -b binaryedge -e {binaryedge_key} -f {output_file}"#,
+                inputs: &[InputKind::Domain, InputKind::Custom("BinaryEdge API Key", "binaryedge_key")],
+                output_format: OutputFormat::Raw,
+                file_ext: "html",
+            },
+            Mode {
+                name: "ThreatCrowd",
+                cmd_template: r#"theharvester -d {domain} -b threatcrowd -f {output_file}"#,
+                inputs: &[InputKind::Domain],
+                output_format: OutputFormat::Raw,
+                file_ext: "html",
+            },
+            Mode {
+                name: "URLScan",
+                cmd_template: r#"theharvester -d {domain} -b urlscan -f {output_file}"#,
+                inputs: &[InputKind::Domain],
+                output_format: OutputFormat::Raw,
+                file_ext: "html",
+            },
+            Mode {
+                name: "Spyse",
+                cmd_template: r#"theharvester -d {domain} -b spyse -f {output_file}"#,
+                inputs: &[InputKind::Domain],
+                output_format: OutputFormat::Raw,
+                file_ext: "html",
+            },
+            Mode {
+                name: "Netcraft",
+                cmd_template: r#"theharvester -d {domain} -b netcraft -f {output_file}"#,
+                inputs: &[InputKind::Domain],
+                output_format: OutputFormat::Raw,
+                file_ext: "html",
+            },
+            Mode {
+                name: "Threat Intelligence Combo",
+                cmd_template: r#"theharvester -d {domain} -b shodan,hunter,intelx,censys,binaryedge,threatcrowd,spyse -f {output_file}"#,
+                inputs: &[InputKind::Domain],
+                output_format: OutputFormat::Raw,
+                file_ext: "html",
+            },
+
+            // ═══════════════════════════════════════════════════════════════
+            // TAKEOVER & SCREENSHOT MODES
+            // ═══════════════════════════════════════════════════════════════
+            Mode {
                 name: "Takeover Check",
                 cmd_template: r#"theharvester -d {domain} -t -f {output_file}"#,
                 inputs: &[InputKind::Domain],
@@ -592,11 +853,185 @@ pub const TOOLS: &[Tool] = &[
                 file_ext: "html",
             },
             Mode {
-                name: "Proxy Support",
-                cmd_template: r#"theharvester -d {domain} -b all -p {proxy_url} -f {output_file}"#,
-                inputs: &[InputKind::Domain, InputKind::Custom("Proxy Url", "proxy_url")],
+                name: "Takeover Full",
+                cmd_template: r#"theharvester -d {domain} -b all -t -f {output_file}"#,
+                inputs: &[InputKind::Domain],
                 output_format: OutputFormat::Raw,
                 file_ext: "html",
+            },
+            Mode {
+                name: "Screenshot",
+                cmd_template: r#"theharvester -d {domain} -b all -e -f {output_file}"#,
+                inputs: &[InputKind::Domain],
+                output_format: OutputFormat::Raw,
+                file_ext: "html",
+            },
+            Mode {
+                name: "Screenshot Takeover",
+                cmd_template: r#"theharvester -d {domain} -b all -e -t -f {output_file}"#,
+                inputs: &[InputKind::Domain],
+                output_format: OutputFormat::Raw,
+                file_ext: "html",
+            },
+
+            // ═══════════════════════════════════════════════════════════════
+            // PROXY & NETWORK MODES
+            // ═══════════════════════════════════════════════════════════════
+            Mode {
+                name: "Proxy Support",
+                cmd_template: r#"theharvester -d {domain} -b all -p {proxy_url} -f {output_file}"#,
+                inputs: &[InputKind::Domain, InputKind::Custom("Proxy URL", "proxy_url")],
+                output_format: OutputFormat::Raw,
+                file_ext: "html",
+            },
+            Mode {
+                name: "Proxy with Auth",
+                cmd_template: r#"theharvester -d {domain} -b all -p {proxy_url} --proxy-auth {proxy_user}:{proxy_pass} -f {output_file}"#,
+                inputs: &[InputKind::Domain, InputKind::Custom("Proxy URL", "proxy_url"), InputKind::Custom("Proxy User", "proxy_user"), InputKind::Custom("Proxy Pass", "proxy_pass")],
+                output_format: OutputFormat::Raw,
+                file_ext: "html",
+            },
+            Mode {
+                name: "Custom User Agent",
+                cmd_template: r#"theharvester -d {domain} -b all -u "{ua}" -f {output_file}"#,
+                inputs: &[InputKind::Domain, InputKind::Custom("User Agent", "ua")],
+                output_format: OutputFormat::Raw,
+                file_ext: "html",
+            },
+            Mode {
+                name: "DNS Server",
+                cmd_template: r#"theharvester -d {domain} -b all -dns {dns_server} -f {output_file}"#,
+                inputs: &[InputKind::Domain, InputKind::Custom("DNS Server", "dns_server")],
+                output_format: OutputFormat::Raw,
+                file_ext: "html",
+            },
+
+            // ═══════════════════════════════════════════════════════════════
+            // COMBINED & ADVANCED MODES
+            // ═══════════════════════════════════════════════════════════════
+            Mode {
+                name: "Email Harvest",
+                cmd_template: r#"theharvester -d {domain} -b google,bing,duckduckgo,yahoo,baidu,ask,linkedin,twitter,github,trello,hunter -f {output_file}"#,
+                inputs: &[InputKind::Domain],
+                output_format: OutputFormat::Raw,
+                file_ext: "html",
+            },
+            Mode {
+                name: "Subdomain Harvest",
+                cmd_template: r#"theharvester -d {domain} -b crtsh,certspotter,censys,netcraft,threatcrowd,spyse,urlscan,shodan -f {output_file}"#,
+                inputs: &[InputKind::Domain],
+                output_format: OutputFormat::Raw,
+                file_ext: "html",
+            },
+            Mode {
+                name: "Host Harvest",
+                cmd_template: r#"theharvester -d {domain} -b shodan,censys,binaryedge,spyse,netcraft -f {output_file}"#,
+                inputs: &[InputKind::Domain],
+                output_format: OutputFormat::Raw,
+                file_ext: "html",
+            },
+            Mode {
+                name: "Full OSINT",
+                cmd_template: r#"theharvester -d {domain} -b all -c -n -v -t -e -f {output_file}"#,
+                inputs: &[InputKind::Domain],
+                output_format: OutputFormat::Raw,
+                file_ext: "html",
+            },
+            Mode {
+                name: "Full OSINT Text",
+                cmd_template: r#"theharvester -d {domain} -b all -c -n -v -t -e -o {output_file}"#,
+                inputs: &[InputKind::Domain],
+                output_format: OutputFormat::Lines,
+                file_ext: "txt",
+            },
+            Mode {
+                name: "Full OSINT JSON",
+                cmd_template: r#"theharvester -d {domain} -b all -c -n -v -t -e -o {output_file} --format json"#,
+                inputs: &[InputKind::Domain],
+                output_format: OutputFormat::Json,
+                file_ext: "json",
+            },
+
+            // ═══════════════════════════════════════════════════════════════
+            // PIPELINE & CHAIN MODES (LETHAL INTEGRATION)
+            // ═══════════════════════════════════════════════════════════════
+            Mode {
+                name: "Pipeline to Nuclei",
+                cmd_template: r#"theharvester -d {domain} -b all -o {output_file}.txt && cat {output_file}.txt | grep -oP 'https?://[^\s]+' | sort -u > {output_file}.urls.txt && cat {output_file}.txt | grep -oP '[a-zA-Z0-9.-]+\.{domain}' | sort -u > {output_file}.hosts.txt && cat {output_file}.urls.txt {output_file}.hosts.txt | sort -u | httpx -silent -sc -title -tech-detect -server -json -o {output_file}.httpx.json && cat {output_file}.httpx.json | jq -r '.url' | sort -u | nuclei -l - -s critical,high -silent -j -o {output_file}.nuclei.json && cat {output_file}.nuclei.json | jq -r '.template_id' | sort | uniq -c | sort -rn > {output_file}.template_stats.txt && cat {output_file}.nuclei.json | jq -r '.info.severity' | sort | uniq -c | sort -rn > {output_file}.severity_stats.txt"#,
+                inputs: &[InputKind::Domain],
+                output_format: OutputFormat::Raw,
+                file_ext: "json",
+            },
+            Mode {
+                name: "Pipeline to EyeWitness",
+                cmd_template: r#"theharvester -d {domain} -b all -o {output_file}.txt && cat {output_file}.txt | grep -oP 'https?://[^\s]+' | sort -u > {output_file}.urls.txt && cat {output_file}.urls.txt | eyewitness --web -f /dev/stdin --threads 20 --timeout 15 --prepend-https --headless --no-prompt -d {output_file}.eyewitness && cat {output_file}.eyewitness/report.html | grep -oP 'title>\K[^<]+' | sort -u > {output_file}.titles.txt && ls {output_file}.eyewitness/screens/ 2>/dev/null | wc -l > {output_file}.screenshot_count.txt"#,
+                inputs: &[InputKind::Domain],
+                output_format: OutputFormat::Raw,
+                file_ext: "txt",
+            },
+            Mode {
+                name: "Pipeline to DNSX",
+                cmd_template: r#"theharvester -d {domain} -b all -o {output_file}.txt && cat {output_file}.txt | grep -oP '[a-zA-Z0-9.-]+\.{domain}' | sort -u > {output_file}.hosts.txt && cat {output_file}.hosts.txt | dnsx -a -resp-only -retry 3 -silent -o {output_file}.a.txt && cat {output_file}.hosts.txt | dnsx -aaaa -resp-only -retry 3 -silent -o {output_file}.aaaa.txt && cat {output_file}.hosts.txt | dnsx -cname -resp-only -retry 3 -silent -o {output_file}.cname.txt && cat {output_file}.hosts.txt | dnsx -mx -resp-only -retry 3 -silent -o {output_file}.mx.txt && cat {output_file}.a.txt {output_file}.aaaa.txt | sort -u > {output_file}.resolved.txt && wc -l {output_file}.resolved.txt > {output_file}.resolved_count.txt"#,
+                inputs: &[InputKind::Domain],
+                output_format: OutputFormat::Raw,
+                file_ext: "txt",
+            },
+            Mode {
+                name: "Pipeline to Subfinder",
+                cmd_template: r#"theharvester -d {domain} -b all -o {output_file}.harvester.txt && cat {output_file}.harvester.txt | grep -oP '[a-zA-Z0-9.-]+\.{domain}' | sort -u > {output_file}.harvester_hosts.txt && subfinder -d {domain} -all -silent -o {output_file}.subfinder.txt && cat {output_file}.harvester_hosts.txt {output_file}.subfinder.txt | sort -u > {output_file}.combined_hosts.txt && wc -l {output_file}.harvester_hosts.txt {output_file}.subfinder.txt {output_file}.combined_hosts.txt > {output_file}.host_stats.txt"#,
+                inputs: &[InputKind::Domain],
+                output_format: OutputFormat::Raw,
+                file_ext: "txt",
+            },
+
+            // ═══════════════════════════════════════════════════════════════
+            // DEATHSTAR FULL OSINT PIPELINE
+            // ═══════════════════════════════════════════════════════════════
+            Mode {
+                name: "Deathstar OSINT Recon",
+                cmd_template: r#"theharvester -d {domain} -b all -c -n -v -t -e -o {output_file}.txt && cat {output_file}.txt | grep -oP '[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}' | sort -u > {output_file}.emails.txt && wc -l {output_file}.emails.txt > {output_file}.email_count.txt && cat {output_file}.txt | grep -oP '[a-zA-Z0-9.-]+\.{domain}' | sort -u > {output_file}.hosts.txt && wc -l {output_file}.hosts.txt > {output_file}.host_count.txt && cat {output_file}.txt | grep -oP 'https?://[^\s]+' | sort -u > {output_file}.urls.txt && wc -l {output_file}.urls.txt > {output_file}.url_count.txt && cat {output_file}.hosts.txt | dnsx -a -resp-only -retry 3 -silent -o {output_file}.a.txt && cat {output_file}.hosts.txt | dnsx -aaaa -resp-only -retry 3 -silent -o {output_file}.aaaa.txt && cat {output_file}.hosts.txt | dnsx -cname -resp-only -retry 3 -silent -o {output_file}.cname.txt && cat {output_file}.hosts.txt | dnsx -mx -resp-only -retry 3 -silent -o {output_file}.mx.txt && cat {output_file}.a.txt {output_file}.aaaa.txt | sort -u > {output_file}.resolved.txt && wc -l {output_file}.resolved.txt > {output_file}.resolved_count.txt && cat {output_file}.hosts.txt | naabu -list - -p - -c 50 -silent -o {output_file}.ports.txt && cat {output_file}.ports.txt | awk '{print $2}' | sort | uniq -c | sort -rn > {output_file}.port_stats.txt && cat {output_file}.urls.txt | httpx -silent -sc -title -tech-detect -server -json -o {output_file}.httpx.json && cat {output_file}.httpx.json | jq -r 'select(.status_code == 200) | .url' > {output_file}.live200.txt && cat {output_file}.httpx.json | jq -r 'select(.tech != null) | .tech[]' | sort | uniq -c | sort -rn > {output_file}.tech_stats.txt && cat {output_file}.live200.txt | nuclei -l - -s critical,high -silent -j -o {output_file}.nuclei.json && cat {output_file}.nuclei.json | jq -r '.template_id' | sort | uniq -c | sort -rn > {output_file}.nuclei_stats.txt && cat {output_file}.live200.txt | eyewitness --web -f /dev/stdin --threads 20 --timeout 15 --prepend-https --headless --no-prompt -d {output_file}.eyewitness && cat {output_file}.eyewitness/report.html | grep -oP 'title>\K[^<]+' | sort -u > {output_file}.titles.txt && ls {output_file}.eyewitness/screens/ 2>/dev/null | wc -l > {output_file}.screenshot_count.txt && cat {output_file}.txt | grep -i takeover | sort -u > {output_file}.takeovers.txt && wc -l {output_file}.takeovers.txt > {output_file}.takeover_count.txt"#,
+                inputs: &[InputKind::Domain],
+                output_format: OutputFormat::Raw,
+                file_ext: "txt",
+            },
+
+            // ═══════════════════════════════════════════════════════════════
+            // LETHAL SINGLE-MODE COMBINATIONS
+            // ═══════════════════════════════════════════════════════════════
+            Mode {
+                name: "Lethal Full OSINT",
+                cmd_template: r#"theharvester -d {domain} -b all -c -n -v -t -e -l 500 -s 0 -o {output_file}.txt --format json && theharvester -d {domain} -b all -c -n -v -t -e -l 500 -s 0 -f {output_file}.html && cat {output_file}.txt | grep -oP '[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}' | sort -u > {output_file}.emails.txt && cat {output_file}.txt | grep -oP '[a-zA-Z0-9.-]+\.{domain}' | sort -u > {output_file}.hosts.txt && cat {output_file}.txt | grep -oP 'https?://[^\s]+' | sort -u > {output_file}.urls.txt && wc -l {output_file}.emails.txt {output_file}.hosts.txt {output_file}.urls.txt > {output_file}.summary.txt"#,
+                inputs: &[InputKind::Domain],
+                output_format: OutputFormat::Raw,
+                file_ext: "json",
+            },
+            Mode {
+                name: "Lethal API Arsenal",
+                cmd_template: r#"theharvester -d {domain} -b shodan,hunter,intelx,censys,binaryedge -s {shodan_key} -h {hunter_key} -x {intelx_key} -y {censys_id}:{censys_secret} -e {binaryedge_key} -o {output_file}.txt && cat {output_file}.txt | grep -oP '[a-zA-Z0-9.-]+\.{domain}' | sort -u > {output_file}.hosts.txt && cat {output_file}.hosts.txt | dnsx -a -resp-only -retry 3 -silent -o {output_file}.resolved.txt && cat {output_file}.resolved.txt | naabu -list - -p - -c 50 -silent -o {output_file}.ports.txt && cat {output_file}.ports.txt | awk '{print $1}' | httpx -silent -sc -title -tech-detect -server -json -o {output_file}.httpx.json && cat {output_file}.httpx.json | jq -r 'select(.status_code == 200) | .url' | nuclei -l - -s critical,high -silent -j -o {output_file}.nuclei.json"#,
+                inputs: &[InputKind::Domain, InputKind::Custom("Shodan Key", "shodan_key"), InputKind::Custom("Hunter Key", "hunter_key"), InputKind::Custom("IntelX Key", "intelx_key"), InputKind::Custom("Censys ID", "censys_id"), InputKind::Custom("Censys Secret", "censys_secret"), InputKind::Custom("BinaryEdge Key", "binaryedge_key")],
+                output_format: OutputFormat::Raw,
+                file_ext: "json",
+            },
+            Mode {
+                name: "Lethal Stealth OSINT",
+                cmd_template: r#"theharvester -d {domain} -b crtsh,certspotter,netcraft,threatcrowd,urlscan -c -n -v -p socks5://127.0.0.1:9050 -u "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" -o {output_file}.txt && cat {output_file}.txt | grep -oP '[a-zA-Z0-9.-]+\.{domain}' | sort -u > {output_file}.hosts.txt && cat {output_file}.hosts.txt | dnsx -a -resp-only -retry 3 -silent -o {output_file}.resolved.txt && wc -l {output_file}.resolved.txt > {output_file}.resolved_count.txt"#,
+                inputs: &[InputKind::Domain],
+                output_format: OutputFormat::Raw,
+                file_ext: "txt",
+            },
+            Mode {
+                name: "Lethal Takeover Hunt",
+                cmd_template: r#"theharvester -d {domain} -b all -t -e -o {output_file}.txt && cat {output_file}.txt | grep -i takeover | sort -u > {output_file}.takeovers.txt && cat {output_file}.txt | grep -oP '[a-zA-Z0-9.-]+\.{domain}' | sort -u > {output_file}.hosts.txt && cat {output_file}.hosts.txt | dnsx -cname -resp-only -retry 3 -silent -o {output_file}.cnames.txt && cat {output_file}.cnames.txt | grep -E '(amazonaws|azure|cloudfront|fastly|github|heroku|shopify|wordpress|bitbucket|firebase|ghost|helpjuice|helpscout|jetpack|cloudflare|unbounce|tictail|wpengine|surge|mashery|apigee|thinkific|tave|wishpond|aftership|aha|amazon|amplitude|atlassian|bigcartel|bitly|brightcove|cargocollective|desk|feedpress|getresponse|gitbook|google|hatenablog|helpdocs|hypercare|intercom|launchrock|livechat|myshopify|ngrok|pantheon|pingdom|readme|sendgrid|smartling|smugmug|statuspage|surveymonkey|tilda|tumblr|uptimerobot|uservoice|vend|webflow|youtrack|zendesk)' | sort -u > {output_file}.takeover_candidates.txt && wc -l {output_file}.takeovers.txt {output_file}.takeover_candidates.txt > {output_file}.takeover_summary.txt"#,
+                inputs: &[InputKind::Domain],
+                output_format: OutputFormat::Raw,
+                file_ext: "txt",
+            },
+            Mode {
+                name: "Lethal Email Weaponization",
+                cmd_template: r#"theharvester -d {domain} -b google,bing,duckduckgo,yahoo,baidu,ask,linkedin,twitter,github,trello,hunter -l 1000 -o {output_file}.txt && cat {output_file}.txt | grep -oP '[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}' | sort -u > {output_file}.emails.txt && cat {output_file}.emails.txt | awk -F'@' '{print $2}' | sort | uniq -c | sort -rn > {output_file}.domain_stats.txt && cat {output_file}.emails.txt | awk -F'@' '{print $1}' | sort | uniq -c | sort -rn | head -50 > {output_file}.username_stats.txt && cat {output_file}.txt | grep -oP '[a-zA-Z0-9.-]+\.{domain}' | sort -u > {output_file}.hosts.txt && cat {output_file}.hosts.txt | dnsx -mx -resp-only -retry 3 -silent -o {output_file}.mx.txt && cat {output_file}.hosts.txt | dnsx -txt -resp-only -retry 3 -silent -o {output_file}.txt_records.txt && wc -l {output_file}.emails.txt {output_file}.hosts.txt {output_file}.mx.txt > {output_file}.summary.txt"#,
+                inputs: &[InputKind::Domain],
+                output_format: OutputFormat::Raw,
+                file_ext: "txt",
             },
         ],
     },
