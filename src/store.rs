@@ -29,6 +29,9 @@
 //! manifest containing whatever completed. [`RunStore::finalise`] writes the
 //! harvest from the records that exist; it never requires the full plan.
 
+// Copyright (c) funbinet. All rights reserved.
+// Part of TSEC terminal cybersecurity operations platform by funbinet.
+
 use std::io::Write;
 use std::path::{Path, PathBuf};
 

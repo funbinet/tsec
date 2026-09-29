@@ -6,6 +6,9 @@
 //! executable's own help output. Anything else is reported honestly as
 //! unavailable with a reason, never as ready to run.
 
+// Copyright (c) funbinet. All rights reserved.
+// Part of TSEC terminal cybersecurity operations platform by funbinet.
+
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 

@@ -7,6 +7,9 @@
 //! [`Command::shell`] constructor, which is reserved for the handful of
 //! providers that genuinely require shell features (pipes, redirection).
 
+// Copyright (c) funbinet. All rights reserved.
+// Part of TSEC terminal cybersecurity operations platform by funbinet.
+
 use std::fmt;
 use std::path::PathBuf;
 

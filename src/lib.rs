@@ -33,6 +33,9 @@
 //!   reported unavailable with a reason, never silently offered and never
 //!   substituted. See [`catalog::Capability::unavailable_reason`].
 
+// Copyright (c) funbinet. All rights reserved.
+// Part of TSEC terminal cybersecurity operations platform by funbinet.
+
 #![forbid(unsafe_op_in_unsafe_fn)]
 #![warn(missing_debug_implementations)]
 

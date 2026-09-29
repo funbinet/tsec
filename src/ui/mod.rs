@@ -1,4 +1,7 @@
-//! Terminal presentation. Nothing in this module executes a tool or reads a
-//! target; it only turns finished state into something readable.
+// Copyright (c) funbinet. All rights reserved.
+// Part of TSEC terminal cybersecurity operations platform by funbinet.
 
+pub mod menu;
+pub mod output;
+pub mod spinner;
 pub mod theme;

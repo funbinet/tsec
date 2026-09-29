@@ -1,7 +1,5 @@
-//! `tsec` — command line entry point.
-//!
-//! All behaviour lives in the library; this binary exists to start it and to map
-//! an error onto an exit status.
+// Copyright (c) funbinet. All rights reserved.
+// Part of TSEC terminal cybersecurity operations platform by funbinet.
 
 use std::path::PathBuf;
 use std::process::ExitCode;
@@ -11,11 +9,9 @@ use tsec::config::Config;
 use tsec::error::{Result, Stage};
 use tsec::exec::OniuxBackend;
 use tsec::provider::Registry;
-use tsec::ui::theme::Theme;
+use tsec::ui::menu::main_menu;
 
-/// Exit code for an error raised while presenting results.
 const EXIT_DISPLAY: u8 = 1;
-/// Exit code for any other error.
 const EXIT_FAILURE: u8 = 2;
 
 fn main() -> ExitCode {
@@ -37,44 +33,57 @@ fn main() -> ExitCode {
 
 fn run() -> Result<()> {
     let cfg = Config::load_or_create()?;
-    let theme = Theme::detect(cfg.general.color);
-    println!("tsec {} · {}", tsec::VERSION, theme.describe());
-
     let root = data_root();
     let catalog = Catalog::load(&root.join("catalog/capabilities.toml"))?;
     let registry = Registry::load(&root.join("catalog/verification.json"))?
         .with_search_paths(cfg.tools.search_paths.clone());
 
-    println!("{}", catalog.availability_summary(&registry));
-    for (phase, caps) in catalog.grouped() {
-        if caps.is_empty() {
-            continue;
+    let args: Vec<String> = std::env::args().collect();
+    if args.len() > 1 {
+        match args[1].as_str() {
+            "--status" | "-s" => {
+                println!("{}", catalog.availability_summary(&registry));
+                for (phase, caps) in catalog.grouped() {
+                    if caps.is_empty() {
+                        continue;
+                    }
+                    let ready = caps.iter().filter(|c| c.is_available(&registry)).count();
+                    println!("  {phase:<14} {ready}/{} available", caps.len());
+                }
+                let backend = OniuxBackend::new(&cfg.execution.oniux_binary);
+                match backend.resolve() {
+                    Ok(path) => println!("  {:<14} {}", "BOUNDARY", path.display()),
+                    Err(e) => println!("  {:<14} UNAVAILABLE — {}", "BOUNDARY", e.reason()),
+                }
+                return Ok(());
+            }
+            "--version" | "-v" => {
+                println!("tsec v{}", tsec::VERSION);
+                return Ok(());
+            }
+            "--help" | "-h" => {
+                println!("TSEC — Tactical Security Enumeration & Compromise Framework");
+                println!();
+                println!("Usage: tsec [OPTIONS]");
+                println!();
+                println!("Options:");
+                println!("  -s, --status    Display capability availability and network boundary status");
+                println!("  -v, --version   Display version information");
+                println!("  -h, --help      Display this help message");
+                return Ok(());
+            }
+            _ => {}
         }
-        let ready = caps.iter().filter(|c| c.is_available(&registry)).count();
-        println!("  {phase:<14} {ready}/{} available", caps.len());
     }
 
-    // Report the network boundary, but do not run the full environment probe
-    // here: this is a status view, and probing boots a Tor client. The probe
-    // happens before the first network task in a real run.
-    let backend = OniuxBackend::new(&cfg.execution.oniux_binary);
-    match backend.resolve() {
-        Ok(path) => println!("  {:<14} {}", "BOUNDARY", path.display()),
-        Err(e) => println!("  {:<14} UNAVAILABLE — {}", "BOUNDARY", e.reason()),
-    }
-    Ok(())
+    main_menu(&cfg, &catalog, &registry)
 }
 
-/// Directory holding the catalog and verification snapshot.
-///
-/// `TSEC_HOME` wins when set, so a test or an alternate install can point the
-/// framework at a different catalog without touching the system one.
 fn data_root() -> PathBuf {
     if let Some(dir) = std::env::var_os("TSEC_HOME") {
         return PathBuf::from(dir);
     }
     if let Ok(exe) = std::env::current_exe() {
-        // target/debug/tsec → the crate root two levels up.
         if let Some(root) = exe
             .parent()
             .and_then(|p| p.parent())

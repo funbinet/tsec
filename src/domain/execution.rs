@@ -4,6 +4,9 @@
 //! of persistence, correlation and display — nothing in the framework reports
 //! progress or results by printing ad-hoc strings.
 
+// Copyright (c) funbinet. All rights reserved.
+// Part of TSEC terminal cybersecurity operations platform by funbinet.
+
 use std::path::PathBuf;
 use std::time::Duration;
 

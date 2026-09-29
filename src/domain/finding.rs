@@ -6,6 +6,9 @@
 //! the operator can always verify the framework's interpretation against the
 //! preserved raw evidence.
 
+// Copyright (c) funbinet. All rights reserved.
+// Part of TSEC terminal cybersecurity operations platform by funbinet.
+
 use std::path::PathBuf;
 
 use chrono::{DateTime, Utc};

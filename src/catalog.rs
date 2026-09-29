@@ -22,6 +22,9 @@
 //! installed is shown as unavailable with a reason; it is never silently
 //! offered, and it is never substituted with a different tool.
 
+// Copyright (c) funbinet. All rights reserved.
+// Part of TSEC terminal cybersecurity operations platform by funbinet.
+
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 

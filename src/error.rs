@@ -4,6 +4,9 @@
 //! terminal, the log and the persisted execution record can all report the
 //! same, diagnosable, fact. Nothing is collapsed into a generic string.
 
+// Copyright (c) funbinet. All rights reserved.
+// Part of TSEC terminal cybersecurity operations platform by funbinet.
+
 use std::fmt;
 use std::path::PathBuf;
 

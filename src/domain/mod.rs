@@ -5,6 +5,9 @@
 //! these types, which keeps command data in its original technical form while
 //! presentation layers are free to restyle structural labels.
 
+// Copyright (c) funbinet. All rights reserved.
+// Part of TSEC terminal cybersecurity operations platform by funbinet.
+
 pub mod command;
 pub mod execution;
 pub mod finding;

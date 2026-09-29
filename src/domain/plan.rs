@@ -5,6 +5,9 @@
 //! that consumes an earlier step's artifact is never launched prematurely,
 //! while independent steps are free to run concurrently.
 
+// Copyright (c) funbinet. All rights reserved.
+// Part of TSEC terminal cybersecurity operations platform by funbinet.
+
 use std::collections::{BTreeSet, HashMap};
 use std::fmt;
 use std::time::Duration;

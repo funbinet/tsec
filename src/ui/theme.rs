@@ -6,6 +6,9 @@
 //! colours when necessary. Callers never emit raw escape sequences: they ask
 //! for a semantic role and get a correctly degraded string back.
 
+// Copyright (c) funbinet. All rights reserved.
+// Part of TSEC terminal cybersecurity operations platform by funbinet.
+
 use std::fmt;
 use std::io::IsTerminal;
 

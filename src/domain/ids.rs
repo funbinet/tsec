@@ -1,5 +1,8 @@
 //! Strongly typed identifiers used across the catalog, planner and reports.
 
+// Copyright (c) funbinet. All rights reserved.
+// Part of TSEC terminal cybersecurity operations platform by funbinet.
+
 use std::fmt;
 
 /// Zero-based index of a phase inside the authoritative phase set.

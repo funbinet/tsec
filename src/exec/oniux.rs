@@ -31,6 +31,9 @@
 //! the tests and re-checked against the installed binary in the integration
 //! suite.
 
+// Copyright (c) funbinet. All rights reserved.
+// Part of TSEC terminal cybersecurity operations platform by funbinet.
+
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
 use std::time::Duration;

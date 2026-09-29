@@ -21,6 +21,9 @@
 //! capability remembered to route it, but because the only way to spawn
 //! anything goes through that check.
 
+// Copyright (c) funbinet. All rights reserved.
+// Part of TSEC terminal cybersecurity operations platform by funbinet.
+
 pub mod launch;
 pub mod oniux;
 

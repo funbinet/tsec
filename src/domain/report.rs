@@ -4,6 +4,9 @@
 //! capability execution. It is rendered to disk, shown in the terminal (a
 //! bounded preview) and re-readable later without re-running anything.
 
+// Copyright (c) funbinet. All rights reserved.
+// Part of TSEC terminal cybersecurity operations platform by funbinet.
+
 use std::path::PathBuf;
 
 use chrono::{DateTime, Utc};

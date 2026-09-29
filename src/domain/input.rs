@@ -4,6 +4,9 @@
 //! whether it is required, and how it must look. Validation happens *before*
 //! any plan is built, so a malformed value can never reach an external tool.
 
+// Copyright (c) funbinet. All rights reserved.
+// Part of TSEC terminal cybersecurity operations platform by funbinet.
+
 use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::fmt;

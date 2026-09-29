@@ -14,6 +14,9 @@
 //! "fixes" the tool's own arguments — oniux receives exactly the argv the
 //! catalog produced, with the tool name in front.
 
+// Copyright (c) funbinet. All rights reserved.
+// Part of TSEC terminal cybersecurity operations platform by funbinet.
+
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 

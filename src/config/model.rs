@@ -5,6 +5,9 @@
 //! source changes. Configuration is validated on load and every validation
 //! failure produces an actionable message.
 
+// Copyright (c) funbinet. All rights reserved.
+// Part of TSEC terminal cybersecurity operations platform by funbinet.
+
 use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};

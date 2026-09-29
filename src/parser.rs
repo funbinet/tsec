@@ -20,6 +20,9 @@
 //!   deduplicated finding that lists *both* provsources, not one finding that
 //!   pretends a single tool said it.
 
+// Copyright (c) funbinet. All rights reserved.
+// Part of TSEC terminal cybersecurity operations platform by funbinet.
+
 use std::collections::BTreeMap;
 use std::path::Path;
 
