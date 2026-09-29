@@ -1,305 +1,926 @@
-//! Terminal theme: colours, box drawing, banner, helpers.
+//! Adaptive terminal theme.
+//!
+//! The framework never hard-codes one terminal palette. It detects what the
+//! host terminal can actually render, maps a curated palette into *semantic*
+//! roles, and downgrades truecolor to 256-colour and then to the 16 base ANSI
+//! colours when necessary. Callers never emit raw escape sequences: they ask
+//! for a semantic role and get a correctly degraded string back.
 
-use crossterm::{
-    event::{read, Event},
-    execute,
-    style::{Color, Print, ResetColor, SetForegroundColor},
-    terminal::{disable_raw_mode, enable_raw_mode},
-};
-use std::io::{self, Write};
-use unicode_width::UnicodeWidthStr;
+use std::fmt;
+use std::io::IsTerminal;
 
-// ── Colour helpers ─────────────────────────────────────────────────────────
+use serde::{Deserialize, Serialize};
 
-#[inline] pub fn green()  -> Color { Color::Rgb { r: 0,   g: 220, b: 100 } }
-#[inline] pub fn bright_green() -> Color { Color::Rgb { r: 0, g: 255, b: 80 } }
-#[inline] pub fn aqua()   -> Color { Color::Rgb { r: 0,   g: 200, b: 200 } }
-#[inline] pub fn red()    -> Color { Color::Red }
-#[inline] pub fn white()  -> Color { Color::Rgb { r: 0, g: 255, b: 80 } } // Replaced with bright green for pure green/black look
-#[inline] pub fn grey()   -> Color { Color::DarkGrey }
-#[inline] pub fn yellow() -> Color { Color::Rgb { r: 230, g: 200, b: 0   } }
+use crate::config::ColorMode;
 
-/// Write `text` in `colour` then reset (no newline).
-pub fn cprint(colour: Color, text: &str) {
-    let mut out = io::stdout();
-    let _ = execute!(out, SetForegroundColor(colour), Print(text), ResetColor);
+/// How much colour the host terminal can render.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum ColorDepth {
+    /// No colour at all: `NO_COLOR`, `TERM=dumb`, or a non-tty destination.
+    None,
+    /// The 16 classic ANSI colours.
+    Ansi16,
+    /// The xterm 256-colour cube.
+    Ansi256,
+    /// 24-bit direct colour.
+    TrueColor,
 }
 
-/// Write `text` in `colour` then reset with a newline.
-pub fn cprintln(colour: Color, text: &str) {
-    cprint(colour, text);
-    println!();
-}
-
-/// Return the current terminal column width (fallback: 80).
-pub fn terminal_width() -> usize {
-    crossterm::terminal::size().map(|(w, _)| w as usize).unwrap_or(80)
-}
-
-// ── Banner ─────────────────────────────────────────────────────────────────
-
-#[allow(dead_code)]
-pub fn draw_banner() {
-    draw_banner_with_anon(&crate::config::settings::Anonymity::default());
-}
-
-/// Draw the startup banner with anonymity status indicators.
-/// Adapts to terminal width and uses the same box-drawing style as
-/// every other panel in the UI.
-pub fn draw_banner_with_anon(anon: &crate::config::settings::Anonymity) {
-    let inner = terminal_width().saturating_sub(2).max(40);
-
-    let top    = format!("╔{}╗", "═".repeat(inner));
-    let bottom = format!("╚{}╝", "═".repeat(inner));
-    let mid    = format!("╠{}╣", "═".repeat(inner));
-
-    // ── Helper: centre a string inside ║...║ ───────────────────────────
-    let centre_row = |text: &str, colour: Color| {
-        let tw = UnicodeWidthStr::width(text);
-        let pad = inner.saturating_sub(tw);
-        let lp = pad / 2;
-        let rp = pad - lp;
-        cprint(green(), "║");
-        cprint(colour, &format!("{}{}{}", " ".repeat(lp), text, " ".repeat(rp)));
-        cprintln(green(), "║");
-    };
-
-    // ── Helper: left-aligned status row inside ║...║ ──────────────────
-    let status_row = |text: &str, colour: Color| {
-        let tw = UnicodeWidthStr::width(text);
-        let pad = inner.saturating_sub(tw + 2); // 2 = leading "  "
-        cprint(green(), "║");
-        cprint(colour, &format!("  {}{}", text, " ".repeat(pad)));
-        cprintln(green(), "║");
-    };
-
-    // Title centred
-    let title = "TSEC";
-
-    // Subtitle centred
-    let sub = "Framework";
-
-    cprintln(green(), &top);
-    centre_row(title, bright_green());
-    centre_row(sub, aqua());
-    cprintln(green(), &mid);
-
-    // ── Anonymity status block ─────────────────────────────────────────
-    if anon.enabled {
-        let shield = "ANONYMITY: ON";
-        centre_row(shield, bright_green());
-        cprintln(green(), &mid);
-
-        // Tor status
-        if anon.tor_enabled {
-            let tor = crate::anonymity::tor::TorManager::new(&anon.tor_socks_addr);
-            if tor.is_running() {
-                status_row("Tor: Connected", bright_green());
-                let ip_text = format!("IP: {}", crate::anonymity::tor::TorManager::get_cached_ip());
-                status_row(&ip_text, bright_green());
-            } else {
-                status_row("Tor: NOT RUNNING", red());
-            }
+impl ColorDepth {
+    /// Downgrade a requested depth to what the terminal supports.
+    pub fn clamp(self, requested: ColorDepth) -> ColorDepth {
+        if self < requested {
+            self
         } else {
-            status_row("Tor: Disabled", grey());
+            requested
         }
+    }
 
-        // Proxy status
-        if !anon.proxy_pool.is_empty() {
-            let proxy_text = format!("Proxies: {} configured", anon.proxy_pool.len());
-            status_row(&proxy_text, bright_green());
-        } else {
-            status_row("Proxies: None", grey());
+    pub fn as_str(self) -> &'static str {
+        match self {
+            ColorDepth::None => "NONE",
+            ColorDepth::Ansi16 => "ANSI16",
+            ColorDepth::Ansi256 => "ANSI256",
+            ColorDepth::TrueColor => "TRUECOLOR",
         }
+    }
+}
 
-        // ProxyChains
-        if anon.use_proxychains {
-            if crate::anonymity::stealth::proxychains_available() {
-                status_row("ProxyChains: Active", bright_green());
-            } else {
-                status_row("ProxyChains: NOT INSTALLED", red());
+/// A concrete colour, which may degrade across depths.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PaletteColor {
+    /// Always rendered as the terminal's default foreground.
+    Default,
+    /// One of the 16 base ANSI colours, safe at any depth.
+    Ansi(u8),
+    /// xterm-256 palette index.
+    Index(u8),
+    /// 24-bit RGB.
+    Rgb(u8, u8, u8),
+}
+
+/// Text attributes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct Attrs {
+    pub bold: bool,
+    pub dim: bool,
+    pub italic: bool,
+    pub underline: bool,
+    pub reverse: bool,
+}
+
+impl Attrs {
+    pub const NONE: Attrs = Attrs {
+        bold: false,
+        dim: false,
+        italic: false,
+        underline: false,
+        reverse: false,
+    };
+    pub const fn bold() -> Self {
+        Self {
+            bold: true,
+            ..Attrs::NONE
+        }
+    }
+    pub const fn dim() -> Self {
+        Self {
+            dim: true,
+            ..Attrs::NONE
+        }
+    }
+    pub const fn bold_dim() -> Self {
+        Self {
+            bold: true,
+            dim: true,
+            ..Attrs::NONE
+        }
+    }
+    pub const fn italic() -> Self {
+        Self {
+            italic: true,
+            ..Attrs::NONE
+        }
+    }
+    pub const fn underline() -> Self {
+        Self {
+            underline: true,
+            ..Attrs::NONE
+        }
+    }
+    pub const fn reverse() -> Self {
+        Self {
+            reverse: true,
+            ..Attrs::NONE
+        }
+    }
+}
+
+/// A semantic text style: a foreground colour, an optional background, and
+/// attributes.
+///
+/// The background is opt-in. Painting every role with a filled block of its own
+/// colour turns ordinary text into a solid bar, so only roles that genuinely
+/// need a filled background — a selected row, a reversed banner — set one.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Style {
+    pub color: PaletteColor,
+    pub bg: Option<PaletteColor>,
+    pub attrs: Attrs,
+}
+
+impl Style {
+    pub const fn new(color: PaletteColor, attrs: Attrs) -> Self {
+        Self {
+            color,
+            bg: None,
+            attrs,
+        }
+    }
+    pub const fn fg(color: PaletteColor) -> Self {
+        Self {
+            color,
+            bg: None,
+            attrs: Attrs::NONE,
+        }
+    }
+    /// Render `text` on a filled background of `bg`.
+    pub const fn on(mut self, bg: PaletteColor) -> Self {
+        self.bg = Some(bg);
+        self
+    }
+    /// Swap foreground and background, for a selected row.
+    pub const fn reversed(mut self, bg: PaletteColor) -> Self {
+        self.bg = Some(bg);
+        self.attrs.reverse = true;
+        self
+    }
+    pub const fn with_attrs(mut self, attrs: Attrs) -> Self {
+        self.attrs = attrs;
+        self
+    }
+    pub const fn bold(mut self) -> Self {
+        self.attrs.bold = true;
+        self
+    }
+    pub const fn dim(mut self) -> Self {
+        self.attrs.dim = true;
+        self
+    }
+    pub const fn underline(mut self) -> Self {
+        self.attrs.underline = true;
+        self
+    }
+}
+
+/// The set of semantic colours the interface draws from.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct SemanticPalette {
+    /// Headings, primary structure.
+    pub primary: PaletteColor,
+    /// Secondary structure, labels.
+    pub secondary: PaletteColor,
+    /// Highlights, selected rows, key values.
+    pub accent: PaletteColor,
+    pub success: PaletteColor,
+    pub warning: PaletteColor,
+    pub error: PaletteColor,
+    pub info: PaletteColor,
+    /// De-emphasised supporting text.
+    pub muted: PaletteColor,
+    /// Default body text.
+    pub foreground: PaletteColor,
+    /// Box fills / explicit background.
+    pub background: PaletteColor,
+    pub border: PaletteColor,
+    /// Row highlight background.
+    pub highlight: PaletteColor,
+}
+
+/// Named palette families. Selection is automatic unless overridden.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum PaletteName {
+    /// Cool blue/teal on near-black. Default for dark terminals.
+    Midnight,
+    /// Neutral greys with an amber accent. Good on OLED and low-blue setups.
+    Graphite,
+    /// Low-contrast palette matching the Solarized dark convention.
+    SolarizedDark,
+    /// Low-contrast palette matching the Solarized light convention.
+    SolarizedLight,
+    /// High-contrast dark palette for terminals with dim palettes.
+    Daylight,
+    /// Dark palette for terminals reporting a light background by mistake.
+    Ashen,
+}
+
+impl PaletteName {
+    pub fn from_name(s: &str) -> Option<Self> {
+        Some(match s.trim().to_ascii_lowercase().as_str() {
+            "midnight" => PaletteName::Midnight,
+            "graphite" => PaletteName::Graphite,
+            "solarized-dark" | "solarized_dark" => PaletteName::SolarizedDark,
+            "solarized-light" | "solarized_light" => PaletteName::SolarizedLight,
+            "daylight" => PaletteName::Daylight,
+            "ashen" => PaletteName::Ashen,
+            _ => return None,
+        })
+    }
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            PaletteName::Midnight => "midnight",
+            PaletteName::Graphite => "graphite",
+            PaletteName::SolarizedDark => "solarized-dark",
+            PaletteName::SolarizedLight => "solarized-light",
+            PaletteName::Daylight => "daylight",
+            PaletteName::Ashen => "ashen",
+        }
+    }
+
+    /// True when the palette assumes a light terminal background.
+    pub fn is_light(self) -> bool {
+        matches!(self, PaletteName::SolarizedLight)
+    }
+
+    pub fn semantics(self) -> SemanticPalette {
+        match self {
+            PaletteName::Midnight => SemanticPalette {
+                primary: PaletteColor::Rgb(126, 214, 223),
+                secondary: PaletteColor::Rgb(94, 160, 178),
+                accent: PaletteColor::Rgb(247, 208, 96),
+                success: PaletteColor::Rgb(126, 214, 143),
+                warning: PaletteColor::Rgb(230, 176, 80),
+                error: PaletteColor::Rgb(238, 106, 106),
+                info: PaletteColor::Rgb(130, 186, 234),
+                muted: PaletteColor::Rgb(122, 134, 148),
+                foreground: PaletteColor::Rgb(214, 222, 230),
+                background: PaletteColor::Default,
+                border: PaletteColor::Rgb(64, 92, 108),
+                highlight: PaletteColor::Rgb(38, 60, 72),
+            },
+            PaletteName::Graphite => SemanticPalette {
+                primary: PaletteColor::Rgb(226, 226, 226),
+                secondary: PaletteColor::Rgb(160, 160, 160),
+                accent: PaletteColor::Rgb(232, 168, 84),
+                success: PaletteColor::Rgb(150, 200, 130),
+                warning: PaletteColor::Rgb(226, 178, 96),
+                error: PaletteColor::Rgb(220, 110, 100),
+                info: PaletteColor::Rgb(150, 178, 200),
+                muted: PaletteColor::Rgb(130, 130, 130),
+                foreground: PaletteColor::Rgb(210, 210, 210),
+                background: PaletteColor::Default,
+                border: PaletteColor::Rgb(80, 80, 80),
+                highlight: PaletteColor::Rgb(52, 52, 52),
+            },
+            PaletteName::SolarizedDark => SemanticPalette {
+                primary: PaletteColor::Rgb(131, 148, 150),
+                secondary: PaletteColor::Rgb(101, 123, 131),
+                accent: PaletteColor::Rgb(181, 137, 0),
+                success: PaletteColor::Rgb(133, 153, 0),
+                warning: PaletteColor::Rgb(181, 137, 0),
+                error: PaletteColor::Rgb(220, 50, 47),
+                info: PaletteColor::Rgb(38, 139, 210),
+                muted: PaletteColor::Rgb(88, 110, 117),
+                foreground: PaletteColor::Rgb(238, 232, 213),
+                background: PaletteColor::Default,
+                border: PaletteColor::Rgb(58, 86, 96),
+                highlight: PaletteColor::Rgb(7, 54, 66),
+            },
+            PaletteName::SolarizedLight => SemanticPalette {
+                primary: PaletteColor::Rgb(101, 123, 131),
+                secondary: PaletteColor::Rgb(131, 148, 150),
+                accent: PaletteColor::Rgb(133, 153, 0),
+                success: PaletteColor::Rgb(133, 153, 0),
+                warning: PaletteColor::Rgb(181, 137, 0),
+                error: PaletteColor::Rgb(220, 50, 47),
+                info: PaletteColor::Rgb(38, 139, 210),
+                muted: PaletteColor::Rgb(147, 161, 161),
+                foreground: PaletteColor::Rgb(101, 123, 131),
+                background: PaletteColor::Default,
+                border: PaletteColor::Rgb(188, 190, 167),
+                highlight: PaletteColor::Rgb(238, 232, 213),
+            },
+            PaletteName::Daylight => SemanticPalette {
+                primary: PaletteColor::Rgb(255, 255, 255),
+                secondary: PaletteColor::Rgb(200, 205, 210),
+                accent: PaletteColor::Rgb(255, 214, 92),
+                success: PaletteColor::Rgb(120, 240, 150),
+                warning: PaletteColor::Rgb(255, 190, 90),
+                error: PaletteColor::Rgb(255, 110, 110),
+                info: PaletteColor::Rgb(140, 200, 255),
+                muted: PaletteColor::Rgb(150, 158, 166),
+                foreground: PaletteColor::Rgb(235, 240, 245),
+                background: PaletteColor::Default,
+                border: PaletteColor::Rgb(90, 100, 110),
+                highlight: PaletteColor::Rgb(46, 60, 74),
+            },
+            PaletteName::Ashen => SemanticPalette {
+                primary: PaletteColor::Rgb(168, 168, 178),
+                secondary: PaletteColor::Rgb(136, 136, 146),
+                accent: PaletteColor::Rgb(196, 160, 200),
+                success: PaletteColor::Rgb(150, 190, 160),
+                warning: PaletteColor::Rgb(200, 180, 140),
+                error: PaletteColor::Rgb(200, 130, 130),
+                info: PaletteColor::Rgb(140, 170, 200),
+                muted: PaletteColor::Rgb(118, 118, 128),
+                foreground: PaletteColor::Rgb(198, 198, 206),
+                background: PaletteColor::Default,
+                border: PaletteColor::Rgb(74, 74, 84),
+                highlight: PaletteColor::Rgb(40, 40, 48),
+            },
+        }
+    }
+}
+
+/// Which semantic role a caller wants. Callers use roles, never raw colours.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Role {
+    Primary,
+    Secondary,
+    Accent,
+    Success,
+    Warning,
+    Error,
+    Info,
+    Muted,
+    Foreground,
+    Background,
+    Border,
+    Highlight,
+}
+
+/// Fully resolved theme: palette + depth + the derived semantic styles.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Theme {
+    pub palette_name: PaletteName,
+    pub depth: ColorDepth,
+    colors: SemanticPalette,
+}
+
+impl Theme {
+    /// Detect the terminal's capabilities and build a theme.
+    pub fn detect(mode: ColorMode) -> Self {
+        let depth = detect_depth(mode);
+        let palette = detect_palette();
+        Self {
+            palette_name: palette,
+            depth,
+            colors: palette.semantics(),
+        }
+    }
+
+    /// A theme with no colour at all, for pipes and dumb terminals.
+    pub fn plain() -> Self {
+        Self {
+            palette_name: PaletteName::Midnight,
+            depth: ColorDepth::None,
+            colors: PaletteName::Midnight.semantics(),
+        }
+    }
+
+    /// A theme for tests: fixed palette, fixed depth.
+    pub fn fixed(palette: PaletteName, depth: ColorDepth) -> Self {
+        Self {
+            palette_name: palette,
+            depth,
+            colors: palette.semantics(),
+        }
+    }
+
+    pub fn style(&self, role: Role) -> Style {
+        let c = match role {
+            Role::Primary => self.colors.primary,
+            Role::Secondary => self.colors.secondary,
+            Role::Accent => self.colors.accent,
+            Role::Success => self.colors.success,
+            Role::Warning => self.colors.warning,
+            Role::Error => self.colors.error,
+            Role::Info => self.colors.info,
+            Role::Muted => self.colors.muted,
+            Role::Foreground => self.colors.foreground,
+            Role::Background => self.colors.background,
+            Role::Border => self.colors.border,
+            Role::Highlight => self.colors.highlight,
+        };
+        match role {
+            // A highlight is text on a filled block, not a filled block of text.
+            Role::Highlight => Style::fg(self.colors.background).on(c),
+            // Everything else is foreground only.
+            _ => Style::fg(c),
+        }
+    }
+
+    /// Render `text` in the given semantic role.
+    pub fn paint(&self, role: Role, text: &str) -> String {
+        self.paint_with(self.style(role), text)
+    }
+
+    /// Render `text` with an explicit style built from a semantic role.
+    pub fn paint_with(&self, style: Style, text: &str) -> String {
+        if self.depth == ColorDepth::None || text.is_empty() {
+            return text.to_string();
+        }
+        let mut s = String::with_capacity(text.len() + 16);
+        s.push_str("\x1b[");
+        let mut parts: Vec<String> = Vec::new();
+        if style.attrs.bold {
+            parts.push("1".into());
+        }
+        if style.attrs.dim {
+            parts.push("2".into());
+        }
+        if style.attrs.italic {
+            parts.push("3".into());
+        }
+        if style.attrs.underline {
+            parts.push("4".into());
+        }
+        if style.attrs.reverse {
+            parts.push("7".into());
+        }
+        let fg = self.sequence_for(style.color, false);
+        if let Some(c) = fg {
+            parts.push(c);
+        }
+        if let Some(bg) = style.bg.and_then(|c| self.sequence_for(c, true)) {
+            parts.push(bg);
+        }
+        if parts.is_empty() {
+            return text.to_string();
+        }
+        s.push_str(&parts.join(";"));
+        s.push('m');
+        s.push_str(text);
+        s.push_str("\x1b[0m");
+        s
+    }
+
+    /// Human-readable description of the resolved theme, for the banner.
+    pub fn describe(&self) -> String {
+        format!(
+            "PALETTE {} · COLOUR {}",
+            self.palette_name.as_str().to_ascii_uppercase(),
+            self.depth.as_str()
+        )
+    }
+
+    fn sequence_for(&self, color: PaletteColor, background: bool) -> Option<String> {
+        // Two different introducers are in play. The 16 basic colours are
+        // selected by 30-37/90-97 (fg) and 40-47/100-107 (bg), but the indexed
+        // and 24-bit forms are selected by 38/48 followed by the colour model:
+        // `38;5;n` and `38;2;r;g;b`. Emitting `30;2;…` would set a *black*
+        // foreground and turn the *dim* attribute on instead of a colour.
+        let basic = if background { 40 } else { 30 };
+        let bright_basic = if background { 100 } else { 90 };
+        let extended = if background { 48 } else { 38 };
+        match color {
+            PaletteColor::Default => None,
+            PaletteColor::Ansi(n) => {
+                // 0-7 standard, 8-15 bright.
+                if n < 8 {
+                    Some(format!("{}", basic + n as u16))
+                } else {
+                    Some(format!("{}", bright_basic + (n - 8) as u16))
+                }
             }
+            PaletteColor::Index(i) => match self.depth {
+                ColorDepth::TrueColor | ColorDepth::Ansi256 => Some(format!("{extended};5;{i}")),
+                ColorDepth::Ansi16 => Some(format!("{}", basic + ansi16_index(i) as u16)),
+                ColorDepth::None => None,
+            },
+            PaletteColor::Rgb(r, g, b) => match self.depth {
+                ColorDepth::TrueColor => Some(format!("{extended};2;{r};{g};{b}")),
+                ColorDepth::Ansi256 => {
+                    let idx = rgb_to_256(r, g, b);
+                    Some(format!("{extended};5;{idx}"))
+                }
+                ColorDepth::Ansi16 => {
+                    let idx = rgb_to_256(r, g, b);
+                    Some(format!("{}", basic + ansi16_index(idx) as u16))
+                }
+                ColorDepth::None => None,
+            },
         }
+    }
+}
 
-        // DNS-over-HTTPS
-        if anon.dns_over_https {
-            status_row("DNS-over-HTTPS: Active", bright_green());
-        }
+impl fmt::Display for Theme {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(&self.describe())
+    }
+}
 
-        // MAC spoofing
-        if anon.mac_spoofing {
-            status_row("MAC Spoofing: Enabled", bright_green());
-        }
+/// Detect how much colour the destination can render.
+pub fn detect_depth(mode: ColorMode) -> ColorDepth {
+    let stdout_tty = std::io::stdout().is_terminal();
+    let stderr_tty = std::io::stderr().is_terminal();
+    let interactive = stdout_tty || stderr_tty;
 
-        // Hostname spoofing
-        if anon.hostname_spoofing {
-            status_row("Hostname Spoofing: Enabled", bright_green());
-        }
+    // NO_COLOR is honoured whenever set to any non-empty value.
+    let no_color = std::env::var_os("NO_COLOR")
+        .map(|v| !v.is_empty())
+        .unwrap_or(false);
+    if no_color {
+        return ColorDepth::None;
+    }
+    let term = std::env::var("TERM").unwrap_or_default();
+    if term == "dumb" {
+        return ColorDepth::None;
+    }
 
-        // Kill switch
-        if anon.kill_switch {
-            status_row("Kill Switch: Armed", bright_green());
-        }
-
-        cprintln(green(), &mid);
+    let colorterm_24bit = std::env::var("COLORTERM")
+        .map(|v| v.contains("truecolor") || v.contains("24bit"))
+        .unwrap_or(false);
+    let detected = if term.contains("truecolor") || term.contains("24bit") || colorterm_24bit {
+        ColorDepth::TrueColor
+    } else if term.contains("256color") {
+        ColorDepth::Ansi256
+    } else if !term.is_empty() {
+        ColorDepth::Ansi16
+    } else if interactive {
+        // A tty with no TERM at all: assume it can at least do 16 colours.
+        ColorDepth::Ansi16
     } else {
-        let shield = "OFF";
-        centre_row(shield, grey());
-        cprintln(green(), &mid);
+        ColorDepth::None
+    };
+
+    match mode {
+        ColorMode::Never => ColorDepth::None,
+        ColorMode::Always => {
+            if detected == ColorDepth::None {
+                // Respect NO_COLOR/dumb even when forced; the operator asked for
+                // a usable interface and corrupting it helps nobody.
+                ColorDepth::None
+            } else {
+                ColorDepth::TrueColor
+            }
+        }
+        ColorMode::Auto => detected,
     }
-
-    // Tip bar
-    let tip = "  ↑↓ or j,k ⇒ navigate   Enter ⇒ select   q ⇒ back   x ⇒ exit  ";
-    centre_row(tip, grey());
-    cprintln(green(), &bottom);
-    println!();
 }
 
-// ── Generic info/result box ────────────────────────────────────────────────
-
-/// Full-width green box with an optional centred title.
-pub fn print_box(title: &str, lines: &[&str]) {
-    let inner = terminal_width().saturating_sub(2).max(40);
-
-    let top = format!("╔{}╗", "═".repeat(inner));
-    let bot = format!("╚{}╝", "═".repeat(inner));
-
-    cprintln(green(), &top);
-
-    if !title.is_empty() {
-        let tw = UnicodeWidthStr::width(title);
-        let pad = inner.saturating_sub(tw);
-        let lpad = pad / 2;
-        let rpad = pad - lpad;
-        let mid = format!("╠{}╣", "═".repeat(inner));
-        cprint(green(), "║");
-        cprint(aqua(),  &format!("{}{}{}", " ".repeat(lpad), title, " ".repeat(rpad)));
-        cprintln(green(), "║");
-        cprintln(green(), &mid);
+/// Choose a palette from the environment, preferring an explicit override.
+pub fn detect_palette() -> PaletteName {
+    if let Ok(explicit) = std::env::var("TSEC_PALETTE") {
+        if let Some(p) = PaletteName::from_name(&explicit) {
+            return p;
+        }
     }
-
-    // text_cols: inner - 2 (for "║ " and " ║")
-    let text_cols = inner.saturating_sub(2);
-    for l in lines {
-        let lw = UnicodeWidthStr::width(*l);
-        let padding = if lw < text_cols { text_cols - lw } else { 0 };
-        cprint(green(), "║ ");
-        cprint(white(), l);
-        cprint(white(), &" ".repeat(padding));
-        cprintln(green(), " ║");
+    // COLORFGBG is set by several terminals as "<fg>;<bg>". A high background
+    // index means a light terminal, which needs the light palette.
+    if let Ok(fgbg) = std::env::var("COLORFGBG") {
+        if let Some(bg) = fgbg.split(';').nth(1) {
+            if bg.parse::<u32>().map(|n| n >= 7).unwrap_or(false) {
+                return PaletteName::SolarizedLight;
+            }
+        }
     }
-
-    cprintln(green(), &bot);
-}
-
-// ── Status helpers ─────────────────────────────────────────────────────────
-
-pub fn print_error(msg: &str) {
-    println!();
-    let inner = terminal_width().saturating_sub(2).max(40);
-    let text_cols = inner.saturating_sub(2);
-    let top = format!("╔{}╗", "═".repeat(inner));
-    let mid = format!("╠{}╣", "═".repeat(inner));
-    let bot = format!("╚{}╝", "═".repeat(inner));
-
-    let _ = execute!(io::stdout(), SetForegroundColor(red()));
-    println!("{}", top);
-    let hdr = " ERROR ";
-    let hw = UnicodeWidthStr::width(hdr);
-    let hpad = inner.saturating_sub(hw);
-    println!("║{}{}{}║", " ".repeat(hpad / 2), hdr, " ".repeat(hpad - hpad / 2));
-    println!("{}", mid);
-    for l in msg.lines() {
-        let lw = UnicodeWidthStr::width(l);
-        let pad = if lw < text_cols { text_cols - lw } else { 0 };
-        println!("║ {}{} ║", l, " ".repeat(pad));
+    if std::env::var("TERM")
+        .map(|t| t.contains("light"))
+        .unwrap_or(false)
+    {
+        return PaletteName::SolarizedLight;
     }
-    println!("{}", bot);
-    let _ = execute!(io::stdout(), ResetColor);
-    println!();
+    PaletteName::Midnight
 }
 
-pub fn print_success(msg: &str) {
-    println!();
-    cprint(green(), "  [OK]  ");
-    cprintln(white(), msg);
+/// Map a colour to the nearest xterm-256 palette index.
+pub fn rgb_to_256(r: u8, g: u8, b: u8) -> u8 {
+    // Greyscale ramp is a much better match than the 6x6x6 cube for
+    // near-neutral colours.
+    let max = r.max(g).max(b) as i32;
+    let min = r.min(g).min(b) as i32;
+    if max - min < 10 {
+        if r < 8 {
+            return 16;
+        }
+        if r > 248 {
+            return 231;
+        }
+        let level = ((r as f32 - 8.0) / 247.0 * 23.0).round() as i32;
+        return (232 + level.clamp(0, 23)) as u8;
+    }
+    // xterm's 6x6x6 cube: levels 0-5, with anything below 48 folded into level
+    // 0 and the rest spaced 40 apart from an offset of 35.
+    let q = |c: u8| -> i32 {
+        let v = c as f32;
+        let level = if v < 48.0 { 0.0 } else { (v - 35.0) / 40.0 };
+        level.round().clamp(0.0, 5.0) as i32
+    };
+    let (ri, gi, bi) = (q(r), q(g), q(b));
+    let idx = 16 + 36 * ri + 6 * gi + bi;
+    idx.clamp(0, 255) as u8
 }
 
-pub fn print_info(msg: &str) {
-    cprint(aqua(), "  [i]  ");
-    cprintln(white(), msg);
+/// Map a 256-colour index onto one of the 16 base ANSI colours.
+pub fn ansi16_index(i: u8) -> u8 {
+    // Standard 16 colours as their canonical sRGB values.
+    const BASE: [(u8, u8, u8); 16] = [
+        (0, 0, 0),
+        (128, 0, 0),
+        (0, 128, 0),
+        (128, 128, 0),
+        (0, 0, 128),
+        (128, 0, 128),
+        (0, 128, 128),
+        (192, 192, 192),
+        (128, 128, 128),
+        (255, 0, 0),
+        (0, 255, 0),
+        (255, 255, 0),
+        (0, 0, 255),
+        (255, 0, 255),
+        (0, 255, 255),
+        (255, 255, 255),
+    ];
+    if i < 16 {
+        return i;
+    }
+    let (r, g, b) = xterm256_rgb(i);
+    let mut best = 0u8;
+    let mut best_d = u32::MAX;
+    for (idx, (br, bg, bb)) in BASE.iter().enumerate() {
+        let dr = r as i32 - *br as i32;
+        let dg = g as i32 - *bg as i32;
+        let db = b as i32 - *bb as i32;
+        // Perceptual weighting: green contributes most to luminance.
+        let d = (dr * dr * 3 + dg * dg * 6 + db * db) as u32;
+        if d < best_d {
+            best_d = d;
+            best = idx as u8;
+        }
+    }
+    best
 }
 
-pub fn print_warn(msg: &str) {
-    cprint(yellow(), "  [!]  ");
-    cprintln(white(), msg);
+/// Resolve an xterm-256 index to RGB.
+pub fn xterm256_rgb(i: u8) -> (u8, u8, u8) {
+    const CUBE: [u8; 6] = [0, 95, 135, 175, 215, 255];
+    if i < 16 {
+        const BASE: [(u8, u8, u8); 16] = [
+            (0, 0, 0),
+            (128, 0, 0),
+            (0, 128, 0),
+            (128, 128, 0),
+            (0, 0, 128),
+            (128, 0, 128),
+            (0, 128, 128),
+            (192, 192, 192),
+            (128, 128, 128),
+            (255, 0, 0),
+            (0, 255, 0),
+            (255, 255, 0),
+            (0, 0, 255),
+            (255, 0, 255),
+            (0, 255, 255),
+            (255, 255, 255),
+        ];
+        return BASE[i as usize];
+    }
+    if i >= 232 {
+        let v = 8 + (i as u16 - 232) * 10;
+        let v = v.min(255) as u8;
+        return (v, v, v);
+    }
+    let n = i - 16;
+    let r = CUBE[(n / 36) as usize];
+    let g = CUBE[((n % 36) / 6) as usize];
+    let b = CUBE[(n % 6) as usize];
+    (r, g, b)
 }
 
-/// Boxed coloured section header spanning the terminal width.
-pub fn section_header(label: &str) {
-    println!();
-    let inner = terminal_width().saturating_sub(2).max(40);
-    
-    let top = format!("╔{}╗", "═".repeat(inner));
-    let bot = format!("╚{}╝", "═".repeat(inner));
-    
-    let lw = UnicodeWidthStr::width(label);
-    let pad = inner.saturating_sub(lw);
-    let lpad = pad / 2;
-    let rpad = pad - lpad;
-    
-    cprintln(green(), &top);
-    cprint(green(), "║");
-    cprint(aqua(), &format!("{}{}{}", " ".repeat(lpad), label, " ".repeat(rpad)));
-    cprintln(green(), "║");
-    cprintln(green(), &bot);
-}
-
-/// Strip ANSI escape sequences from a string.
+/// Remove every ANSI escape sequence from a string.
 pub fn strip_ansi(s: &str) -> String {
-    thread_local! {
-        static ANSI_RE: regex::Regex = regex::Regex::new(r"\x1B\[[0-9;?]*[a-zA-Z]|\x1B\(B").unwrap();
-    }
-    ANSI_RE.with(|re| re.replace_all(s, "").into_owned())
-}
-
-/// Strip ANSI escape sequences, expand tabs to spaces, truncate/ellipsize, and pad to target_cols.
-pub fn pad_to(s: &str, target_cols: usize) -> String {
-    let clean = strip_ansi(s).replace('\t', "    ");
-    let w = UnicodeWidthStr::width(clean.as_str());
-    if w >= target_cols {
-        let mut out = String::new();
-        let mut cols = 0usize;
-        for c in clean.chars() {
-            let cw = unicode_width::UnicodeWidthChar::width(c).unwrap_or(1);
-            if cols + cw > target_cols.saturating_sub(1) {
-                out.push('…');
-                break;
+    let mut out = String::with_capacity(s.len());
+    let mut chars = s.chars().peekable();
+    while let Some(c) = chars.next() {
+        if c == '\x1b' {
+            // Consume a complete CSI / OSC / two-byte sequence.
+            match chars.peek() {
+                Some('[') => {
+                    chars.next();
+                    for c in chars.by_ref() {
+                        if c.is_ascii_alphabetic() {
+                            break;
+                        }
+                    }
+                }
+                Some(']') => {
+                    // An OSC sequence, terminated by BEL or by ST (ESC \).
+                    chars.next();
+                    for c in chars.by_ref() {
+                        if c == '\u{7}' || c == '\x1b' {
+                            break;
+                        }
+                    }
+                }
+                Some(_) => {
+                    chars.next();
+                }
+                None => {}
             }
-            out.push(c);
-            cols += cw;
+            continue;
         }
-        let cur_w = UnicodeWidthStr::width(out.as_str());
-        if cur_w < target_cols {
-            out.push_str(&" ".repeat(target_cols - cur_w));
-        }
-        out
-    } else {
-        format!("{}{}", clean, " ".repeat(target_cols - w))
+        out.push(c);
     }
+    out
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-// ── Wait-for-key ───────────────────────────────────────────────────────────
-
-pub fn wait_key() {
-    println!();
-    cprint(grey(), "  [?] Press any key to continue…");
-    let _ = io::stdout().flush();
-    let _ = enable_raw_mode();
-    loop {
-        if matches!(read(), Ok(Event::Key(_))) { break; }
+    #[test]
+    fn no_color_environment_disables_all_colour() {
+        // Cannot set env in a multithreaded test safely, so exercise the
+        // decision function directly.
+        assert_eq!(detect_depth(ColorMode::Never), ColorDepth::None);
     }
-    let _ = disable_raw_mode();
-    println!();
+
+    #[test]
+    fn plain_theme_emits_no_escape_sequences() {
+        let t = Theme::plain();
+        let s = t.paint(Role::Primary, "RECON");
+        assert_eq!(s, "RECON");
+        assert!(!s.contains('\x1b'));
+    }
+
+    #[test]
+    fn ansi16_theme_emits_only_basic_sequences() {
+        let t = Theme::fixed(PaletteName::Midnight, ColorDepth::Ansi16);
+        let s = t.paint(Role::Error, "FAILED");
+        assert!(s.starts_with("\x1b["));
+        assert!(s.ends_with("\x1b[0m"));
+        // A 16-colour sequence must not contain the 5;N or 2;r;g;b forms.
+        let body = s
+            .trim_start_matches("\x1b[")
+            .trim_end_matches("m")
+            .trim_end_matches("\x1b[0m");
+        assert!(!body.contains(";5;"));
+        assert!(!body.contains(";2;"));
+    }
+
+    #[test]
+    fn truecolor_theme_emits_rgb_sequences() {
+        let t = Theme::fixed(PaletteName::Midnight, ColorDepth::TrueColor);
+        let s = t.paint(Role::Primary, "PHASE");
+        // `38;2;r;g;b`, not `30;2;…` which is a black foreground plus dim.
+        assert!(s.contains("38;2;"), "{s:?}");
+    }
+
+    #[test]
+    fn ordinary_text_is_never_painted_on_a_filled_background() {
+        // Every role used to emit `38;…;48;…`, so a single word of body text
+        // rendered as a solid block of its own colour. Only roles that need a
+        // filled background may set one.
+        let t = Theme::fixed(PaletteName::Midnight, ColorDepth::TrueColor);
+        for role in [
+            Role::Primary,
+            Role::Secondary,
+            Role::Accent,
+            Role::Success,
+            Role::Warning,
+            Role::Error,
+            Role::Info,
+            Role::Muted,
+            Role::Foreground,
+            Role::Background,
+            Role::Border,
+        ] {
+            let painted = t.paint(role, "TEXT");
+            assert!(
+                !painted.contains("48;2;"),
+                "role {role:?} painted a background: {painted:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn a_highlight_role_paints_text_on_a_filled_background() {
+        let t = Theme::fixed(PaletteName::Midnight, ColorDepth::TrueColor);
+        let painted = t.paint(Role::Highlight, "SELECTED");
+        assert!(painted.contains("48;2;"), "{painted:?}");
+    }
+
+    #[test]
+    fn a_reversed_style_swaps_foreground_and_background() {
+        let t = Theme::fixed(PaletteName::Midnight, ColorDepth::TrueColor);
+        let style = t.style(Role::Accent).reversed(t.style(Role::Primary).color);
+        let painted = t.paint_with(style, "ROW");
+        assert!(
+            painted.contains('7'),
+            "reverse attribute missing: {painted:?}"
+        );
+        assert!(painted.contains("48;2;"), "{painted:?}");
+    }
+
+    #[test]
+    fn ansi256_theme_downgrades_rgb_to_cube_index() {
+        let t = Theme::fixed(PaletteName::Midnight, ColorDepth::Ansi256);
+        let s = t.paint(Role::Accent, "VALUE");
+        assert!(s.contains("38;5;"), "{s:?}");
+        assert!(!s.contains(";2;"));
+    }
+
+    #[test]
+    fn text_case_is_never_modified_by_styling() {
+        let t = Theme::fixed(PaletteName::Midnight, ColorDepth::TrueColor);
+        let s = t.paint(Role::Accent, "subfinder -d Example.COM");
+        let visible = strip_ansi(&s);
+        assert_eq!(visible, "subfinder -d Example.COM");
+    }
+
+    #[test]
+    fn strip_ansi_removes_colour_but_keeps_content() {
+        let t = Theme::fixed(PaletteName::Midnight, ColorDepth::TrueColor);
+        let s = t.paint(Role::Error, "exit 1");
+        assert_eq!(strip_ansi(&s), "exit 1");
+    }
+
+    #[test]
+    fn strip_ansi_handles_osc_sequences() {
+        assert_eq!(strip_ansi("\x1b]0;title\x07body"), "body");
+    }
+
+    #[test]
+    fn attributes_are_emitted_before_colour() {
+        let t = Theme::fixed(PaletteName::Midnight, ColorDepth::TrueColor);
+        let style = t.style(Role::Primary).bold().underline();
+        let s = t.paint_with(style, "X");
+        let seq = s.split('m').next().unwrap();
+        assert!(seq.contains("1"));
+        assert!(seq.contains("4"));
+    }
+
+    #[test]
+    fn grey_maps_to_the_greyscale_ramp() {
+        assert_eq!(rgb_to_256(0, 0, 0), 16);
+        assert_eq!(rgb_to_256(255, 255, 255), 231);
+        let mid = rgb_to_256(128, 128, 128);
+        assert!((232..=255).contains(&mid));
+    }
+
+    #[test]
+    fn pure_red_maps_to_a_cube_index() {
+        let idx = rgb_to_256(255, 0, 0);
+        assert!((16..232).contains(&idx));
+        let (r, g, b) = xterm256_rgb(idx);
+        assert!(r > 200 && g < 60 && b < 60);
+    }
+
+    #[test]
+    fn every_palette_defines_every_semantic_role_distinctly_enough() {
+        for name in [
+            PaletteName::Midnight,
+            PaletteName::Graphite,
+            PaletteName::SolarizedDark,
+            PaletteName::SolarizedLight,
+            PaletteName::Daylight,
+            PaletteName::Ashen,
+        ] {
+            let t = Theme::fixed(name, ColorDepth::TrueColor);
+            for role in [
+                Role::Primary,
+                Role::Secondary,
+                Role::Accent,
+                Role::Success,
+                Role::Warning,
+                Role::Error,
+                Role::Info,
+                Role::Muted,
+                Role::Foreground,
+                Role::Border,
+                Role::Highlight,
+            ] {
+                let painted = t.paint(role, "x");
+                assert!(
+                    painted.contains('\x1b'),
+                    "{name:?} {role:?} produced no colour"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn describe_is_capitalised_for_presentation() {
+        let t = Theme::fixed(PaletteName::Graphite, ColorDepth::Ansi16);
+        assert_eq!(t.describe(), "PALETTE GRAPHITE · COLOUR ANSI16");
+    }
+
+    #[test]
+    fn palette_names_round_trip() {
+        for name in [
+            PaletteName::Midnight,
+            PaletteName::Graphite,
+            PaletteName::SolarizedDark,
+            PaletteName::SolarizedLight,
+            PaletteName::Daylight,
+            PaletteName::Ashen,
+        ] {
+            assert_eq!(PaletteName::from_name(name.as_str()), Some(name));
+        }
+        assert_eq!(PaletteName::from_name("neon-hacker"), None);
+    }
 }

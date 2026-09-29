@@ -1,0 +1,505 @@
+# TSEC capability catalog
+#
+# This file is the operator-facing surface of the framework: ten phases, and
+# inside them the capabilities an operator actually chooses. Each capability
+# names the providers that implement it and the *specific operations* the
+# framework knows how to invoke correctly.
+#
+# Every flag below is checked against the provider's own `--help` output by
+# `scripts/verify_catalog.py`, which fails the build if any flag is undocumented.
+# Nothing here is guessed. If a tool is not installed, its capability is still
+# listed — it is reported as unavailable, never silently offered.
+#
+# Template syntax:
+#   {placeholder}  substituted from a validated input, quoted as one argument
+#   {{ }}          a literal brace
+# Nothing is ever passed through a shell. `>`, `|` and `&&` are rejected by the
+# verifier because they cannot be expressed in an argument vector.
+
+schema = 1
+
+# ── RECON ────────────────────────────────────────────────────────────────────
+[[capability]]
+id = "recon.subdomain-discovery"
+phase = "recon"
+label = "SUBDOMAIN DISCOVERY"
+summary = "Passive subdomain enumeration from certificate transparency, search and threat-intel sources"
+inputs = [
+  { key = "domain", type = "domain", required = true, help = "Root domain to enumerate, e.g. example.com" },
+]
+[[capability.provider]]
+binary = "subfinder"
+subcommand = []
+[[capability.provider.operation]]
+name = "Passive Enumeration"
+args = ["-d", "{domain}", "-silent"]
+output = "lines"
+network = true
+[[capability.provider.operation]]
+name = "All Sources"
+args = ["-d", "{domain}", "-all", "-silent"]
+output = "lines"
+network = true
+[[capability.provider.operation]]
+name = "Recursive Enumeration"
+args = ["-d", "{domain}", "-recursive", "-all", "-silent"]
+output = "lines"
+network = true
+
+[[capability]]
+id = "recon.domain-intelligence"
+phase = "recon"
+label = "DOMAIN INTELLIGENCE"
+summary = "Registrant, registrar and infrastructure ownership for a domain"
+inputs = [
+  { key = "domain", type = "domain", required = true, help = "Domain to look up" },
+]
+[[capability.provider]]
+binary = "whois"
+subcommand = []
+[[capability.provider.operation]]
+name = "Registrant Lookup"
+args = ["{domain}"]
+output = "raw"
+network = true
+[[capability.provider.operation]]
+name = "Registrar Contacts"
+args = ["-h", "{domain}"]
+output = "raw"
+network = true
+
+[[capability]]
+id = "recon.email-harvesting"
+phase = "recon"
+label = "EMAIL HARVESTING"
+summary = "Collect email addresses tied to a domain from public sources and breach corpora"
+inputs = [
+  { key = "domain", type = "domain", required = true, help = "Domain to harvest addresses for" },
+]
+[[capability.provider]]
+binary = "theharvester"
+subcommand = []
+[[capability.provider.operation]]
+name = "Search Engine Harvest"
+args = ["-d", "{domain}", "-b", "all", "-l", "200"]
+output = "raw"
+network = true
+[[capability.provider.operation]]
+name = "Bing Harvest"
+args = ["-d", "{domain}", "-b", "bing", "-l", "200"]
+output = "raw"
+network = true
+[[capability.provider]]
+binary = "maigret"
+subcommand = []
+[[capability.provider.operation]]
+name = "Username Footprint"
+args = ["{domain}"]
+output = "raw"
+network = true
+
+# ── SURFACE ──────────────────────────────────────────────────────────────────
+[[capability]]
+id = "surface.port-discovery"
+phase = "surface"
+label = "PORT DISCOVERY"
+summary = "Fast SYN scan for reachable TCP ports across a target range"
+inputs = [
+  { key = "target", type = "target", required = true, help = "Host, CIDR or domain to scan" },
+  { key = "ports", type = "ports", required = false, default = "top-100", help = "Port list, range, or top-N" },
+  { key = "rate", type = "integer", required = false, default = "1000", rule = { range = [1, 100000] }, help = "Packets per second" },
+]
+[[capability.provider]]
+binary = "naabu"
+subcommand = []
+[[capability.provider.operation]]
+name = "Top 100 Ports"
+args = ["-host", "{target}", "-top-ports", "100", "-silent", "-rate", "{rate}"]
+output = "lines"
+network = true
+[[capability.provider.operation]]
+name = "Full Port Range"
+args = ["-host", "{target}", "-p", "-", "-silent", "-rate", "{rate}"]
+output = "lines"
+network = true
+[[capability.provider.operation]]
+name = "Specific Ports"
+args = ["-host", "{target}", "-port", "{ports}", "-silent", "-rate", "{rate}"]
+output = "lines"
+network = true
+[[capability.provider.operation]]
+name = "TCP Verified"
+args = ["-host", "{target}", "-top-ports", "1000", "-verify", "-silent"]
+output = "lines"
+network = true
+
+[[capability]]
+id = "surface.service-fingerprint"
+phase = "surface"
+label = "SERVICE FINGERPRINT"
+summary = "Identify the service and version behind each open port"
+inputs = [
+  { key = "target", type = "target", required = true, help = "Host or CIDR to fingerprint" },
+  { key = "ports", type = "ports", required = false, help = "Ports to inspect; all discovered ports when omitted" },
+]
+[[capability.provider]]
+binary = "nmap"
+subcommand = []
+[[capability.provider.operation]]
+name = "Version Detection"
+args = ["-sV", "-sC", "-p", "{ports}", "{target}"]
+output = "nmap"
+network = true
+[[capability.provider.operation]]
+name = "Full TCP Sweep"
+args = ["-sV", "-p", "-", "--min-rate", "1000", "{target}"]
+output = "nmap"
+network = true
+[[capability.provider.operation]]
+name = "UDP Top Ports"
+args = ["-sU", "--top-ports", "50", "-sV", "{target}"]
+output = "nmap"
+network = true
+
+[[capability]]
+id = "surface.http-enumeration"
+phase = "surface"
+label = "HTTP ENUMERATION"
+summary = "Probe live web services, their titles, technologies and response metadata"
+inputs = [
+  { key = "target", type = "target", required = true, help = "Host, CIDR, domain or URL list file" },
+  { key = "threads", type = "integer", required = false, default = "50", rule = { range = [1, 500] }, help = "Concurrent probes" },
+]
+[[capability.provider]]
+binary = "httpx-pd"
+subcommand = []
+[[capability.provider.operation]]
+name = "Live Web Probe"
+args = ["-l", "{target}", "-silent", "-nc", "-td", "-title", "-sc", "-cl", "-ip", "-cname"]
+output = "lines"
+network = true
+[[capability.provider.operation]]
+name = "Technology Detection"
+args = ["-l", "{target}", "-silent", "-nc", "-td", "-cdn", "-asn"]
+output = "lines"
+network = true
+[[capability.provider.operation]]
+name = "Favicon Hashing"
+args = ["-l", "{target}", "-silent", "-nc", "-favicon", "-hash", "mmh3"]
+output = "lines"
+network = true
+[[capability.provider.operation]]
+name = "Filtered Probe"
+args = ["-l", "{target}", "-silent", "-nc", "-sc", "-fr"]
+output = "lines"
+network = true
+[[capability.provider]]
+binary = "whatweb"
+subcommand = []
+[[capability.provider.operation]]
+name = "Aggressive Fingerprint"
+args = ["--aggression", "3", "{target}"]
+output = "raw"
+network = true
+[[capability.provider.operation]]
+name = "Quiet Fingerprint"
+args = ["{target}", "-q", "--color", "never"]
+output = "lines"
+network = true
+
+# ── VULNERABILITY ────────────────────────────────────────────────────────────
+[[capability]]
+id = "vulnerability.template-scan"
+phase = "vulnerability"
+label = "TEMPLATE SCAN"
+summary = "Run nuclei templates against a target set, filtered by severity"
+inputs = [
+  { key = "target", type = "target", required = true, help = "Target host, URL or list file" },
+  { key = "severity", type = "list", required = false, default = "info,low,medium,high,critical", help = "Severities to include" },
+  { key = "rate", type = "integer", required = false, default = "150", rule = { range = [1, 10000] }, help = "Requests per second" },
+]
+[[capability.provider]]
+binary = "nuclei"
+subcommand = []
+[[capability.provider.operation]]
+name = "Severity Scan"
+args = ["-l", "{target}", "-severity", "{severity}", "-silent", "-nc", "-rl", "{rate}"]
+output = "lines"
+network = true
+[[capability.provider.operation]]
+name = "High and Critical Only"
+args = ["-l", "{target}", "-severity", "high,critical", "-silent", "-nc"]
+output = "lines"
+network = true
+[[capability.provider.operation]]
+name = "Follow Redirects"
+args = ["-l", "{target}", "-severity", "{severity}", "-silent", "-nc", "-fr", "-timeout", "10", "-retries", "1"]
+output = "lines"
+network = true
+
+[[capability]]
+id = "vulnerability.web-config-audit"
+phase = "vulnerability"
+label = "WEB CONFIG AUDIT"
+summary = "Probe a web server for misconfiguration and outdated components"
+inputs = [
+  { key = "target", type = "url", required = true, help = "Base URL to audit" },
+]
+[[capability.provider]]
+binary = "nikto"
+subcommand = []
+[[capability.provider.operation]]
+name = "Tuning x"
+args = ["-host", "{target}", "-Tuning", "x", "-nointeractive"]
+output = "raw"
+network = true
+[[capability.provider.operation]]
+name = "Tuning 012abc"
+args = ["-host", "{target}", "-Tuning", "012abc", "-nointeractive"]
+output = "raw"
+network = true
+
+[[capability]]
+id = "vulnerability.sql-injection"
+phase = "vulnerability"
+label = "SQL INJECTION"
+summary = "Confirm and characterise SQL injection in a parameter or endpoint"
+inputs = [
+  { key = "target", type = "url", required = true, help = "URL with a parameter to test, e.g. http://host/item?id=1" },
+]
+[[capability.provider]]
+binary = "sqlmap"
+subcommand = []
+[[capability.provider.operation]]
+name = "Confirm Injection"
+args = ["-u", "{target}", "--batch", "--level", "1", "--risk", "1", "--threads", "4"]
+output = "raw"
+network = true
+[[capability.provider.operation]]
+name = "Deep Scan"
+args = ["-u", "{target}", "--batch", "--level", "3", "--risk", "2", "--threads", "4"]
+output = "raw"
+network = true
+[[capability.provider.operation]]
+name = "Database Enumeration"
+args = ["-u", "{target}", "--batch", "--dbs", "--level", "3", "--risk", "2"]
+output = "raw"
+network = true
+[[capability.provider.operation]]
+name = "Technique Tuning"
+args = ["-u", "{target}", "--batch", "--technique=BEUSTQ", "--level", "5", "--risk", "3"]
+output = "raw"
+network = true
+
+[[capability]]
+id = "vulnerability.cross-site-scripting"
+phase = "vulnerability"
+label = "CROSS SITE SCRIPTING"
+summary = "Reflected, stored and DOM XSS detection with proof-of-concept output"
+inputs = [
+  { key = "target", type = "url", required = true, help = "URL to test for XSS" },
+  { key = "word", type = "text", required = false, default = "tsec", help = "Word used for parameter mining and POC naming" },
+]
+[[capability.provider]]
+binary = "xsstrike"
+subcommand = []
+[[capability.provider.operation]]
+name = "Standard Scan"
+args = ["-u", "{target}"]
+output = "raw"
+network = true
+[[capability.provider.operation]]
+name = "Crawled Scan"
+args = ["-u", "{target}", "--crawl"]
+output = "raw"
+network = true
+[[capability.provider]]
+binary = "dalfox"
+subcommand = ["scan"]
+[[capability.provider.operation]]
+name = "XSS Scan"
+args = ["scan", "{target}", "-S", "--no-color"]
+output = "raw"
+network = true
+[[capability.provider.operation]]
+name = "Parameter Mining"
+args = ["scan", "{target}", "-S", "--no-color", "--mining-dict-word", "{word}"]
+output = "raw"
+network = true
+[[capability.provider.operation]]
+name = "POC Only"
+args = ["scan", "{target}", "-S", "--no-color", "--only-poc", "{word}"]
+output = "raw"
+network = true
+
+# ── CREDENTIALS ──────────────────────────────────────────────────────────────
+[[capability]]
+id = "credentials.active-directory-enumeration"
+phase = "credentials"
+label = "DIRECTORY ENUMERATION"
+summary = "Enumerate Active Directory users, groups and password policy posture"
+inputs = [
+  { key = "target", type = "target", required = true, help = "Domain controller hostname or IP" },
+  { key = "domain", type = "domain", required = false, help = "AD domain name, e.g. corp.local" },
+  { key = "username", type = "username", required = true, help = "Account to authenticate as" },
+  { key = "password", type = "password", required = true, help = "Password for the account" },
+]
+[[capability.provider]]
+binary = "kerbrute"
+subcommand = ["userenum"]
+[[capability.provider.operation]]
+name = "User Enumeration"
+args = ["user", "-d", "{domain}", "{target}"]
+output = "lines"
+network = true
+[[capability.provider.operation]]
+name = "Password Spray"
+args = ["passwordspray", "-d", "{domain}", "{target}"]
+output = "lines"
+network = true
+[[capability.provider]]
+binary = "certipy"
+subcommand = ["account"]
+[[capability.provider.operation]]
+name = "Account Details"
+args = ["account", "-user", "{username}", "-dc-host", "{target}", "-u", "{username}", "-p", "{password}", "read"]
+output = "raw"
+network = true
+
+[[capability]]
+id = "credentials.password-recovery"
+phase = "credentials"
+label = "PASSWORD RECOVERY"
+summary = "Audit and attempt recovery of weak, default or reusable passwords"
+inputs = [
+  { key = "hash", type = "hash", required = true, help = "Hash or hash file to audit" },
+  { key = "wordlist", type = "file", required = false, help = "Wordlist for dictionary attack" },
+]
+[[capability.provider]]
+binary = "john"
+subcommand = []
+[[capability.provider.operation]]
+name = "Incremental Audit"
+args = ["--incremental", "--wordlist={wordlist}", "{hash}"]
+output = "raw"
+network = false
+[[capability.provider.operation]]
+name = "Mask Audit"
+args = ["--show", "{hash}"]
+output = "raw"
+network = false
+[[capability.provider]]
+binary = "hashcat"
+subcommand = []
+[[capability.provider.operation]]
+name = "Dictionary Audit"
+args = ["--attack-mode", "0", "--potfile-disable", "{hash}"]
+output = "raw"
+network = false
+[[capability.provider.operation]]
+name = "Mode Audit"
+args = ["--show", "{hash}"]
+output = "raw"
+network = false
+
+# ── LATERAL ──────────────────────────────────────────────────────────────────
+[[capability]]
+id = "lateral.remote-service-enumeration"
+phase = "lateral"
+label = "REMOTE SERVICE AUDIT"
+summary = "Enumerate Windows remote services, shares and administrative access"
+inputs = [
+  { key = "target", type = "target", required = true, help = "Host to enumerate" },
+  { key = "domain", type = "domain", required = false, help = "AD domain name" },
+  { key = "username", type = "username", required = true, help = "Account used for the session" },
+  { key = "password", type = "password", required = true, help = "Password for the account" },
+]
+[[capability.provider]]
+binary = "nxc"
+subcommand = ["smb"]
+[[capability.provider.operation]]
+name = "SMB Enumeration"
+args = ["smb", "{target}", "-u", "{username}", "-p", "{password}", "-d", "{domain}", "enumdom"]
+output = "raw"
+network = true
+[[capability.provider.operation]]
+name = "Share Enumeration"
+args = ["smb", "{target}", "-u", "{username}", "-p", "{password}", "-d", "{domain}", "enumshares"]
+output = "raw"
+network = true
+[[capability.provider.operation]]
+name = "Session Enumeration"
+args = ["smb", "{target}", "-u", "{username}", "-p", "{password}", "enumses"]
+output = "raw"
+network = true
+[[capability.provider.operation]]
+name = "User Enumeration"
+args = ["smb", "{target}", "-u", "{username}", "-p", "{password}", "-d", "{domain}", "enumusers"]
+output = "raw"
+network = true
+
+# ── WIRELESS ─────────────────────────────────────────────────────────────────
+[[capability]]
+id = "wireless.monitor-mode-setup"
+phase = "wireless"
+label = "MONITOR MODE"
+summary = "Bring a wireless adapter into monitor mode and confirm capture capability"
+inputs = [
+  { key = "interface", type = "interface", required = true, help = "Wireless interface, e.g. wlan0" },
+]
+[[capability.provider]]
+binary = "airmon-ng"
+subcommand = []
+[[capability.provider.operation]]
+name = "Start Monitor Mode"
+args = ["start", "{interface}"]
+output = "raw"
+network = false
+[[capability.provider.operation]]
+name = "Stop Monitor Mode"
+args = ["stop", "{interface}"]
+output = "raw"
+network = false
+
+# ── OBJECTIVES ───────────────────────────────────────────────────────────────
+[[capability]]
+id = "objectives.evidence-collection"
+phase = "objectives"
+label = "EVIDENCE COLLECTION"
+summary = "Collect, search and package the evidence already gathered during a run"
+inputs = [
+  { key = "path", type = "path", required = true, help = "File or directory to operate on" },
+  { key = "pattern", type = "text", required = false, help = "Search pattern" },
+]
+[[capability.provider]]
+binary = "find"
+subcommand = []
+[[capability.provider.operation]]
+name = "Inventory Harvest"
+args = ["{path}", "-type", "f", "-printf", "%p\t%s"]
+output = "lines"
+network = false
+[[capability.provider]]
+binary = "grep"
+subcommand = []
+[[capability.provider.operation]]
+name = "Pattern Search"
+args = ["-rInE", "{pattern}", "{path}"]
+output = "lines"
+network = false
+[[capability.provider]]
+binary = "curl"
+subcommand = []
+[[capability.provider.operation]]
+name = "Fetch Artifact"
+args = ["--silent", "--show-error", "--location", "{path}"]
+output = "raw"
+network = true
+[[capability.provider]]
+binary = "sqlite3"
+subcommand = []
+[[capability.provider.operation]]
+name = "Inspect Database"
+args = ["{path}", ".tables"]
+output = "raw"
+network = false

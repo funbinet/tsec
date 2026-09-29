@@ -70,6 +70,52 @@ if [ -n "$SUDO_USER" ]; then
     chown -R "$SUDO_USER:$SUDO_USER" /opt/tsec
 fi
 
+# 6. Install the network-execution boundary
+#
+# oniux is not a provider tool: it is the boundary every network-capable command
+# is launched through. TSEC has no proxy configuration and no in-framework
+# switch, so a missing or broken oniux means no network capability can run at
+# all. Install it here, or let the operator do it, but never silently skip it.
+echo ""
+echo -e "\033[36m[i]\033[0m Checking the oniux network boundary..."
+
+install_oniux() {
+    if command -v paru >/dev/null 2>&1; then
+        paru -S --needed oniux && return $?
+    elif command -v yay >/dev/null 2>&1; then
+        yay -S --needed oniux && return $?
+    fi
+    return 1
+}
+
+if command -v oniux >/dev/null 2>&1; then
+    echo -e "\033[32m[OK]\033[0m oniux found at $(command -v oniux)"
+elif install_oniux; then
+    echo -e "\033[32m[OK]\033[0m oniux installed"
+else
+    echo -e "\033[33m[!]\033[0m oniux was not installed automatically."
+    echo -e "    Install it with one of:"
+    echo -e "      paru -S oniux          # Arch / AUR"
+    echo -e "      cargo install --git https://gitlab.torproject.org/tpo/core/oniux --tag v0.4.0 oniux"
+    echo -e "    Network capabilities will report the boundary as unavailable until you do."
+fi
+
+# The TUN device oniux creates inside its namespace; without the module it
+# cannot establish its network at all.
+if [ ! -e /dev/net/tun ]; then
+    modprobe tun 2>/dev/null && echo -e "\033[32m[OK]\033[0m loaded the tun module" \
+        || echo -e "\033[33m[!]\033[0m could not load the tun module: run 'sudo modprobe tun'."
+fi
+
+# oniux builds its own network namespace with unprivileged user namespaces.
+# Some distributions disable them; oniux then cannot isolate anything.
+if [ -r /proc/sys/kernel/unprivileged_userns_clone ] \
+   && [ "$(cat /proc/sys/kernel/unprivileged_userns_clone)" != "1" ]; then
+    echo -e "\033[33m[!]\033[0m kernel.unprivileged_userns_clone=0 — oniux cannot create"
+    echo -e "    namespaces. Set it to 1 to let the boundary work."
+fi
+
 echo ""
 echo -e "\033[32m[OK] Installation Complete!\033[0m"
 echo -e "Run \033[1;32mtsec\033[0m from anywhere to launch the framework."
+echo -e "Network capabilities run as 'oniux <tool> ...'. Check the boundary with: oniux /bin/true"
