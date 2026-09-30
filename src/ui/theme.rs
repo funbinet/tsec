@@ -1,13 +1,19 @@
 //! Adaptive terminal theme.
 //!
 //! The framework never hard-codes one terminal palette. It detects what the
-//! host terminal can actually render, maps a curated palette into *semantic*
+//! host terminal can actually render, reads the active palette from the first
+//! source that really exists (Omarchy, Catppuccin, Base16, pywal, a generic
+//! palette file — see [`crate::ui::theme_source`]), maps it into *semantic*
 //! roles, and downgrades truecolor to 256-colour and then to the 16 base ANSI
 //! colours when necessary. Callers never emit raw escape sequences: they ask
 //! for a semantic role and get a correctly degraded string back.
 
 // Copyright (c) funbinet. All rights reserved.
 // Part of TSEC terminal cybersecurity operations platform by funbinet.
+//
+// Repository: github.com/funbinet/tsec.git (origin)
+// Mirror:     codeberg.org/funbinet/tsec.git (codeberg)
+// Owner:      funbinet
 
 use std::fmt;
 use std::io::IsTerminal;
@@ -15,6 +21,7 @@ use std::io::IsTerminal;
 use serde::{Deserialize, Serialize};
 
 use crate::config::ColorMode;
+use crate::ui::theme_source::{self, ThemeSource};
 
 /// How much colour the host terminal can render.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -354,23 +361,31 @@ pub enum Role {
     Highlight,
 }
 
-/// Fully resolved theme: palette + depth + the derived semantic styles.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// Fully resolved theme: where the palette came from, how much colour the
+/// terminal supports, and the derived semantic styles.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Theme {
+    /// The built-in family in use, or the closest one to an adapted source.
     pub palette_name: PaletteName,
+    /// Which source of the detection chain supplied the colours.
+    pub source: ThemeSource,
     pub depth: ColorDepth,
     colors: SemanticPalette,
 }
 
 impl Theme {
-    /// Detect the terminal's capabilities and build a theme.
+    /// Detect the terminal's capabilities and the active palette source.
     pub fn detect(mode: ColorMode) -> Self {
         let depth = detect_depth(mode);
-        let palette = detect_palette();
+        let detected = theme_source::detect();
+        let colors = detected
+            .palette
+            .unwrap_or_else(|| detected.closest.semantics());
         Self {
-            palette_name: palette,
+            palette_name: detected.closest,
+            source: detected.source,
             depth,
-            colors: palette.semantics(),
+            colors,
         }
     }
 
@@ -378,6 +393,7 @@ impl Theme {
     pub fn plain() -> Self {
         Self {
             palette_name: PaletteName::Midnight,
+            source: ThemeSource::Builtin(PaletteName::Midnight),
             depth: ColorDepth::None,
             colors: PaletteName::Midnight.semantics(),
         }
@@ -387,6 +403,7 @@ impl Theme {
     pub fn fixed(palette: PaletteName, depth: ColorDepth) -> Self {
         Self {
             palette_name: palette,
+            source: ThemeSource::Builtin(palette),
             depth,
             colors: palette.semantics(),
         }
@@ -462,11 +479,39 @@ impl Theme {
 
     /// Human-readable description of the resolved theme, for the banner.
     pub fn describe(&self) -> String {
-        format!(
-            "PALETTE {} · COLOUR {}",
-            self.palette_name.as_str().to_ascii_uppercase(),
-            self.depth.as_str()
-        )
+        format!("{} · COLOUR {}", self.source.label(), self.depth.as_str())
+    }
+
+    /// The full theme diagnostic the STATUS screen shows: source, palette,
+    /// colour depth, the semantic role mapping, and — when detection stopped
+    /// short of a real theme file — why.
+    pub fn diagnostics(&self) -> Vec<(&'static str, String)> {
+        let mut rows = vec![
+            ("SOURCE", self.source.label()),
+            ("PALETTE", self.palette_label()),
+            ("COLOUR", self.depth.as_str().to_string()),
+            (
+                "ROLES",
+                format!(
+                    "primary={} success={} error={} highlight={}",
+                    hex_of(self.style(Role::Primary).color),
+                    hex_of(self.style(Role::Success).color),
+                    hex_of(self.style(Role::Error).color),
+                    hex_of(self.style(Role::Highlight).color),
+                ),
+            ),
+        ];
+        if let Some(reason) = self.source.reason() {
+            rows.push(("REASON", reason));
+        }
+        rows
+    }
+
+    fn palette_label(&self) -> String {
+        match self.source {
+            ThemeSource::Override(p) | ThemeSource::Builtin(p) => p.as_str().to_ascii_uppercase(),
+            _ => "ADAPTED FROM SOURCE".to_string(),
+        }
     }
 
     fn sequence_for(&self, color: PaletteColor, background: bool) -> Option<String> {
@@ -565,6 +610,9 @@ pub fn detect_depth(mode: ColorMode) -> ColorDepth {
 }
 
 /// Choose a palette from the environment, preferring an explicit override.
+///
+/// This is the *built-in* hint layer of the detection chain; the full chain
+/// (theme files first, hints second) lives in [`crate::ui::theme_source`].
 pub fn detect_palette() -> PaletteName {
     if let Ok(explicit) = std::env::var("TSEC_PALETTE") {
         if let Some(p) = PaletteName::from_name(&explicit) {
@@ -587,6 +635,17 @@ pub fn detect_palette() -> PaletteName {
         return PaletteName::SolarizedLight;
     }
     PaletteName::Midnight
+}
+
+/// Render a palette colour as `#rrggbb` for diagnostics.
+fn hex_of(color: PaletteColor) -> String {
+    let (r, g, b) = match color {
+        PaletteColor::Rgb(r, g, b) => (r, g, b),
+        PaletteColor::Index(i) => xterm256_rgb(i),
+        PaletteColor::Ansi(i) => xterm256_rgb(i),
+        PaletteColor::Default => return "default".to_string(),
+    };
+    format!("#{r:02x}{g:02x}{b:02x}")
 }
 
 /// Map a colour to the nearest xterm-256 palette index.

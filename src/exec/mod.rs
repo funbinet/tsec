@@ -139,6 +139,53 @@ impl Runner {
         &self.launcher
     }
 
+    /// Record for a task a confirmed cancellation stopped before launch.
+    ///
+    /// The capture files are still created first: a cancelled run leaves the
+    /// same two empty evidence files behind as a refused one, so the manifest
+    /// never points at an artifact that does not exist.
+    pub fn cancelled_before_start(
+        &self,
+        spec: &TaskSpec,
+        cmd: &DomainCommand,
+        phase: &str,
+        capability: &str,
+    ) -> Completed {
+        let now = chrono::Utc::now();
+        let rendered = cmd.display_redacted(&spec.sensitive_args);
+        let _ = open_evidence(&spec.artifacts);
+        Completed {
+            rendered: rendered.clone(),
+            record: ExecutionRecord {
+                task_id: spec.id.to_string(),
+                phase: phase.to_string(),
+                capability: capability.to_string(),
+                provider: spec.provider.clone(),
+                operation: spec.operation.clone(),
+                label: spec.label.clone(),
+                command: rendered,
+                program: cmd.program().to_string(),
+                args: cmd.args_redacted(&spec.sensitive_args),
+                network: cmd.network,
+                boundary: boundary_of(cmd),
+                launched: String::new(),
+                uses_shell: cmd.uses_shell,
+                started_at: now,
+                finished_at: now,
+                duration_ms: 0,
+                status: TaskStatus::Interrupted,
+                exit_code: None,
+                stdout_bytes: 0,
+                stderr_bytes: 0,
+                raw_output: spec.artifacts.primary.clone(),
+                stderr_output: Some(spec.artifacts.stderr.clone()),
+                harvest_section: None,
+                error_code: Some("INTERRUPTED".to_string()),
+                error_message: Some("cancelled before launch".to_string()),
+            },
+        }
+    }
+
     /// Run one task, capturing both streams to its own files.
     ///
     /// Always returns a record: a tool that failed or timed out still produced

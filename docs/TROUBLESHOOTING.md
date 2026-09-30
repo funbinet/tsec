@@ -49,11 +49,14 @@ of `PERSISTENCE`) and they run regardless.
 
 ### `TOOL_NOT_INSTALLED`
 
-The capability is listed but dimmed, and the box names the missing binary.
+The capability is listed with `[PROVIDER MISSING]`, and selecting it immediately opens
+the Arch Linux installation guidance panel (`install::advise`), querying `pacman -Si`
+and AUR helpers (`yay`, `paru`) to display the exact installation command.
 
 ```sh
-sudo pacman -S <tool>          # Arch
-tsec --status                  # what is available, per phase
+sudo pacman -S <package>       # Official Arch repos
+yay -S <package>               # Arch User Repository (AUR)
+tsec --status                  # Verify availability across all 10 phases
 ```
 
 ### `TOOL_VERSION_INCOMPATIBLE`
@@ -195,7 +198,14 @@ the reason. The rejections are:
 
 A bare `Esc` is only distinguishable from the start of an escape sequence once
 the terminal has stopped sending bytes. Terminals and multiplexers differ here;
-`J` and `←` close a box in exactly the same way, and always work.
+`J` and `←` close a box or navigate back in exactly the same way, and always work.
+
+### Accidental cancellation
+
+During execution, `Ctrl+C` triggers an interactive prompt:
+`Stop ongoing operations? [y/N]` (default `N`).
+Hitting Enter defaults to `N` and resumes execution monitoring without disruption.
+To cancel an input prompt before execution, `Ctrl+C` cleanly returns to the menu.
 
 ### Colours are wrong, or absent
 
@@ -210,8 +220,9 @@ TSEC_PALETTE=graphite tsec
 
 ### The box is drawn too narrow
 
-Geometry comes from the terminal's own size and is re-measured on every redraw.
-Resize the terminal, then open a box again.
+Boxes automatically adapt to full terminal width (`inner = cols - 2`) and re-calculate
+on resize. If running in a subshell or multiplexer without SIGWINCH forwarding, resize
+the window to trigger a redraw.
 
 ## Still stuck
 

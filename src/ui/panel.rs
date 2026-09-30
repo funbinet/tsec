@@ -1,26 +1,40 @@
-//! Panel geometry and box drawing.
+//! Panel geometry: full-terminal-width boxes, layout semantics, one frame per redraw.
 //!
-//! One module decides what a panel looks like: a centred box, a one-word title,
-//! rows of text and an optional `-[ENTER]` hint underneath. Menus, status and
-//! harvest views all render through it, so they cannot drift apart, and the
-//! operator sees the same shape everywhere.
+//! Every screen is one *full-width* box whose horizontal dimension is derived
+//! from the current terminal width (`inner = cols - 2`), so the container grows
+//! and shrinks with the terminal; there is no artificial centred minimum-size
+//! card. What *is* centred is the content, and only for menu screens: [`Layout`]
+//! separates the six screen families (menu, information, execution, output,
+//! viewer, input) so one universal centring function cannot be applied to a
+//! document by accident.
+//!
+//! A frame is built completely — borders, title, wrapped rows, hint — and
+//! written to the terminal in a single `write` + `flush`, against the
+//! alternate screen, so a redraw replaces the previous picture atomically.
+//! Nothing clears the whole screen, and no background thread ever writes.
 
 // Copyright (c) funbinet. All rights reserved.
 // Part of TSEC terminal cybersecurity operations platform by funbinet.
+//
+// Repository: github.com/funbinet/tsec.git (origin)
+// Mirror:     codeberg.org/funbinet/tsec.git (codeberg)
+// Owner:      funbinet
 
 use std::io::{self, Write};
 use std::time::Duration;
 
-use crossterm::cursor;
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
-use crossterm::queue;
-use crossterm::style::{Print, ResetColor};
-use crossterm::terminal::{self, ClearType};
+use crossterm::style::ResetColor;
+use crossterm::terminal;
+use crossterm::{cursor, execute};
 use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 
-use crate::ui::theme::{Role, Theme};
+use crate::ui::theme::{strip_ansi, Role, Theme};
 
 /// Where a panel sits in the current terminal, and how wide it is.
+///
+/// `width` is the terminal width itself: the box spans the terminal edge to
+/// edge, so `box width <= terminal width` holds for every terminal size.
 #[derive(Debug, Clone, Copy)]
 pub struct Geometry {
     pub cols: usize,
@@ -37,35 +51,53 @@ impl Geometry {
     /// technically correct and useless, so it is treated as unknown.
     pub fn detect() -> Self {
         let (cols, rows) = match terminal::size() {
-            Ok((cols, rows)) if cols > 0 && rows > 0 => (cols, rows),
+            Ok((cols, rows)) if cols > 0 && rows > 0 => (cols as usize, rows as usize),
             _ => (80, 24),
         };
-        let cols = (cols as usize).max(20);
-        let width = cols.saturating_sub(4).clamp(30, 68);
+        Self::for_size(cols, rows)
+    }
+
+    /// Geometry for an explicit terminal size. Never wider than the terminal.
+    pub fn for_size(cols: usize, rows: usize) -> Self {
+        let cols = cols.max(4);
+        let width = cols;
         Self {
             cols,
-            rows: rows as usize,
+            rows,
             width,
             inner: width - 2,
         }
     }
 
-    /// Left padding that centres the box.
-    pub fn margin(&self) -> String {
-        " ".repeat(self.cols.saturating_sub(self.width) / 2)
-    }
-
-    /// Body rows that fit on screen once `reserved` lines are set aside.
+    /// Body rows that fit on screen once `reserved` lines (chrome, prompts,
+    /// hints) are set aside. Always at least one row: a tiny terminal shows a
+    /// scrollable single row rather than an invalid box.
     pub fn body_rows(&self, reserved: usize) -> usize {
-        self.rows.saturating_sub(reserved).max(3)
+        self.rows.saturating_sub(reserved).max(1)
     }
 }
 
-/// Truncate to `cols` and pad to `cols`, so every row is exactly one width.
+/// Display width of a string in terminal columns, ignoring ANSI escapes.
+pub fn display_width(text: &str) -> usize {
+    UnicodeWidthStr::width(strip_ansi(text).as_str())
+}
+
+/// Replace tabs with spaces so a tab can never be measured as width zero.
+pub fn expand_tabs(text: &str) -> String {
+    text.replace('\t', "    ")
+}
+
+/// Truncate to `cols` display columns and pad to exactly `cols`, so every row
+/// is exactly one width. ANSI sequences are stripped before measuring and are
+/// never counted as visible columns.
 pub fn fit(text: &str, cols: usize) -> String {
-    let width = UnicodeWidthStr::width(text);
+    if cols == 0 {
+        return String::new();
+    }
+    let text = strip_ansi(&expand_tabs(text));
+    let width = UnicodeWidthStr::width(text.as_str());
     if width == cols {
-        return text.to_string();
+        return text;
     }
     if width < cols {
         return format!("{text}{}", " ".repeat(cols - width));
@@ -86,11 +118,12 @@ pub fn fit(text: &str, cols: usize) -> String {
     out
 }
 
-/// Centre `text` inside `cols` columns.
+/// Centre `text` inside `cols` display columns.
 pub fn centre(text: &str, cols: usize) -> String {
-    let width = UnicodeWidthStr::width(text);
+    let text = strip_ansi(&expand_tabs(text));
+    let width = UnicodeWidthStr::width(text.as_str());
     if width >= cols {
-        return fit(text, cols);
+        return fit(text.as_str(), cols);
     }
     let left = (cols - width) / 2;
     format!(
@@ -101,90 +134,288 @@ pub fn centre(text: &str, cols: usize) -> String {
     )
 }
 
-/// A finished panel: how many lines were written, so it can be erased.
-#[derive(Debug, Clone, Copy)]
-pub struct Drawn {
+/// Wrap `text` into display lines of at most `cols` columns.
+///
+/// Words are kept intact where possible; a word longer than the line is
+/// hard-split, because a command line must never overflow the box.
+pub fn wrap(text: &str, cols: usize) -> Vec<String> {
+    let cols = cols.max(1);
+    let text = strip_ansi(&expand_tabs(text));
+    let mut out: Vec<String> = Vec::new();
+
+    for paragraph in text.split('\n') {
+        let mut line = String::new();
+        let mut line_w = 0usize;
+        let flush = |line: &mut String, line_w: &mut usize, out: &mut Vec<String>| {
+            out.push(std::mem::take(line));
+            *line_w = 0;
+        };
+        if paragraph.is_empty() {
+            out.push(String::new());
+            continue;
+        }
+        for word in paragraph.split(' ') {
+            let w = UnicodeWidthStr::width(word);
+            if w == 0 {
+                // Consecutive spaces: keep one separator if the line has room.
+                if !line.is_empty() && line_w < cols {
+                    line.push(' ');
+                    line_w += 1;
+                }
+                continue;
+            }
+            let needed = if line.is_empty() { w } else { line_w + 1 + w };
+            if needed <= cols {
+                if !line.is_empty() {
+                    line.push(' ');
+                }
+                line.push_str(word);
+                line_w = needed;
+                continue;
+            }
+            if !line.is_empty() {
+                flush(&mut line, &mut line_w, &mut out);
+            }
+            if w <= cols {
+                line.push_str(word);
+                line_w = w;
+            } else {
+                // Hard-split an over-long word across as many lines as needed.
+                let mut rest: &str = word;
+                loop {
+                    let mut taken = String::new();
+                    let mut used = 0usize;
+                    for c in rest.chars() {
+                        let cw = UnicodeWidthChar::width(c).unwrap_or(1);
+                        if used + cw > cols {
+                            break;
+                        }
+                        taken.push(c);
+                        used += cw;
+                    }
+                    if taken.is_empty() {
+                        break;
+                    }
+                    let consumed: usize = taken.chars().map(char::len_utf8).sum();
+                    rest = &rest[consumed..];
+                    if UnicodeWidthStr::width(rest) <= cols {
+                        line.push_str(&taken);
+                        line_w = used;
+                        break;
+                    }
+                    out.push(taken);
+                }
+            }
+        }
+        if !line.is_empty() || out.is_empty() {
+            out.push(line);
+        }
+    }
+    out
+}
+
+/// How a screen arranges its content. The variants exist so menu centring
+/// cannot leak into an output document by calling the wrong helper.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Layout {
+    /// Selection lists: centred title, centred rows.
+    Menu,
+    /// Status, guidance, errors: left title, left rows.
+    Information,
+    /// Live task and processing screens: left title, left rows.
+    Execution,
+    /// The `OUTPUT` document: centred title, left rows.
+    Output,
+    /// The full-file viewer: centred title, left rows.
+    Viewer,
+    /// Input prompts, which are drawn unboxed but keep the left alignment.
+    Input,
+}
+
+impl Layout {
+    pub fn title_centred(self) -> bool {
+        !matches!(
+            self,
+            Layout::Information | Layout::Execution | Layout::Input
+        )
+    }
+
+    pub fn rows_centred(self) -> bool {
+        matches!(self, Layout::Menu)
+    }
+}
+
+/// A finished frame: the exact bytes to show, and how many lines it spans.
+#[derive(Debug, Clone, Default)]
+pub struct Frame {
+    pub text: String,
     pub lines: u16,
 }
 
-/// Draw a panel: title, rows, then the `-[ENTER]` hint when asked for.
-pub fn draw(
-    out: &mut io::Stdout,
+impl Frame {
+    /// Append one already-rendered line (an unboxed prompt line, a hint…).
+    pub fn line(&mut self, text: impl AsRef<str>) {
+        self.lines += 1;
+        self.text.push_str(text.as_ref());
+        self.text.push_str("\r\n");
+    }
+
+    /// Append another frame's lines to this one, keeping the total count.
+    pub fn append(&mut self, other: Frame) {
+        self.text.push_str(&other.text);
+        self.lines += other.lines;
+    }
+}
+
+/// Build one full-width box: top border, title, separator, rows, bottom border.
+///
+/// Menu boxes gain a blank row under the separator and above the bottom
+/// border, matching the selection-screen design; every other box is exactly
+/// as tall as its content.
+pub fn box_frame(theme: &Theme, layout: Layout, title: &str, rows: &[(String, Role)]) -> Frame {
+    box_frame_in(&Geometry::detect(), theme, layout, title, rows)
+}
+
+/// [`box_frame`] against an explicit geometry, for width-invariant tests.
+pub fn box_frame_in(
+    g: &Geometry,
     theme: &Theme,
+    layout: Layout,
     title: &str,
     rows: &[(String, Role)],
-    hint: bool,
-) -> io::Result<Drawn> {
-    let g = Geometry::detect();
-    let margin = g.margin();
+) -> Frame {
+    let mut frame = Frame::default();
     let border = "═".repeat(g.inner);
-    let mut lines = 0u16;
+    let content = g.inner.saturating_sub(2);
 
-    for (index, text) in [
-        format!("╔{border}╗"),
-        format!("║{}║", centre(&title.to_uppercase(), g.inner)),
-        format!("╠{border}╣"),
-    ]
-    .iter()
-    .enumerate()
-    {
-        let role = if index == 1 {
-            Role::Primary
-        } else {
-            Role::Border
-        };
-        queue!(
-            out,
-            Print(theme.paint(role, &format!("{margin}{text}"))),
-            Print("\r\n")
-        )?;
-        lines += 1;
+    frame.line(theme.paint(Role::Border, &format!("╔{border}╗")));
+
+    let title = title.to_uppercase();
+    let title_row = if layout.title_centred() {
+        centre(&title, content)
+    } else {
+        fit(&title, content)
+    };
+    frame.line(format!(
+        "{}{}{}",
+        theme.paint(Role::Border, "║ "),
+        theme.paint(Role::Primary, &title_row),
+        theme.paint(Role::Border, " ║")
+    ));
+    frame.line(theme.paint(Role::Border, &format!("╠{border}╣")));
+
+    if layout.rows_centred() {
+        frame.line(format!(
+            "{}{}{}",
+            theme.paint(Role::Border, "║ "),
+            " ".repeat(content),
+            theme.paint(Role::Border, " ║")
+        ));
     }
 
-    let body = g.inner.saturating_sub(2);
     for (text, role) in rows {
-        queue!(
-            out,
-            Print(theme.paint(Role::Border, &format!("{margin}║"))),
-            Print(theme.paint(*role, &format!(" {} ", fit(text, body)))),
-            Print(theme.paint(Role::Border, "║")),
-            Print("\r\n")
-        )?;
-        lines += 1;
+        let wrapped = if content == 0 {
+            vec![String::new()]
+        } else {
+            wrap(text, content)
+        };
+        for segment in wrapped {
+            let row = if layout.rows_centred() {
+                // Pads stay outside the paint: a highlighted selection covers
+                // the label itself, not the whole row.
+                let visible = segment.trim_end();
+                let w = display_width(visible);
+                let left = content.saturating_sub(w) / 2;
+                let right = content.saturating_sub(w) - left;
+                format!(
+                    "{}{}{}{}{}",
+                    theme.paint(Role::Border, "║ "),
+                    " ".repeat(left),
+                    theme.paint(*role, visible),
+                    " ".repeat(right),
+                    theme.paint(Role::Border, " ║")
+                )
+            } else {
+                format!(
+                    "{}{}{}",
+                    theme.paint(Role::Border, "║ "),
+                    theme.paint(*role, &fit(&segment, content)),
+                    theme.paint(Role::Border, " ║")
+                )
+            };
+            frame.line(row);
+        }
     }
 
-    queue!(
-        out,
-        Print(theme.paint(Role::Border, &format!("{margin}╚{border}╝"))),
-        Print("\r\n")
-    )?;
-    lines += 1;
-
-    if hint {
-        queue!(
-            out,
-            Print(theme.paint(Role::Muted, &centre(&format!("{margin}-[ENTER]"), g.cols))),
-            Print("\r\n")
-        )?;
-        lines += 1;
+    if layout.rows_centred() {
+        frame.line(format!(
+            "{}{}{}",
+            theme.paint(Role::Border, "║ "),
+            " ".repeat(content),
+            theme.paint(Role::Border, " ║")
+        ));
     }
 
-    out.flush()?;
-    Ok(Drawn { lines })
+    frame.line(theme.paint(Role::Border, &format!("╚{border}╝")));
+    frame
 }
 
-/// Erase the last panel so a live screen can be redrawn in place.
-pub fn erase(out: &mut io::Stdout, drawn: Drawn) -> io::Result<()> {
-    queue!(
-        out,
-        cursor::MoveUp(drawn.lines),
-        cursor::MoveToColumn(0),
-        terminal::Clear(ClearType::FromCursorDown)
-    )?;
-    out.flush()
+/// Unboxed lines, left aligned — for prompts and hints under a box.
+pub fn plain_frame(theme: &Theme, rows: &[(String, Role)]) -> Frame {
+    let g = Geometry::detect();
+    let mut frame = Frame::default();
+    for (text, role) in rows {
+        for segment in wrap(text, g.cols.saturating_sub(1)) {
+            frame.line(theme.paint(*role, &fit(&segment, g.cols.saturating_sub(1))));
+        }
+    }
+    frame
 }
 
-/// Terminal in raw mode with the cursor hidden; both are restored on drop.
+/// The one-line key hint drawn under a menu box, centred and unboxed.
+pub fn hint_frame(theme: &Theme, text: &str) -> Frame {
+    let g = Geometry::detect();
+    let mut frame = Frame::default();
+    frame.line(theme.paint(Role::Muted, &centre(text, g.cols.saturating_sub(1))));
+    frame
+}
+
+/// Builds frames and replaces the screen with them, one write per frame.
+///
+/// The renderer goes home (`ESC[H`) and clears to the end of the display
+/// (`ESC[J`) *around* the whole frame instead of erasing the previous frame
+/// line by line: one ordered byte stream, one flush, no flicker, no
+/// `ClearType::All`, and a resize simply becomes a frame built at the new
+/// width.
+#[derive(Debug, Default)]
+pub struct Renderer;
+
+impl Renderer {
+    pub fn new() -> Self {
+        Self
+    }
+
+    pub fn present(&mut self, out: &mut io::Stdout, frame: &Frame) -> io::Result<()> {
+        let mut buf: Vec<u8> = Vec::with_capacity(frame.text.len() + 8);
+        buf.extend_from_slice(b"\x1b[H");
+        buf.extend_from_slice(frame.text.as_bytes());
+        buf.extend_from_slice(b"\x1b[J");
+        out.write_all(&buf)?;
+        out.flush()
+    }
+}
+
+/// What the terminal reported while we were waiting for a key.
+#[derive(Debug, Clone, Copy)]
+pub enum Input {
+    Key(KeyEvent),
+    Resize,
+}
+
+/// Alternate screen, raw mode and a hidden cursor; all restored on drop.
+///
+/// One guard is held for the whole interactive session so screen transitions
+/// never flash back to the shell's picture in between.
 #[derive(Debug)]
 pub struct RawMode;
 
@@ -192,8 +423,12 @@ impl RawMode {
     pub fn enter() -> io::Result<Self> {
         terminal::enable_raw_mode()?;
         let mut out = io::stdout();
-        let _ = queue!(out, cursor::Hide);
-        let _ = out.flush();
+        let _ = execute!(
+            out,
+            terminal::EnterAlternateScreen,
+            cursor::Hide,
+            ResetColor
+        );
         Ok(Self)
     }
 }
@@ -201,56 +436,195 @@ impl RawMode {
 impl Drop for RawMode {
     fn drop(&mut self) {
         let mut out = io::stdout();
-        let _ = queue!(out, cursor::Show, ResetColor);
-        let _ = out.flush();
+        let _ = execute!(
+            out,
+            cursor::Show,
+            ResetColor,
+            terminal::LeaveAlternateScreen
+        );
         let _ = terminal::disable_raw_mode();
     }
 }
 
-/// True for Ctrl+C, the one key that must leave cleanly from anywhere.
+/// True for Ctrl+C, the context-sensitive interrupt key.
 pub fn is_interrupt(key: &KeyEvent) -> bool {
     key.modifiers.contains(KeyModifiers::CONTROL)
         && matches!(key.code, KeyCode::Char('c') | KeyCode::Char('C'))
 }
 
-/// Block until the next key press or repeat, and report it.
+fn is_press(key: &KeyEvent) -> bool {
+    matches!(key.kind, KeyEventKind::Press | KeyEventKind::Repeat)
+}
+
+/// Block until a key press or a resize arrives.
 ///
 /// Blocking rather than polling is deliberate: a lone `Esc` is only
 /// distinguishable from the start of an escape sequence once the terminal has
 /// gone quiet, and a poll loop that never lets the read time out never sees it.
-pub fn next_key() -> io::Result<KeyEvent> {
+pub fn next_input() -> io::Result<Input> {
     loop {
-        if let Event::Key(key) = event::read()? {
-            if matches!(key.kind, KeyEventKind::Press | KeyEventKind::Repeat) {
-                return Ok(key);
+        match event::read()? {
+            Event::Key(key) if is_press(&key) => return Ok(Input::Key(key)),
+            Event::Resize(..) => return Ok(Input::Resize),
+            _ => {}
+        }
+    }
+}
+
+/// Report a key or resize only if one is already waiting, so a caller can poll.
+pub fn poll_input(timeout: Duration) -> io::Result<Option<Input>> {
+    if !event::poll(timeout)? {
+        return Ok(None);
+    }
+    Ok(match event::read()? {
+        Event::Key(key) if is_press(&key) => Some(Input::Key(key)),
+        Event::Resize(..) => Some(Input::Resize),
+        _ => None,
+    })
+}
+
+/// Block until the operator closes the screen with Enter or Esc. Resizes are
+/// swallowed; Ctrl+C is reported to the caller through the same channel the
+/// other screens use, so this helper only exists for still boxes.
+pub fn wait_close() -> io::Result<()> {
+    loop {
+        match next_input()? {
+            Input::Resize => {}
+            Input::Key(key) => {
+                if is_interrupt(&key) {
+                    return Ok(());
+                }
+                match key.code {
+                    KeyCode::Enter
+                    | KeyCode::Esc
+                    | KeyCode::Char('j')
+                    | KeyCode::Char('J')
+                    | KeyCode::Left => return Ok(()),
+                    _ => {}
+                }
             }
         }
     }
 }
 
-/// Report a key only when one is already waiting, so a caller can poll.
-pub fn poll_key(timeout: Duration) -> io::Result<Option<KeyEvent>> {
-    if !event::poll(timeout)? {
-        return Ok(None);
-    }
-    Ok(match event::read()? {
-        Event::Key(key) if matches!(key.kind, KeyEventKind::Press | KeyEventKind::Repeat) => {
-            Some(key)
-        }
-        _ => None,
-    })
-}
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::ui::theme::{ColorDepth, PaletteName};
 
-/// Block until the operator closes the screen with Enter, Esc or Ctrl+C.
-pub fn wait_close() -> io::Result<()> {
-    loop {
-        let key = next_key()?;
-        if is_interrupt(&key) {
-            return Ok(());
+    fn theme() -> Theme {
+        Theme::fixed(PaletteName::Midnight, ColorDepth::None)
+    }
+
+    #[test]
+    fn fit_measures_display_width_not_byte_length() {
+        assert_eq!(fit("héllo", 10), "héllo     ");
+        assert_eq!(display_width(&fit("héllo", 10)), 10);
+        assert!(display_width(&fit("a very long line that will not fit", 10)) <= 10);
+    }
+
+    #[test]
+    fn fit_strips_ansi_before_measuring() {
+        let painted = "\x1b[31mred\x1b[0m";
+        assert_eq!(display_width(painted), 3);
+        assert_eq!(fit(painted, 6), "red   ");
+    }
+
+    #[test]
+    fn centre_places_text_midway() {
+        let c = centre("MENU", 10);
+        assert_eq!(display_width(&c), 10);
+        assert!(c.starts_with("  "), "{c:?}");
+    }
+
+    #[test]
+    fn wrap_never_exceeds_the_column_budget() {
+        for text in [
+            "short",
+            "a much longer line that definitely needs to wrap somewhere around here",
+            "supercalifragilisticexpialidociousANDTHENSOMEMORETEXT",
+            "",
+            "double  spaces   and\ttabs",
+        ] {
+            for cols in [1usize, 7, 20, 80] {
+                for line in wrap(text, cols) {
+                    assert!(
+                        display_width(&line) <= cols,
+                        "{text:?} at {cols} produced {line:?}"
+                    );
+                }
+            }
         }
-        match key.code {
-            KeyCode::Enter | KeyCode::Esc => return Ok(()),
-            _ => {}
+    }
+
+    #[test]
+    fn wrap_preserves_blank_lines() {
+        assert_eq!(wrap("a\n\nb", 10), vec!["a", "", "b"]);
+    }
+
+    #[test]
+    fn box_frames_span_the_terminal_at_every_width() {
+        for cols in [40usize, 50, 60, 80, 100, 120, 160, 200] {
+            let g = Geometry::for_size(cols, 24);
+            let rows = vec![
+                ("RECONNAISSANCE".to_string(), Role::Foreground),
+                (
+                    "A long menu entry that wraps if the terminal is narrow enough to require it"
+                        .to_string(),
+                    Role::Highlight,
+                ),
+            ];
+            for layout in [
+                Layout::Menu,
+                Layout::Information,
+                Layout::Execution,
+                Layout::Output,
+                Layout::Viewer,
+            ] {
+                let frame = box_frame_in(&g, &theme(), layout, "TSEC", &rows);
+                for line in frame.text.split("\r\n").filter(|l| !l.is_empty()) {
+                    assert!(
+                        display_width(line) <= cols,
+                        "layout {layout:?} at {cols} cols overflowed: {line:?}"
+                    );
+                }
+                // The border itself must exactly reach the terminal width.
+                let first = frame.text.split("\r\n").next().unwrap();
+                assert_eq!(
+                    display_width(first),
+                    cols,
+                    "layout {layout:?} top border at {cols}"
+                );
+            }
         }
+    }
+
+    #[test]
+    fn a_tiny_terminal_still_produces_a_valid_box() {
+        let g = Geometry::for_size(4, 3);
+        let frame = box_frame_in(&g, &theme(), Layout::Menu, "TSEC", &[]);
+        for line in frame.text.split("\r\n").filter(|l| !l.is_empty()) {
+            assert!(display_width(line) <= 4, "{line:?}");
+        }
+        assert!(g.body_rows(500) >= 1, "never zero visible rows");
+    }
+
+    #[test]
+    fn menu_boxes_pad_their_rows_while_document_boxes_do_not() {
+        let g = Geometry::for_size(40, 24);
+        let rows = vec![("DATA".to_string(), Role::Foreground)];
+        let menu = box_frame_in(&g, &theme(), Layout::Menu, "T", &rows);
+        let output = box_frame_in(&g, &theme(), Layout::Output, "T", &rows);
+        // Menu boxes carry blank rows above and below the entries.
+        assert!(menu.lines > output.lines);
+    }
+
+    #[test]
+    fn layouts_pick_the_right_alignment() {
+        assert!(Layout::Menu.title_centred() && Layout::Menu.rows_centred());
+        assert!(!Layout::Information.title_centred() && !Layout::Information.rows_centred());
+        assert!(!Layout::Execution.title_centred());
+        assert!(Layout::Output.title_centred() && !Layout::Output.rows_centred());
+        assert!(Layout::Viewer.title_centred());
     }
 }

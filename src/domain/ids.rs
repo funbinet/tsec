@@ -126,6 +126,27 @@ impl RunId {
         Self::new(format!("{stamp}_{:02x}{:02x}", pid & 0xff, n & 0xff))
     }
 
+    /// The operator-facing run identifier: `YYYYMMDD_HHMMSS_PHASE_CAPABILITY`.
+    ///
+    /// ```text
+    /// 20260930_173000_RECON_SUBDOMAIN_DISCOVERY
+    /// ```
+    ///
+    /// The directory a run writes into is named after exactly this, so a
+    /// listing of the output directory reads as a log of what was run, when,
+    /// and against which capability — no opaque ids.
+    pub fn for_run(phase: &str, capability: &str) -> Self {
+        let stamp = chrono::Local::now().format("%Y%m%d_%H%M%S").to_string();
+        let clean = |value: &str| -> String {
+            value
+                .to_ascii_uppercase()
+                .chars()
+                .map(|c| if c.is_ascii_alphanumeric() { c } else { '_' })
+                .collect()
+        };
+        Self::new(format!("{stamp}_{}_{}", clean(phase), clean(capability)))
+    }
+
     pub fn as_str(&self) -> &str {
         &self.id
     }
@@ -168,6 +189,19 @@ mod tests {
         let r = RunId::new("20260929_143012_7f");
         assert_eq!(r.stamp(), "20260929_143012");
         assert_eq!(r.short(), "7f");
+    }
+
+    #[test]
+    fn run_identifiers_name_the_phase_and_capability() {
+        let r = RunId::for_run("RECON", "SUBDOMAIN DISCOVERY");
+        assert_eq!(r.short(), "RECON");
+        assert!(
+            r.as_str().ends_with("_RECON_SUBDOMAIN_DISCOVERY"),
+            "{}",
+            r.as_str()
+        );
+        let parts: Vec<&str> = r.as_str().split('_').collect();
+        assert!(parts[0].len() == 8 && parts[1].len() == 6, "stamp");
     }
 
     #[test]

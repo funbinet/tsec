@@ -13,8 +13,8 @@
 //! ```text
 //! <output_dir>/<run_id>/
 //!   manifest.json        every execution record, in order
-//!   harvest.txt          the consolidated, deduplicated, readable harvest
-//!   harvest.json         the same findings, structured, for correlation
+//!   output.txt           the consolidated, deduplicated, readable harvest
+//!   output.json          the same findings, structured, for correlation
 //!   raw/<task>.out       each tool's stdout, exactly as the tool wrote it
 //!   raw/<task>.err       each tool's stderr
 //! ```
@@ -82,11 +82,20 @@ impl RunStore {
     pub fn raw_stderr(&self, task: &str) -> PathBuf {
         self.root.join("raw").join(format!("{task}.err"))
     }
+    /// The consolidated operator-facing text harvest: `output.txt`.
+    pub fn output_txt(&self) -> PathBuf {
+        self.root.join("output.txt")
+    }
+    /// The machine-readable harvest: `output.json`.
+    pub fn output_json(&self) -> PathBuf {
+        self.root.join("output.json")
+    }
+    /// Compatibility names for older callers and tests.
     pub fn harvest_txt(&self) -> PathBuf {
-        self.root.join("harvest.txt")
+        self.output_txt()
     }
     pub fn harvest_json(&self) -> PathBuf {
-        self.root.join("harvest.json")
+        self.output_json()
     }
     pub fn manifest(&self) -> PathBuf {
         self.root.join("manifest.json")
@@ -110,21 +119,33 @@ impl RunStore {
 
     /// Parse every task's raw evidence into one consolidated harvest.
     ///
-    /// Tasks whose output could not be parsed are recorded as such rather than
-    /// omitted, so the harvest is a faithful account of what was run — not just
-    /// of what happened to be machine-readable.
-    /// `formats` is keyed by operation name (`provider/operation`), falling back
-    /// to the provider, then to keeping the raw bytes. Operation is the right
-    /// level: one provider can emit different formats per operation, and parsing
-    /// nmap's XML as if it were naabu's line list would silently lose the
-    /// structured ports.
+    /// The pipeline runs as six real, ordered stages — parsing, normalizing,
+    /// deduplicating, correlating, harvesting, writing — and `on_stage` is
+    /// called after each one actually finishes, so the interface's
+    /// `PROCESSING` box is backed by work rather than by a timer.
+    ///
+    /// `formats` is keyed by operation name (`provider/operation`), falling
+    /// back to the provider, then to keeping the raw bytes. Operation is the
+    /// right level: one provider can emit different formats per operation, and
+    /// parsing nmap's XML as if it were naabu's line list would silently lose
+    /// the structured ports.
     pub fn harvest(
         &self,
         formats: &std::collections::BTreeMap<String, crate::catalog::OutputFormat>,
+        header: &OutputHeader<'_>,
+        mut on_stage: Option<&mut dyn FnMut(HarvestStage) -> Result<()>>,
     ) -> Result<HarvestOutcome> {
+        let mut report = |stage: HarvestStage| -> Result<()> {
+            match on_stage.as_deref_mut() {
+                Some(callback) => callback(stage),
+                None => Ok(()),
+            }
+        };
+
+        // ── PARSING ────────────────────────────────────────────────────────
         let mut merged = crate::parser::Harvest::default();
         let mut sections = Vec::new();
-
+        let mut parse_failures = 0usize;
         for record in &self.records {
             let format = formats
                 .get(&format!("{}/{}", record.provider, record.operation))
@@ -155,32 +176,77 @@ impl RunStore {
                     });
                     merged.absorb(h);
                 }
-                Err(e) => sections.push(crate::domain::finding::Finding {
-                    category: crate::domain::finding::Category::Evidence,
-                    value: format!("{}: unparsed ({})", record.provider, e.kind.code()),
-                    detail: Some(e.reason()),
-                    provenance: provenance.clone(),
-                    occurrences: 1,
-                }),
+                Err(e) => {
+                    parse_failures += 1;
+                    sections.push(crate::domain::finding::Finding {
+                        category: crate::domain::finding::Category::Evidence,
+                        value: format!("{}: unparsed ({})", record.provider, e.kind.code()),
+                        detail: Some(e.reason()),
+                        provenance: provenance.clone(),
+                        occurrences: 1,
+                    });
+                }
             }
         }
+        report(HarvestStage::Parsing)?;
 
+        // ── NORMALIZING ────────────────────────────────────────────────────
+        // A real pass: values are trimmed, quoted, degenerated and junk
+        // placeholders dropped — this is where a raw record can disappear,
+        // and the counts say so.
+        let raw_records = merged.len();
+        let normalized_records = merged.normalize();
+        report(HarvestStage::Normalizing)?;
+
+        // ── DEDUPLICATING ──────────────────────────────────────────────────
         let deduped = merged.deduped();
-        self.write_harvest(&deduped)?;
-        Ok(HarvestOutcome {
+        let deduplicated_records = deduped.len();
+        report(HarvestStage::Deduplicating)?;
+
+        // ── CORRELATING ────────────────────────────────────────────────────
+        // Real co-occurrence: findings produced by the same task are linked,
+        // so output.json can say what else was observed beside a value.
+        let links = correlate(&deduped);
+        report(HarvestStage::Correlating)?;
+
+        // ── HARVESTING ─────────────────────────────────────────────────────
+        let stats = HarvestStats {
+            tasks: self.records.len(),
+            tasks_parsed: self.records.len().saturating_sub(parse_failures),
+            raw_records,
+            normalized_records,
+            deduplicated_records,
+            final_findings: deduped.len(),
+        };
+        let state = outcome_state(&self.records, header.cancelled, &stats, &links);
+        let outcome = HarvestOutcome {
             findings: deduped,
             sections: sections.len(),
             notes: merged.notes().to_vec(),
-        })
+            stats,
+            state,
+        };
+        report(HarvestStage::Harvesting)?;
+
+        // ── WRITING ────────────────────────────────────────────────────────
+        self.write_output(&outcome, header, &links)?;
+        report(HarvestStage::Writing)?;
+
+        Ok(outcome)
     }
 
-    fn write_harvest(&self, findings: &[MergedFinding]) -> Result<()> {
-        let mut text = String::new();
-        for f in findings {
-            text.push_str(&f.line());
-            text.push('\n');
-        }
-        write_atomic(&self.harvest_txt(), text.as_bytes())?;
+    /// Write `output.txt` (the complete operator document) and `output.json`
+    /// (the same findings, structured, with provenance and correlations).
+    fn write_output(
+        &self,
+        outcome: &HarvestOutcome,
+        header: &OutputHeader<'_>,
+        links: &[Vec<String>],
+    ) -> Result<()> {
+        write_atomic(
+            &self.output_txt(),
+            output_document(&self.records, outcome, header).as_bytes(),
+        )?;
 
         #[derive(Serialize)]
         struct Entry<'a> {
@@ -188,6 +254,7 @@ impl RunStore {
             value: &'a str,
             detail: &'a Option<String>,
             occurrences: usize,
+            correlated: &'a [String],
             sources: Vec<HarvestSource>,
         }
         #[derive(Serialize)]
@@ -196,14 +263,19 @@ impl RunStore {
             operation: String,
             task_id: String,
             boundary: String,
+            artifact: String,
+            observed_at: String,
         }
-        let entries: Vec<Entry<'_>> = findings
+        let entries: Vec<Entry<'_>> = outcome
+            .findings
             .iter()
-            .map(|f| Entry {
+            .enumerate()
+            .map(|(index, f)| Entry {
                 category: f.category.heading(),
                 value: &f.value,
                 detail: &f.detail,
                 occurrences: f.occurrences,
+                correlated: links.get(index).map(Vec::as_slice).unwrap_or(&[]),
                 sources: f
                     .sources
                     .iter()
@@ -212,13 +284,15 @@ impl RunStore {
                         operation: s.operation.clone(),
                         task_id: s.task_id.clone(),
                         boundary: s.boundary.as_str().to_string(),
+                        artifact: s.artifact.display().to_string(),
+                        observed_at: s.observed_at.to_rfc3339(),
                     })
                     .collect(),
             })
             .collect();
         let json = serde_json::to_string_pretty(&entries)
             .map_err(|e| TsecError::config(format!("serialising harvest: {e}")))?;
-        write_atomic(&self.harvest_json(), json.as_bytes())
+        write_atomic(&self.output_json(), json.as_bytes())
     }
 
     /// Write the run report and return it.
@@ -236,6 +310,278 @@ pub struct HarvestOutcome {
     pub findings: Vec<MergedFinding>,
     pub sections: usize,
     pub notes: Vec<String>,
+    /// Where the records went: how many entered, how many survived each real
+    /// stage. Displayed so a silent loss between stages becomes visible.
+    pub stats: HarvestStats,
+    /// The truthful one-word-ish verdict: `COMPLETE`, `NO FINDINGS`,
+    /// `UNPARSED OUTPUT`, `EXECUTION FAILED`, `NETWORK BOUNDARY UNAVAILABLE`
+    /// or `RUN CANCELLED` — never "no findings" standing in for a failure.
+    pub state: String,
+}
+
+/// The run context the operator-facing document is written against.
+#[derive(Debug, Clone, Default)]
+pub struct OutputHeader<'a> {
+    /// Human-readable run name, e.g. `20260930_173000_RECON_SUBDOMAIN_DISCOVERY`.
+    pub run_name: &'a str,
+    pub phase: &'a str,
+    pub capability: &'a str,
+    /// Providers the catalog wanted but the host does not have.
+    pub missing_providers: &'a [String],
+    /// Whether the operator stopped the run early.
+    pub cancelled: bool,
+}
+
+/// The real pipeline counts, from parsing through to the final harvest.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct HarvestStats {
+    /// Committed execution records that entered the pipeline.
+    pub tasks: usize,
+    /// Records whose artifact parsed without error.
+    pub tasks_parsed: usize,
+    /// Findings the format parsers emitted, before normalizing.
+    pub raw_records: usize,
+    /// Findings that survived value normalization.
+    pub normalized_records: usize,
+    /// Findings that survived deduplication.
+    pub deduplicated_records: usize,
+    /// Findings actually written to the output document.
+    pub final_findings: usize,
+}
+
+impl HarvestStats {
+    /// `TASKS 5/5 PARSED · RAW 182 · NORMALIZED 176 · DEDUPLICATED 118 · FINAL 117`.
+    pub fn summary(&self) -> String {
+        format!(
+            "TASKS {}/{} PARSED · RAW {} · NORMALIZED {} · DEDUPLICATED {} · FINAL {}",
+            self.tasks_parsed,
+            self.tasks,
+            self.raw_records,
+            self.normalized_records,
+            self.deduplicated_records,
+            self.final_findings
+        )
+    }
+}
+
+/// Link each finding to the other values observed by the same tasks.
+///
+/// This is real correlation, not a placeholder: two findings that were
+/// produced by at least one shared task (say `api.example.com` from subfinder
+/// and `443/tcp` from the nmap pass behind it) are recorded as related, so
+/// `output.json` can reconstruct what was seen beside a value without the
+/// operator re-running anything.
+fn correlate(findings: &[MergedFinding]) -> Vec<Vec<String>> {
+    use std::collections::BTreeMap;
+    let mut by_task: BTreeMap<&str, Vec<usize>> = BTreeMap::new();
+    for (index, finding) in findings.iter().enumerate() {
+        for source in &finding.sources {
+            by_task
+                .entry(source.task_id.as_str())
+                .or_default()
+                .push(index);
+        }
+    }
+
+    let mut links: Vec<Vec<String>> = vec![Vec::new(); findings.len()];
+    let mut seen: Vec<std::collections::BTreeSet<usize>> =
+        vec![std::collections::BTreeSet::new(); findings.len()];
+    for members in by_task.values() {
+        for &self_index in members {
+            for &other in members {
+                if other != self_index {
+                    seen[self_index].insert(other);
+                }
+            }
+        }
+    }
+    for (index, related) in seen.into_iter().enumerate() {
+        // Cap per finding: a correlation note is context, not a dump.
+        links[index] = related
+            .into_iter()
+            .take(8)
+            .map(|other| findings[other].value.clone())
+            .collect();
+    }
+    links
+}
+
+/// The truthful verdict for a run, from the records themselves.
+///
+/// Every distinct situation gets its own state — a boundary refusal never
+/// reads as "no findings", and "no findings" only appears when the run really
+/// executed, exited cleanly, was parsed and produced nothing.
+fn outcome_state(
+    records: &[ExecutionRecord],
+    cancelled: bool,
+    stats: &HarvestStats,
+    links: &[Vec<String>],
+) -> String {
+    use crate::domain::execution::TaskStatus;
+    let _ = links;
+
+    let complete = records
+        .iter()
+        .filter(|r| r.status == TaskStatus::Complete)
+        .count();
+    let failures = records
+        .iter()
+        .filter(|r| {
+            matches!(
+                r.status,
+                TaskStatus::Failed | TaskStatus::TimedOut | TaskStatus::Interrupted
+            )
+        })
+        .count();
+    let oniux_only = records
+        .iter()
+        .filter(|r| r.error_code.as_deref() == Some("ONIUX_UNAVAILABLE"))
+        .count();
+    let any_output = records
+        .iter()
+        .any(|r| r.stdout_bytes > 0 || r.stderr_bytes > 0);
+
+    if cancelled {
+        return "RUN CANCELLED".to_string();
+    }
+    if complete == 0 {
+        if !records.is_empty() && oniux_only == records.len() {
+            return "NETWORK BOUNDARY UNAVAILABLE".to_string();
+        }
+        return "EXECUTION FAILED".to_string();
+    }
+    if stats.final_findings > 0 {
+        return if failures == 0 {
+            "COMPLETE".to_string()
+        } else {
+            format!("COMPLETE WITH {failures} FAILED")
+        };
+    }
+    if failures > 0 {
+        return "EXECUTION FAILED".to_string();
+    }
+    if stats.tasks_parsed < stats.tasks {
+        return "UNPARSED OUTPUT".to_string();
+    }
+    if any_output && stats.raw_records == 0 {
+        return "UNPARSED OUTPUT".to_string();
+    }
+    "NO FINDINGS".to_string()
+}
+
+/// The complete operator document written to `output.txt`.
+///
+/// Header (run, state, task tally, missing providers, pipeline counts), then
+/// the findings grouped under their category headings — left-aligned, no
+/// decoration, the full harvest with nothing truncated.
+fn output_document(
+    records: &[ExecutionRecord],
+    outcome: &HarvestOutcome,
+    header: &OutputHeader<'_>,
+) -> String {
+    use crate::domain::execution::TaskStatus;
+    let mut text = String::new();
+
+    text.push_str(&format!("TSEC {}\n", crate::VERSION));
+    text.push_str(&format!("RUN      {}\n", header.run_name));
+    text.push_str(&format!(
+        "PHASE    {}\nCAPABILITY {}\n",
+        header.phase, header.capability
+    ));
+    text.push_str(&format!("STATE    {}\n", outcome.state));
+
+    // Task tally straight from the records, in a stable order.
+    let statuses = [
+        (TaskStatus::Complete, "COMPLETE"),
+        (TaskStatus::Failed, "FAILED"),
+        (TaskStatus::TimedOut, "TIMED OUT"),
+        (TaskStatus::Interrupted, "CANCELLED"),
+        (TaskStatus::Skipped, "SKIPPED"),
+    ];
+    let counts: Vec<String> = statuses
+        .iter()
+        .map(|(status, label)| {
+            let count = records.iter().filter(|r| r.status == *status).count();
+            format!("{label} {count}")
+        })
+        .collect();
+    text.push_str(&format!("TASKS    {}\n", counts.join(" · ")));
+
+    if !header.missing_providers.is_empty() {
+        text.push_str(&format!(
+            "PROVIDERS NOT INSTALLED  {}\n",
+            header.missing_providers.join(", ")
+        ));
+    }
+    text.push_str(&format!("PIPELINE {}\n", outcome.stats.summary()));
+    for note in &outcome.notes {
+        text.push_str(&format!("NOTE     {note}\n"));
+    }
+    text.push('\n');
+
+    // Findings grouped by category, discovery order within each group.
+    let mut last_heading: Option<&'static str> = None;
+    for finding in &outcome.findings {
+        let heading = finding.category.heading();
+        if last_heading != Some(heading) {
+            if last_heading.is_some() {
+                text.push('\n');
+            }
+            text.push_str(&format!("{heading}\n"));
+            last_heading = Some(heading);
+        }
+        text.push_str(&format!("  {}\n", finding.line()));
+    }
+    if outcome.findings.is_empty() {
+        text.push_str("NO FINDINGS RECORDED\n");
+    }
+    text
+}
+
+/// One stage of the real harvest pipeline, in execution order.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HarvestStage {
+    Parsing,
+    Normalizing,
+    Deduplicating,
+    Correlating,
+    Harvesting,
+    Writing,
+}
+
+impl HarvestStage {
+    /// Every stage, in pipeline order.
+    pub const ALL: [HarvestStage; 6] = [
+        HarvestStage::Parsing,
+        HarvestStage::Normalizing,
+        HarvestStage::Deduplicating,
+        HarvestStage::Correlating,
+        HarvestStage::Harvesting,
+        HarvestStage::Writing,
+    ];
+
+    pub fn label(self) -> &'static str {
+        match self {
+            HarvestStage::Parsing => "Parsing provider output",
+            HarvestStage::Normalizing => "Normalizing findings",
+            HarvestStage::Deduplicating => "Deduplicating results",
+            HarvestStage::Correlating => "Correlating assets",
+            HarvestStage::Harvesting => "Harvesting intelligence",
+            HarvestStage::Writing => "Writing output",
+        }
+    }
+
+    /// Short uppercase token for the JSON verification report.
+    pub fn token(self) -> &'static str {
+        match self {
+            HarvestStage::Parsing => "PARSING",
+            HarvestStage::Normalizing => "NORMALIZING",
+            HarvestStage::Deduplicating => "DEDUPLICATING",
+            HarvestStage::Correlating => "CORRELATING",
+            HarvestStage::Harvesting => "HARVESTING",
+            HarvestStage::Writing => "WRITING",
+        }
+    }
 }
 
 /// Write `bytes` to `path` atomically: same-directory temp file, then rename.
@@ -366,14 +712,18 @@ mod tests {
 
         let mut formats = std::collections::BTreeMap::new();
         formats.insert("naabu".to_string(), crate::catalog::OutputFormat::Lines);
-        let out = store.harvest(&formats).unwrap();
+        let out = store
+            .harvest(&formats, &OutputHeader::default(), None)
+            .unwrap();
 
         assert!(!out.findings.is_empty());
-        let text = std::fs::read_to_string(store.harvest_txt()).unwrap();
+        assert!(out.stats.raw_records >= out.findings.len());
+        let text = std::fs::read_to_string(store.output_txt()).unwrap();
         assert!(text.contains("22"), "{text}");
         let json: serde_json::Value =
-            serde_json::from_str(&std::fs::read_to_string(store.harvest_json()).unwrap()).unwrap();
+            serde_json::from_str(&std::fs::read_to_string(store.output_json()).unwrap()).unwrap();
         assert!(json.is_array());
+        assert!(!store.harvest_txt().exists() || store.output_txt().exists());
     }
 
     #[test]
@@ -397,10 +747,12 @@ mod tests {
         store.commit(local).unwrap();
 
         let formats = std::collections::BTreeMap::new();
-        store.harvest(&formats).unwrap();
+        store
+            .harvest(&formats, &OutputHeader::default(), None)
+            .unwrap();
 
         let json: serde_json::Value =
-            serde_json::from_str(&std::fs::read_to_string(store.harvest_json()).unwrap()).unwrap();
+            serde_json::from_str(&std::fs::read_to_string(store.output_json()).unwrap()).unwrap();
         let boundaries: Vec<String> = json
             .as_array()
             .unwrap()
@@ -438,7 +790,9 @@ mod tests {
         let mut formats = std::collections::BTreeMap::new();
         // Deliberately keyed by operation, as the orchestrator will supply it.
         formats.insert("nmap/op".to_string(), crate::catalog::OutputFormat::Nmap);
-        let out = store.harvest(&formats).unwrap();
+        let out = store
+            .harvest(&formats, &OutputHeader::default(), None)
+            .unwrap();
         assert!(
             out.findings
                 .iter()

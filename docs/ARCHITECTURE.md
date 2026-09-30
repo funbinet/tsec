@@ -137,19 +137,35 @@ truncated with a note and a finding; the raw file keeps everything.
 
 ## 6. Presentation
 
-`ui/panel.rs` owns geometry and drawing: a centred box, a one-word title, rows,
-and `-[ENTER]` underneath. `ui/menu.rs` builds screens out of panels; `ui/output.rs`
-builds the harvest panel; `ui/theme.rs` resolves palettes and colour depth;
-`ui/spinner.rs` animates one line while tasks run.
+`ui/panel.rs` owns geometry and drawing: full-terminal-width adaptive boxes (`inner = cols - 2`)
+that resize dynamically with the terminal. Menus format and center choices cleanly, while
+document viewers, output inspection, and execution monitors use left-alignment for dense,
+structured output.
 
-Keys are fixed: `I`/`↑` up, `K`/`↓` down, `J`/`←` back, `L`/`→`/Enter select,
-`Esc` close, `Ctrl+C` leave. Rows that cannot be chosen are skipped by the cursor
-and explain themselves when the cursor lands on them.
+Keys are fixed and consistent:
+- `I` / `↑` up (linear navigation across all capabilities without skipping any item)
+- `K` / `↓` down (linear navigation across all capabilities without skipping any item)
+- `J` / `←` back / close current panel
+- `L` / `→` / `Enter` / `Space` select or activate item
+- `Esc` close / back
+- `Ctrl+C` context-sensitive: cancels input prompts, confirms before stopping operations (`Stop ongoing operations? [y/N]`, default `N`)
 
-The theme adapts: palettes (`midnight`, `graphite`, `solarized-dark`,
-`solarized-light`, `daylight`, `ashen`), depth detection (truecolor → 256 → 16 →
-none), `NO_COLOR` honoured, and `color = "always"` for pipes. Styling never
-changes the text, only its colour, so a screenshot and a log agree.
+Provider readiness is explicitly reported (`[READY]`, `[PARTIAL]`, `[PROVIDER MISSING]`).
+Selecting an unavailable capability does not fail silently; instead, it opens Arch Linux
+installation guidance (`install::advise`), querying `pacman -Si` and AUR helpers to guide the operator.
+
+The execution engine (`ui/execution.rs`) monitors multi-operation concurrent jobs with:
+- Live ~12 fps smooth spinner per active job.
+- Per-operation status (`PENDING`, `RUNNING`, `SUCCEEDED`, `FAILED`, `INTERRUPTED`).
+- Live command line display with masked credentials (`[REDACTED]`).
+- 6-stage pipeline: `Parsing` → `Normalizing` → `Deduplicating` → `Correlating` → `Harvesting` → `Writing`.
+- Truthful outcome reporting (never masking missing boundaries or errors as "NO FINDINGS").
+- Output preview up to 500 lines, prompt `Open full output? [Y/n]`, and full document viewer (`ui/output::view_document`).
+
+The theme adapts: system theme discovery (`omarchy`, `pywal`, `base16`), built-in palettes (`midnight`,
+`graphite`, `solarized-dark`, `solarized-light`, `daylight`, `ashen`), depth detection (truecolor → 256 → 16 → none),
+`NO_COLOR` honoured, and `color = "always"` for pipes. Styling never changes the text, only its colour,
+so a screenshot and a log agree.
 
 ## 7. Configuration
 

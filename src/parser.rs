@@ -102,6 +102,41 @@ impl Harvest {
         self.truncated |= other.truncated;
     }
 
+    /// Normalize every value in place and drop the ones that carry no
+    /// information, returning how many findings survived.
+    ///
+    /// This is the real NORMALIZING stage: whitespace is collapsed, matching
+    /// outer quotes and a trailing dot (the DNS root label) are removed, and
+    /// placeholder values (`n/a`, `none`, `null`, `-`) are discarded — they
+    /// would otherwise pad the harvest with rows an operator can never act on.
+    pub fn normalize(&mut self) -> usize {
+        self.findings.retain_mut(|f| {
+            let mut value = f.value.split_whitespace().collect::<Vec<_>>().join(" ");
+            if value.len() >= 2 {
+                let bytes = value.as_bytes();
+                let quote = bytes[0];
+                if (quote == b'"' || quote == b'\'') && bytes[value.len() - 1] == quote {
+                    value = value[1..value.len() - 1].to_string();
+                }
+            }
+            while value.ends_with('.') {
+                value.pop();
+            }
+            value = value.trim().to_string();
+            let junk = value.is_empty()
+                || matches!(
+                    value.to_ascii_lowercase().as_str(),
+                    "n/a" | "na" | "none" | "null" | "-" | "--" | "?" | "unknown"
+                );
+            if junk {
+                return false;
+            }
+            f.value = value;
+            true
+        });
+        self.findings.len()
+    }
+
     /// Collapse duplicates, keeping every distinct provenance.
     ///
     /// Order is stable and deterministic: findings come out in the order their

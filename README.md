@@ -55,43 +55,54 @@ tsec --help
 
 ## Driving the interface
 
-Every screen is one centred box: a one-word title, the choices that belong to
-it, and `-[ENTER]` underneath when Enter makes a selection. There is no
-numbering, no breadcrumb and no status badge anywhere.
+Every screen utilizes a full-terminal-width adaptive box frame (`inner = cols - 2`)
+that adapts cleanly to terminal resizes. Menus present clean, centred choices with
+subtle hints, while execution monitoring and document viewers are left-aligned for
+maximum readability.
 
 | Key | Action |
 |---|---|
-| `I` / `↑` | move up |
-| `K` / `↓` | move down |
-| `J` / `←` | back — closes the current box |
-| `L` / `→` / `Enter` / `Space` | select |
-| `Esc` | exit / close |
-| `Ctrl+C` | leave immediately; a running task's process group is terminated |
+| `I` / `↑` | move up (linear navigation across all capabilities) |
+| `K` / `↓` | move down (linear navigation across all capabilities) |
+| `J` / `←` | back — closes current screen or returns to parent menu |
+| `L` / `→` / `Enter` / `Space` | select / activate item |
+| `Esc` | back / close / exit |
+| `Ctrl+C` | context-sensitive cancel: cancels input prompt, confirms before stopping operations (`Stop ongoing operations? [y/N]`, default `N`) |
 
-The top level lists the ten phases plus two screens:
+The top level lists the ten phases plus two management screens:
 
-- **`STATUS`** — version, theme, catalog size, live availability per phase, and
+- **`STATUS`** — version, active theme source, catalog size, live availability per phase, and
   whether the oniux boundary resolves.
-- **`OUTPUTS`** — previous runs. Selecting one reads its consolidated harvest
-  back; nothing is re-executed.
+- **`OUTPUTS`** — previous runs browser with scrollable viewer (`view_document`) and output inspection.
 
-A capability whose providers are missing is still listed, drawn dimmed, and
-cannot be selected — move onto it and the box says which binary is absent.
+### Provider availability and guidance
+
+Capabilities display their real-time host readiness:
+- **`[READY]`** — All declared provider binaries are available on `PATH` or configured search paths.
+- **`[PARTIAL]`** — Some provider binaries are present; runnable operations will proceed.
+- **`[PROVIDER MISSING]`** — Provider executables are not found on the host.
+
+Selecting a capability with missing providers opens Arch Linux installation guidance (`install::advise`),
+querying `pacman -Si` and AUR helpers (`yay`, `paru`) to present the exact commands needed to install the missing packages.
+Navigation never skips missing capabilities, ensuring complete visibility across all 160 operational surfaces.
 
 ## Running a capability
 
-1. The capability's box appears, with its summary.
-2. Each declared input is prompted for, validated against its declared type
-   (`domain`, `target`, `url`, `ports`, `path`, `secret`, `mac`, …). Sensitive
-   inputs are masked everywhere they could otherwise be displayed or recorded.
-3. Every provider operation runs concurrently, bounded by
-   `execution.max_concurrency`. Each runs behind oniux.
-4. `OUTPUTS` reports how the tasks ended — complete, failed, interrupted and the
-   error codes — then the deduplicated findings, then where the evidence went.
-
-A task that fails is never silently dropped. A tool that exits non-zero, times
-out, or is refused by the boundary still produces a record, its raw stderr, and
-a line in the harvest.
+1. **Parameters & Inputs**: The capability's box appears with its summary. Each declared input is prompted for sequentially (left-aligned, unboxed), validated against its type (`domain`, `target`, `url`, `ports`, `path`, `secret`, `mac`, …). Sensitive inputs are masked everywhere. Pressing `Ctrl+C` during input cancels cleanly back to the menu.
+2. **Concurrent Execution Monitor**: Provider operations execute concurrently, bounded by `execution.max_concurrency` behind the `oniux` network boundary. The live monitor presents:
+   - Real ~12 fps smooth spinner per active operation.
+   - Per-operation status (`PENDING`, `RUNNING`, `SUCCEEDED`, `FAILED`, `INTERRUPTED`).
+   - Elapsed wall-clock execution timer.
+   - Redacted live command invocations (sensitive inputs replaced with `[REDACTED]`).
+   - Graceful interrupt handling: `Ctrl+C` displays an interactive prompt `Stop ongoing operations? [y/N]` (default `N`), preventing accidental cancellation.
+3. **6-Stage Processing Pipeline**: Completed raw captures are processed through a structured pipeline:
+   `Parsing` → `Normalizing` → `Deduplicating` → `Correlating` → `Harvesting` → `Writing`.
+4. **Truthful Outcome Reporting**: Failures, timeouts, and unavailable network boundaries are reported truthfully. A missing boundary displays `BOUNDARY UNAVAILABLE · oniux not found on PATH`; errors are never masked as "0 FINDINGS".
+5. **Output Preview & Document Viewer**:
+   - Consolidated findings preview up to 500 lines.
+   - Interactive prompt `Open full output? [Y/n]`.
+   - Scrollable full viewer (`view_document`) supporting `I`/`K`/`Up`/`Down`/`PageUp`/`PageDown` navigation.
+   - Persistent manifest and raw artifacts stored under `/opt/tsec/output/<run_id>/`.
 
 ## The catalog
 
@@ -217,6 +228,8 @@ src/exec/                   the single spawn site, oniux preflight, isolation
 src/parser.rs               nmap XML, JSON, line and raw parsing into findings
 src/store.rs                run directory, manifest, harvest, atomic writes
 src/ui/                     panels, menus, run flow, spinner, adaptive theme
+scripts/verify_tsec.py      catalog verification, schema audit, matrix generator
+reports/                    verification outputs (JSON and text matrices)
 docs/ARCHITECTURE.md        how the pieces fit and why
 docs/TROUBLESHOOTING.md     error codes and what to do about them
 REQUIREMENTS.TXT            the boundary and the provider toolset
@@ -229,11 +242,16 @@ cargo fmt --check
 cargo clippy --all-targets -- -D warnings
 cargo test              # includes loading and validating the shipped catalog
 cargo build --release
+python3 scripts/verify_tsec.py  # comprehensive audit of all 160 capabilities
 ```
 
 `cargo test` fails if `catalog/capabilities.toml` has a phase without sixteen
 capabilities, a label that is not two uppercase words, a placeholder with no
 matching input, or an argument containing shell syntax.
+
+`python3 scripts/verify_tsec.py` audits all 10 phases, 160 capabilities, and 870+
+operations, verifying package availability against local pacman sync databases and
+generating machine-readable reports in `reports/capability-verification.json`.
 
 ---
 

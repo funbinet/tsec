@@ -19,7 +19,6 @@ path = "src/main.rs"
 [dependencies]
 tokio          = { version = "1", features = ["rt-multi-thread", "process", "time", "sync", "io-util", "signal"] }
 crossterm      = "0.27"
-dialoguer      = { version = "0.11", features = ["history"] }
 clap           = { version = "4", features = ["derive"] }
 anyhow         = "1"
 thiserror      = "1"

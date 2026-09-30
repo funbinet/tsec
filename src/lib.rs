@@ -10,14 +10,13 @@
 //! An operator picks a *capability* — "PORT DISCOVERY", "TEMPLATE SCAN" — not a
 //! tool. The catalog (`catalog/capabilities.toml`) says which providers
 //! implement that capability and exactly how each is invoked. Nothing about a
-//! tool's flags is written in Rust, and nothing in the catalog is trusted until
-//! `scripts/verify_catalog.py` has checked every flag against that tool's own
-//! help output.
+//! tool's flags is written in Rust, and `scripts/verify_tsec.py` checks the
+//! whole catalog — inputs, commands, boundaries, parsers — on every change.
 //!
 //! # Guarantees the code is written to keep
 //!
 //! * **Verified syntax only.** A provider is offered only when its executable
-//!   resolves and its help output documents the flags in use. See
+//!   resolves and its operation arguments are declared by the catalog. See
 //!   [`provider`].
 //! * **No shell, ever.** Commands are argument vectors. A template containing
 //!   `|`, `>` or `&&` is rejected at load time rather than quietly mis-executed.
@@ -35,6 +34,10 @@
 
 // Copyright (c) funbinet. All rights reserved.
 // Part of TSEC terminal cybersecurity operations platform by funbinet.
+//
+// Repository: github.com/funbinet/tsec.git (origin)
+// Mirror:     codeberg.org/funbinet/tsec.git (codeberg)
+// Owner:      funbinet
 
 #![forbid(unsafe_op_in_unsafe_fn)]
 #![warn(missing_debug_implementations)]
@@ -44,6 +47,7 @@ pub mod config;
 pub mod domain;
 pub mod error;
 pub mod exec;
+pub mod install;
 pub mod parser;
 pub mod provider;
 pub mod store;

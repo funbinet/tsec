@@ -1,117 +1,274 @@
-//! What the operator sees after a capability has run.
+//! The `OUTPUT` document screens.
 //!
-//! The harvest is presented as one panel titled `OUTPUTS`. It opens with how the
-//! tasks actually ended and, when any of them failed, the error codes they
-//! failed with — because a run where every task was refused by the boundary must
-//! never read the same as a run that genuinely found nothing. Findings follow in
-//! discovery order as `[CATEGORY] value`, and the panel closes with the
-//! directory the full evidence was written to.
+//! One file — `output.txt`, written by the store — is the single source of
+//! truth. The preview shows its first [`PREVIEW_LIMIT`] lines inside a
+//! full-width, left-aligned box with the `OUTPUT FILE <path>` line and the
+//! `Open full output? [Y/n]` question underneath (default `N`; Enter, `N`,
+//! `J` or `Esc` all mean "no"). A `Y` opens the complete file in the
+//! scrollable viewer, which renders every line — the 500-line cap applies to
+//! the preview only, never to the saved artifact or the viewer.
 
 // Copyright (c) funbinet. All rights reserved.
 // Part of TSEC terminal cybersecurity operations platform by funbinet.
+//
+// Repository: github.com/funbinet/tsec.git (origin)
+// Mirror:     codeberg.org/funbinet/tsec.git (codeberg)
+// Owner:      funbinet
 
-use std::collections::BTreeMap;
 use std::io;
 use std::path::Path;
 
-use crate::domain::execution::{ExecutionRecord, TaskStatus};
-use crate::store::HarvestOutcome;
-use crate::ui::panel::{self, Geometry, RawMode};
+use crossterm::event::KeyCode;
+
+use crate::ui::panel::{self, box_frame, hint_frame, plain_frame, Geometry, Layout, Renderer};
 use crate::ui::theme::{Role, Theme};
 
-/// Show the harvest of one capability run, then wait for the operator to close.
-pub fn display_harvest(
+/// The initial preview shows at most this many lines of the document.
+pub const PREVIEW_LIMIT: usize = 500;
+
+/// Largest file the viewer will hold in memory (the parser's own raw cap).
+const VIEWER_MAX_BYTES: u64 = 16 * 1024 * 1024;
+
+/// Read a document into lines, refusing anything absurdly large.
+fn read_lines(path: &Path) -> io::Result<Vec<String>> {
+    let file = std::fs::File::open(path)?;
+    use std::io::Read;
+    let mut buf = Vec::new();
+    file.take(VIEWER_MAX_BYTES).read_to_end(&mut buf)?;
+    let text = String::from_utf8_lossy(&buf);
+    Ok(text.lines().map(str::to_string).collect())
+}
+
+/// Show the OUTPUT screen for a finished run's document.
+///
+/// Returns when the operator closes the screen; if they opened the full
+/// viewer, the preview loop resumes underneath it first.
+pub fn show_output(
     theme: &Theme,
-    outcome: &HarvestOutcome,
-    records: &[ExecutionRecord],
-    saved_dir: &Path,
-    max_preview: usize,
+    renderer: &mut Renderer,
+    out: &mut io::Stdout,
+    path: &Path,
 ) -> io::Result<()> {
-    let mut head = outcome_rows(outcome);
-    head.extend(failure_rows(records));
-
-    let mut tail: Vec<(String, Role)> = Vec::new();
-    for note in outcome.notes.iter().take(4) {
-        tail.push((note.clone(), Role::Warning));
-    }
-    tail.push((String::new(), Role::Muted));
-    tail.push((saved_dir.display().to_string(), Role::Secondary));
-
-    // Reserve the panel chrome and the rows already spoken for, so a long list
-    // of findings scrolls rather than pushing the box off the top of the screen.
-    let reserved = 6 + head.len() + tail.len();
-    let limit = max_preview.min(Geometry::detect().body_rows(reserved));
-
-    let mut rows = head;
-    if outcome.findings.is_empty() {
-        rows.push((
-            "no findings in the captured output".to_string(),
-            Role::Muted,
-        ));
-    } else {
-        for finding in outcome.findings.iter().take(limit) {
-            rows.push((
-                format!("[{}] {}", finding.category.heading(), finding.value),
-                Role::Foreground,
-            ));
+    let all = match read_lines(path) {
+        Ok(lines) => lines,
+        Err(e) => {
+            return show_error(
+                renderer,
+                out,
+                theme,
+                &format!("cannot read {}: {e}", path.display()),
+            )
         }
-        if outcome.findings.len() > limit {
+    };
+    let preview: Vec<&str> = all.iter().take(PREVIEW_LIMIT).map(String::as_str).collect();
+    let truncated = all.len() > preview.len();
+    let mut scroll = 0usize;
+
+    loop {
+        let g = Geometry::detect();
+        // Chrome: four box rows, five prompt rows under it, one hint line.
+        let visible = g.body_rows(4 + 5 + 1);
+
+        if scroll + visible > preview.len() {
+            scroll = preview.len().saturating_sub(visible);
+        }
+
+        let mut rows: Vec<(String, Role)> = preview
+            .iter()
+            .skip(scroll)
+            .take(visible.saturating_sub(1))
+            .map(|line| (line.to_string(), Role::Foreground))
+            .collect();
+        if truncated && scroll + rows.len() >= preview.len() {
             rows.push((
-                format!("{} more in harvest.txt", outcome.findings.len() - limit),
+                format!(
+                    "… {} more lines in the full output",
+                    all.len() - preview.len()
+                ),
+                Role::Muted,
+            ));
+        } else if truncated {
+            rows.push((
+                format!("… {} of {} preview lines shown", rows.len(), preview.len()),
                 Role::Muted,
             ));
         }
-    }
-    rows.extend(tail);
 
-    let _raw = RawMode::enter()?;
-    let mut out = io::stdout();
-    panel::draw(&mut out, theme, "OUTPUTS", &rows, true)?;
+        let mut frame = box_frame(theme, Layout::Output, "OUTPUT", &rows);
+        frame.append(plain_frame(
+            theme,
+            &[
+                (String::new(), Role::Muted),
+                ("OUTPUT FILE".to_string(), Role::Secondary),
+                (path.display().to_string(), Role::Accent),
+                (String::new(), Role::Muted),
+                ("Open full output? [Y/n]".to_string(), Role::Foreground),
+            ],
+        ));
+        frame.append(hint_frame(
+            theme,
+            "-[I/K] SCROLL   -[Y] OPEN FULL   -[J] CLOSE",
+        ));
+        renderer.present(out, &frame)?;
+
+        match panel::next_input()? {
+            panel::Input::Resize => continue,
+            panel::Input::Key(key) => {
+                if panel::is_interrupt(&key) {
+                    return Ok(());
+                }
+                match key.code {
+                    KeyCode::Char('y') | KeyCode::Char('Y') => {
+                        view_document(theme, renderer, out, "OUTPUT", path)?;
+                    }
+                    KeyCode::Char('n')
+                    | KeyCode::Char('N')
+                    | KeyCode::Enter
+                    | KeyCode::Esc
+                    | KeyCode::Char('j')
+                    | KeyCode::Char('J')
+                    | KeyCode::Left => return Ok(()),
+                    KeyCode::Char('i') | KeyCode::Char('I') | KeyCode::Up => {
+                        scroll = scroll.saturating_sub(1)
+                    }
+                    KeyCode::Char('k') | KeyCode::Char('K') | KeyCode::Down => {
+                        scroll = (scroll + 1).min(preview.len().saturating_sub(1))
+                    }
+                    KeyCode::PageUp => scroll = scroll.saturating_sub(visible),
+                    KeyCode::PageDown => {
+                        scroll = (scroll + visible).min(preview.len().saturating_sub(1))
+                    }
+                    _ => {}
+                }
+            }
+        }
+    }
+}
+
+/// The scrollable full-file viewer: every line of `path`, full width.
+pub fn view_document(
+    theme: &Theme,
+    renderer: &mut Renderer,
+    out: &mut io::Stdout,
+    title: &str,
+    path: &Path,
+) -> io::Result<()> {
+    let lines = match read_lines(path) {
+        Ok(lines) => lines,
+        Err(e) => {
+            return show_error(
+                renderer,
+                out,
+                theme,
+                &format!("cannot read {}: {e}", path.display()),
+            )
+        }
+    };
+    view_lines(theme, renderer, out, title, &lines)
+}
+
+/// The scrollable viewer over lines already in memory.
+pub fn view_lines(
+    theme: &Theme,
+    renderer: &mut Renderer,
+    out: &mut io::Stdout,
+    title: &str,
+    lines: &[String],
+) -> io::Result<()> {
+    let mut scroll = 0usize;
+    loop {
+        let g = Geometry::detect();
+        // Chrome: four box rows plus the hint line.
+        let visible = g.body_rows(5);
+        scroll = scroll.min(lines.len().saturating_sub(visible.min(lines.len())));
+
+        let rows: Vec<(String, Role)> = lines
+            .iter()
+            .skip(scroll)
+            .take(visible)
+            .map(|line| (line.to_string(), Role::Foreground))
+            .collect();
+
+        let mut frame = box_frame(theme, Layout::Viewer, title, &rows);
+        let position = if lines.is_empty() {
+            "EMPTY".to_string()
+        } else {
+            format!(
+                "LINES {}-{} OF {}",
+                scroll + 1,
+                (scroll + visible).min(lines.len()),
+                lines.len()
+            )
+        };
+        frame.append(hint_frame(
+            theme,
+            &format!("-[I/K] SCROLL   -[J/ESC] CLOSE   {position}"),
+        ));
+        renderer.present(out, &frame)?;
+
+        match panel::next_input()? {
+            panel::Input::Resize => continue,
+            panel::Input::Key(key) => {
+                if panel::is_interrupt(&key) {
+                    return Ok(());
+                }
+                match key.code {
+                    KeyCode::Char('i') | KeyCode::Char('I') | KeyCode::Up => {
+                        scroll = scroll.saturating_sub(1)
+                    }
+                    KeyCode::Char('k') | KeyCode::Char('K') | KeyCode::Down => {
+                        scroll = (scroll + 1).min(lines.len().saturating_sub(1))
+                    }
+                    KeyCode::PageUp => scroll = scroll.saturating_sub(visible),
+                    KeyCode::PageDown => {
+                        scroll = (scroll + visible).min(lines.len().saturating_sub(1))
+                    }
+                    KeyCode::Char('j')
+                    | KeyCode::Char('J')
+                    | KeyCode::Esc
+                    | KeyCode::Enter
+                    | KeyCode::Left => return Ok(()),
+                    _ => {}
+                }
+            }
+        }
+    }
+}
+
+/// A one-screen error notice, closed with any of the usual keys.
+pub fn show_error(
+    renderer: &mut Renderer,
+    out: &mut io::Stdout,
+    theme: &Theme,
+    message: &str,
+) -> io::Result<()> {
+    let frame = box_frame(
+        theme,
+        Layout::Information,
+        "ERROR",
+        &[(message.to_string(), Role::Error)],
+    );
+    renderer.present(out, &frame)?;
     panel::wait_close()
 }
 
-/// How the tasks ended, and how much structured output they produced.
-fn outcome_rows(outcome: &HarvestOutcome) -> Vec<(String, Role)> {
-    vec![(
-        format!(
-            "{} FINDINGS  {} TASK SECTIONS",
-            outcome.findings.len(),
-            outcome.sections
-        ),
-        Role::Muted,
-    )]
-}
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-/// The task tally and the error codes behind it.
-fn failure_rows(records: &[ExecutionRecord]) -> Vec<(String, Role)> {
-    let complete = records.iter().filter(|r| r.status.is_success()).count();
-    let failed = records
-        .iter()
-        .filter(|r| matches!(r.status, TaskStatus::Failed | TaskStatus::TimedOut))
-        .count();
-    let interrupted = records
-        .iter()
-        .filter(|r| r.status == TaskStatus::Interrupted)
-        .count();
-
-    let role = if failed + interrupted > 0 {
-        Role::Warning
-    } else {
-        Role::Muted
-    };
-    let mut rows = vec![(
-        format!("{complete} COMPLETE  {failed} FAILED  {interrupted} INTERRUPTED"),
-        role,
-    )];
-
-    let mut codes: BTreeMap<&str, usize> = BTreeMap::new();
-    for record in records {
-        if let Some(code) = record.error_code.as_deref() {
-            *codes.entry(code).or_default() += 1;
-        }
+    #[test]
+    fn preview_limit_is_five_hundred_lines() {
+        assert_eq!(PREVIEW_LIMIT, 500);
     }
-    for (code, count) in codes.iter().take(4) {
-        rows.push((format!("{code} x{count}"), Role::Error));
+
+    #[test]
+    fn read_lines_reads_a_file_and_reports_missing_files() {
+        let dir = std::env::temp_dir().join(format!("tsec-out-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("doc.txt");
+        std::fs::write(&path, "one\ntwo\nthree\n").unwrap();
+        assert_eq!(read_lines(&path).unwrap(), vec!["one", "two", "three"]);
+        assert!(read_lines(&dir.join("missing.txt")).is_err());
+        let _ = std::fs::remove_dir_all(&dir);
     }
-    rows
 }

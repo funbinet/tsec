@@ -14,6 +14,7 @@
 
 # Runtime workspace created on first launch from a checkout
 /config/
+/.freebuff
 
 # Secrets
 .env

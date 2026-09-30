@@ -1,82 +1,47 @@
-//! A one-line progress indicator for the duration of a task.
+//! Spinner glyphs for running tasks.
 //!
-//! The runner is synchronous from the caller's point of view, so the animation
-//! lives on its own thread and stops the moment the task ends. A task that
-//! never completes never claims to have completed: the line simply keeps
-//! turning until the timeout or an interrupt ends it.
+//! The animation has no thread of its own: the execution monitor owns the
+//! frame clock, asks for a glyph for the tasks that are genuinely running, and
+//! writes exactly one frame per tick. A glyph is only ever drawn for a task
+//! whose child process is alive — the moment it exits, the task's terminal
+//! status (tick, cross, timeout) takes its place.
 
 // Copyright (c) funbinet. All rights reserved.
 // Part of TSEC terminal cybersecurity operations platform by funbinet.
+//
+// Repository: github.com/funbinet/tsec.git (origin)
+// Mirror:     codeberg.org/funbinet/tsec.git (codeberg)
+// Owner:      funbinet
 
-use std::io::Write;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
-use std::thread::{self, JoinHandle};
 use std::time::Duration;
 
-use crossterm::style::{Color, Print, ResetColor, SetForegroundColor};
-use crossterm::{cursor, execute};
+/// Braille spinner frames, in animation order.
+pub const FRAMES: [&str; 8] = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧"];
 
-const FRAMES: [&str; 8] = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧"];
-const TICK: Duration = Duration::from_millis(90);
+/// One animation step. ~12 frames per second: alive, but never flickering.
+pub const TICK: Duration = Duration::from_millis(80);
 
-/// A turning line with a label, stopped by [`Spinner::stop`] or by drop.
-#[derive(Debug)]
-pub struct Spinner {
-    stop: Arc<AtomicBool>,
-    worker: Option<JoinHandle<()>>,
+/// The glyph for animation step `tick`.
+pub fn frame(tick: usize) -> &'static str {
+    FRAMES[tick % FRAMES.len()]
 }
 
-impl Spinner {
-    /// Start turning `label` until stopped.
-    pub fn start(label: impl Into<String>) -> Self {
-        let label = label.into();
-        let stop = Arc::new(AtomicBool::new(false));
-        let flag = stop.clone();
-        let worker = thread::spawn(move || {
-            let mut frame = 0usize;
-            while !flag.load(Ordering::Relaxed) {
-                let mut out = std::io::stdout();
-                let _ = execute!(
-                    out,
-                    SetForegroundColor(Color::DarkGrey),
-                    Print(format!("\r{} {}", FRAMES[frame % FRAMES.len()], label)),
-                    ResetColor
-                );
-                let _ = out.flush();
-                frame += 1;
-                thread::sleep(TICK);
-            }
-            let mut out = std::io::stdout();
-            let _ = execute!(
-                out,
-                cursor::MoveToColumn(0),
-                Print(" ".repeat(label.len() + 4))
-            );
-            let _ = execute!(out, cursor::MoveToColumn(0), ResetColor);
-            let _ = out.flush();
-        });
-        Self {
-            stop,
-            worker: Some(worker),
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn frames_cycle_without_panicking() {
+        for tick in 0..100 {
+            assert!(!frame(tick).is_empty());
         }
+        assert_eq!(frame(0), frame(8));
     }
 
-    /// Stop the animation and clear the line.
-    pub fn stop(mut self) {
-        self.halt();
-    }
-
-    fn halt(&mut self) {
-        self.stop.store(true, Ordering::Relaxed);
-        if let Some(handle) = self.worker.take() {
-            let _ = handle.join();
-        }
-    }
-}
-
-impl Drop for Spinner {
-    fn drop(&mut self) {
-        self.halt();
+    #[test]
+    fn tick_is_a_sane_refresh_rate() {
+        // Between 8 and 20 frames per second.
+        let fps = 1_000.0 / TICK.as_millis() as f64;
+        assert!((8.0..=20.0).contains(&fps), "{fps}");
     }
 }
