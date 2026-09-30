@@ -1,67 +1,117 @@
+//! What the operator sees after a capability has run.
+//!
+//! The harvest is presented as one panel titled `OUTPUTS`. It opens with how the
+//! tasks actually ended and, when any of them failed, the error codes they
+//! failed with — because a run where every task was refused by the boundary must
+//! never read the same as a run that genuinely found nothing. Findings follow in
+//! discovery order as `[CATEGORY] value`, and the panel closes with the
+//! directory the full evidence was written to.
+
 // Copyright (c) funbinet. All rights reserved.
 // Part of TSEC terminal cybersecurity operations platform by funbinet.
 
+use std::collections::BTreeMap;
+use std::io;
 use std::path::Path;
-use crate::parser::MergedFinding;
+
+use crate::domain::execution::{ExecutionRecord, TaskStatus};
 use crate::store::HarvestOutcome;
+use crate::ui::panel::{self, Geometry, RawMode};
 use crate::ui::theme::{Role, Theme};
 
-/// Display a preview of harvested findings, summary counts, and the saved artifact path.
-pub fn display_harvest(theme: &Theme, outcome: &HarvestOutcome, saved_dir: &Path, max_preview: usize) {
-    println!();
-    display_preview(theme, &outcome.findings, max_preview);
-    display_summary(theme, outcome);
-    display_saved(theme, saved_dir);
-}
+/// Show the harvest of one capability run, then wait for the operator to close.
+pub fn display_harvest(
+    theme: &Theme,
+    outcome: &HarvestOutcome,
+    records: &[ExecutionRecord],
+    saved_dir: &Path,
+    max_preview: usize,
+) -> io::Result<()> {
+    let mut head = outcome_rows(outcome);
+    head.extend(failure_rows(records));
 
-/// Show the first `max` findings in a bordered box.
-pub fn display_preview(theme: &Theme, findings: &[MergedFinding], max: usize) {
-    let inner_width = 76usize;
-    let border = "═".repeat(inner_width);
+    let mut tail: Vec<(String, Role)> = Vec::new();
+    for note in outcome.notes.iter().take(4) {
+        tail.push((note.clone(), Role::Warning));
+    }
+    tail.push((String::new(), Role::Muted));
+    tail.push((saved_dir.display().to_string(), Role::Secondary));
 
-    println!("{}", theme.paint(Role::Border, &format!("╔{}╗", border)));
-    let title = "  Harvest Findings Preview";
-    let title_line = format!("║ {:<74} ║", title);
-    println!("{}", theme.paint(Role::Border, &title_line));
-    println!("{}", theme.paint(Role::Border, &format!("╠{}╣", border)));
+    // Reserve the panel chrome and the rows already spoken for, so a long list
+    // of findings scrolls rather than pushing the box off the top of the screen.
+    let reserved = 6 + head.len() + tail.len();
+    let limit = max_preview.min(Geometry::detect().body_rows(reserved));
 
-    if findings.is_empty() {
-        let empty_line = format!("║ {:<74} ║", "  (no findings discovered)");
-        println!("{}", theme.paint(Role::Muted, &empty_line));
+    let mut rows = head;
+    if outcome.findings.is_empty() {
+        rows.push((
+            "no findings in the captured output".to_string(),
+            Role::Muted,
+        ));
     } else {
-        for (i, f) in findings.iter().take(max).enumerate() {
-            let line = format!("{:>3}. [{}] {}", i + 1, f.category.heading(), f.value);
-            let truncated = if line.chars().count() > 72 {
-                let s: String = line.chars().take(69).collect();
-                format!("{}...", s)
-            } else {
-                line
-            };
-            let formatted_line = format!("║ {:<74} ║", truncated);
-            println!("{}", theme.paint(Role::Primary, &formatted_line));
+        for finding in outcome.findings.iter().take(limit) {
+            rows.push((
+                format!("[{}] {}", finding.category.heading(), finding.value),
+                Role::Foreground,
+            ));
         }
-
-        if findings.len() > max {
-            let more = format!("... {} more finding(s) in harvest.txt", findings.len() - max);
-            let more_line = format!("║ {:<74} ║", more);
-            println!("{}", theme.paint(Role::Muted, &more_line));
+        if outcome.findings.len() > limit {
+            rows.push((
+                format!("{} more in harvest.txt", outcome.findings.len() - limit),
+                Role::Muted,
+            ));
         }
     }
+    rows.extend(tail);
 
-    println!("{}", theme.paint(Role::Border, &format!("╚{}╝", border)));
+    let _raw = RawMode::enter()?;
+    let mut out = io::stdout();
+    panel::draw(&mut out, theme, "OUTPUTS", &rows, true)?;
+    panel::wait_close()
 }
 
-/// Print execution summary metrics.
-pub fn display_summary(theme: &Theme, outcome: &HarvestOutcome) {
-    println!();
-    let label = theme.paint(Role::Success, "  [✓] Summary: ");
-    let text = format!("{} findings across {} task sections", outcome.findings.len(), outcome.sections);
-    println!("{}{}", label, theme.paint(Role::Foreground, &text));
+/// How the tasks ended, and how much structured output they produced.
+fn outcome_rows(outcome: &HarvestOutcome) -> Vec<(String, Role)> {
+    vec![(
+        format!(
+            "{} FINDINGS  {} TASK SECTIONS",
+            outcome.findings.len(),
+            outcome.sections
+        ),
+        Role::Muted,
+    )]
 }
 
-/// Print the destination directory of saved evidence.
-pub fn display_saved(theme: &Theme, path: &Path) {
-    let label = theme.paint(Role::Accent, "  [~] Saved → ");
-    println!("{}{}", label, theme.paint(Role::Secondary, &path.display().to_string()));
-    println!();
+/// The task tally and the error codes behind it.
+fn failure_rows(records: &[ExecutionRecord]) -> Vec<(String, Role)> {
+    let complete = records.iter().filter(|r| r.status.is_success()).count();
+    let failed = records
+        .iter()
+        .filter(|r| matches!(r.status, TaskStatus::Failed | TaskStatus::TimedOut))
+        .count();
+    let interrupted = records
+        .iter()
+        .filter(|r| r.status == TaskStatus::Interrupted)
+        .count();
+
+    let role = if failed + interrupted > 0 {
+        Role::Warning
+    } else {
+        Role::Muted
+    };
+    let mut rows = vec![(
+        format!("{complete} COMPLETE  {failed} FAILED  {interrupted} INTERRUPTED"),
+        role,
+    )];
+
+    let mut codes: BTreeMap<&str, usize> = BTreeMap::new();
+    for record in records {
+        if let Some(code) = record.error_code.as_deref() {
+            *codes.entry(code).or_default() += 1;
+        }
+    }
+    for (code, count) in codes.iter().take(4) {
+        rows.push((format!("{code} x{count}"), Role::Error));
+    }
+    rows
 }

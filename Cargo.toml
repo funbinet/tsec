@@ -1,3 +1,6 @@
+# Copyright (c) funbinet. All rights reserved.
+# Part of TSEC terminal cybersecurity operations platform by funbinet.
+
 [package]
 name          = "tsec"
 version       = "3.0.0"

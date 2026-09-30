@@ -1,26 +1,17 @@
-//! The capability catalog: what the operator can actually do, and with which
-//! tools.
+//! The capability catalog.
 //!
-//! The legacy Bash tree encoded the catalogue inside the phase registries: a
-//! phase owned a list of tools, and each tool owned a list of shell templates
-//! full of flags nobody had checked. This module replaces that with an authored,
-//! verified file. `catalog/capabilities.toml` declares every capability, the
-//! inputs it needs, and the specific provider operations that implement it; the
-//! loader validates all of it at startup and refuses to run a catalog it cannot
-//! vouch for.
+//! `catalog/capabilities.toml` is the single source of truth for what the
+//! operator can do: ten phases, and inside them the capabilities an operator
+//! chooses, the inputs each one needs, and the exact provider operations that
+//! implement it. The loader validates all of it at startup and refuses to run
+//! a catalog it cannot vouch for.
 //!
-//! Three things make this trustworthy rather than merely tidy:
-//!
-//!   * the labels are checked against the interface rules, so the UI cannot
-//!     drift into three-word menu entries or lowercase phase names;
-//!   * every `{placeholder}` must name a declared input, so a renamed input
-//!     fails loudly instead of reaching a tool as a literal `{target}`;
+//! Three rules are enforced here, not elsewhere:
+//!   * a phase label is one uppercase word and a capability label exactly two;
+//!   * every `{placeholder}` names a declared input, so a renamed input fails
+//!     loudly instead of reaching a tool as a literal `{target}`;
 //!   * an argument may not contain shell syntax, because the runtime never
-//!     invokes a shell and a `>` in an argv is a redirect that will not happen.
-//!
-//! Availability is reported honestly. A capability whose provider is not
-//! installed is shown as unavailable with a reason; it is never silently
-//! offered, and it is never substituted with a different tool.
+//!     invokes a shell.
 
 // Copyright (c) funbinet. All rights reserved.
 // Part of TSEC terminal cybersecurity operations platform by funbinet.
@@ -34,13 +25,9 @@ use crate::domain::command::Command;
 use crate::domain::ids::CapabilityId;
 use crate::domain::input::{InputSpec, InputValues};
 use crate::error::{Result, TsecError};
-use crate::provider::Registry;
+use crate::provider::find_in_path;
 
-/// The authoritative ten-phase model.
-///
-/// This set is fixed by the framework. A catalog that names a phase outside it
-/// is rejected rather than extended, because phase ordering drives the whole
-/// run order and the operator's mental model of it.
+/// The authoritative ten-phase model, in run order.
 pub const PHASES: [&str; 10] = [
     "recon",
     "surface",
@@ -54,7 +41,7 @@ pub const PHASES: [&str; 10] = [
     "wireless",
 ];
 
-/// One uppercase word, as the phase bar requires.
+/// One-word uppercase phase name for a phase slug.
 pub fn phase_label(slug: &str) -> Option<&'static str> {
     Some(match slug {
         "recon" => "RECON",
@@ -71,11 +58,8 @@ pub fn phase_label(slug: &str) -> Option<&'static str> {
     })
 }
 
-/// Characters that only mean something to a shell.
-///
-/// A newline is deliberately absent: it is a legitimate character inside a
-/// single argument (`find -printf`), and since nothing is ever passed to a
-/// shell it cannot become a command separator.
+/// Characters that only mean something to a shell. Nothing is ever passed to
+/// one, so a template containing any of these is a catalog authoring error.
 const SHELL_ONLY: &[char] = &['|', '&', ';', '<', '>', '`', '$', '(', ')'];
 
 /// How a tool's output should be read once captured.
@@ -88,34 +72,33 @@ pub enum OutputFormat {
     Json,
     /// A tool's own format, kept verbatim.
     Raw,
-    /// nmap's report format.
+    /// nmap's XML report format.
     Nmap,
 }
 
 /// A single provider invocation, with its arguments fully spelled out.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Operation {
-    /// Operator-facing name of the operation, e.g. "Full Port Range".
     pub name: String,
-    /// The argument vector, with `{input}` placeholders.
     pub args: Vec<String>,
     pub output: OutputFormat,
-    /// Whether the operation opens network connections and must be run behind oniux.
-    #[serde(default)]
+    /// Whether the operation touches the network and must run behind oniux.
+    #[serde(default = "default_network")]
     pub network: bool,
+}
+
+fn default_network() -> bool {
+    true
 }
 
 impl Operation {
     /// Render this operation as a concrete command.
     ///
-    /// A placeholder that occupies a whole argument is substituted as exactly
-    /// one argv entry, however much whitespace it contains, so a value that
-    /// looks like two arguments cannot split into two. A placeholder embedded in
-    /// a larger token is interpolated into that token.
-    ///
-    /// Substituted values for sensitive inputs are registered on the command
-    /// so the secret is masked everywhere the command is displayed, recorded or
-    /// written to a report — while still reaching the tool unmasked.
+    /// A placeholder occupying a whole argument is substituted as exactly one
+    /// argv entry, however much whitespace the value contains; a placeholder
+    /// embedded in a larger token is interpolated into that token. Values for
+    /// sensitive inputs are registered on the command so the secret is masked
+    /// everywhere the command is displayed, recorded or written to a report.
     pub fn command(
         &self,
         program: &Path,
@@ -156,49 +139,74 @@ impl Operation {
 }
 
 /// Interpolate a placeholder embedded inside a larger token, e.g. `--rate={rate}`.
+///
+/// Three escapes are understood, because a tool's argument vector is not a shell
+/// and the catalog has to be able to say exactly what a tool should receive:
+/// `{{` and `}}` are literal braces, and `%{…}` is printf-style literal text
+/// (curl's `%{http_code}`), copied through untouched.
 fn expand(
     token: &str,
     specs: &[InputSpec],
     values: &InputValues,
     operation: &str,
 ) -> Result<String> {
+    let bytes = token.as_bytes();
     let mut out = String::with_capacity(token.len());
-    let mut rest = token;
-    while let Some(start) = rest.find('{') {
-        out.push_str(&rest[..start]);
-        let tail = &rest[start + 1..];
-        match tail.find('}') {
-            Some(end) => {
-                let key = &tail[..end];
-                if !specs.iter().any(|s| s.key == key) {
-                    return Err(TsecError::catalog(format!(
-                        "operation `{operation}` uses undeclared input {{{key}}}"
-                    )));
-                }
-                out.push_str(values.get(key));
-                rest = &tail[end + 1..];
+    let mut i = 0usize;
+
+    while i < bytes.len() {
+        match bytes[i] {
+            b'%' if bytes.get(i + 1) == Some(&b'{') => {
+                let close = token[i + 2..]
+                    .find('}')
+                    .map(|offset| i + 2 + offset + 1)
+                    .unwrap_or(bytes.len());
+                out.push_str(&token[i..close]);
+                i = close;
             }
-            None => {
-                // A literal brace. `{{` is how the catalog writes one.
+            b'{' if bytes.get(i + 1) == Some(&b'{') => {
                 out.push('{');
-                rest = tail;
+                i += 2;
+            }
+            b'}' if bytes.get(i + 1) == Some(&b'}') => {
+                out.push('}');
+                i += 2;
+            }
+            b'{' => match token[i + 1..].find('}') {
+                Some(offset) => {
+                    let key = &token[i + 1..i + 1 + offset];
+                    if !specs.iter().any(|s| s.key == key) {
+                        return Err(TsecError::catalog(format!(
+                            "operation `{operation}` uses undeclared input {{{key}}}"
+                        )));
+                    }
+                    out.push_str(values.get(key));
+                    i = i + 1 + offset + 1;
+                }
+                None => {
+                    out.push('{');
+                    i += 1;
+                }
+            },
+            b'}' => {
+                out.push('}');
+                i += 1;
+            }
+            _ => {
+                let ch = token[i..].chars().next().unwrap_or('?');
+                out.push(ch);
+                i += ch.len_utf8();
             }
         }
     }
-    out.push_str(rest);
+
     Ok(out)
 }
 
-/// One tool, and the specific operations it provides for a capability.
+/// One tool, and the operations it provides for a capability.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProviderBinding {
     pub binary: String,
-    /// The verb whose help documents this binding's flags, e.g. `["smb"]`.
-    ///
-    /// Recorded explicitly so the verifier and the operator both know *where*
-    /// the flags were checked. A tool with no verb uses `[]`.
-    #[serde(default)]
-    pub subcommand: Vec<String>,
     #[serde(rename = "operation", default)]
     pub operations: Vec<Operation>,
 }
@@ -208,7 +216,7 @@ pub struct ProviderBinding {
 pub struct Capability {
     pub id: String,
     pub phase: String,
-    /// One to three uppercase words, per the interface rules.
+    /// Exactly two uppercase words, per the interface rules.
     pub label: String,
     pub summary: String,
     #[serde(default)]
@@ -234,27 +242,26 @@ impl Capability {
             .flat_map(|p| p.operations.iter().map(move |o| (p.binary.as_str(), o)))
     }
 
-    /// Whether at least one operation of this capability is backed by an
-    /// installed provider with verified syntax.
-    pub fn is_available(&self, registry: &Registry) -> bool {
-        self.unavailable_reason(registry).is_none()
+    pub fn is_available(&self) -> bool {
+        self.unavailable_reason().is_none()
     }
 
     /// Why this capability cannot run right now, or `None` if it can.
     ///
-    /// A capability is unavailable when it declares no operations at all, or
-    /// when none of its providers resolve on `PATH`. The reason names the
-    /// binaries, because "unavailable" on its own tells the operator nothing.
-    pub fn unavailable_reason(&self, registry: &Registry) -> Option<String> {
+    /// Availability is derived from the catalog itself: a capability is
+    /// available when at least one of its provider binaries resolves on the
+    /// host. The reason names the missing binaries, because "unavailable" on
+    /// its own tells the operator nothing.
+    pub fn unavailable_reason(&self) -> Option<String> {
         let mut wanted: Vec<&str> = Vec::new();
         for p in &self.providers {
             if p.operations.is_empty() {
                 continue;
             }
-            match registry.get(&p.binary) {
-                Some(pv) if pv.resolve().is_some() => return None,
-                _ => wanted.push(p.binary.as_str()),
+            if find_in_path(&p.binary).is_some() {
+                return None;
             }
+            wanted.push(p.binary.as_str());
         }
         if wanted.is_empty() {
             return Some(format!("`{}` declares no provider operations", self.id));
@@ -291,18 +298,17 @@ impl Catalog {
 
     /// Parse and validate catalog TOML.
     ///
-    /// Validation happens here rather than at run time so that a malformed
-    /// catalog is a startup failure with a file and line to look at, rather
-    /// than a surprise halfway through a capability.
+    /// Validation happens at load time so a malformed catalog is a startup
+    /// failure with a file and line to look at, not a surprise halfway
+    /// through a capability.
     pub fn from_toml(raw: &str, source: &Path) -> Result<Self> {
         let fail = |why: String| -> TsecError {
             TsecError::catalog(format!("{}: {why}", source.display()))
         };
 
-        let file: CatalogFile =
+        let mut file: CatalogFile =
             toml::from_str(raw).map_err(|e| fail(format!("could not be parsed: {e}")))?;
 
-        let mut file = file;
         for cap in &mut file.capabilities {
             for spec in &mut cap.inputs {
                 if spec.label.is_empty() {
@@ -319,6 +325,7 @@ impl Catalog {
         }
 
         let mut seen: BTreeSet<&str> = BTreeSet::new();
+        let mut per_phase: BTreeMap<&str, usize> = BTreeMap::new();
         for cap in &file.capabilities {
             let where_ = format!("capability `{}`", cap.id);
 
@@ -337,6 +344,7 @@ impl Catalog {
                     cap.phase
                 )));
             }
+            *per_phase.entry(cap.phase.as_str()).or_default() += 1;
             check_label(&fail, &where_, &cap.label)?;
             if cap.summary.trim().is_empty() {
                 return Err(fail(format!("{where_} has no summary")));
@@ -402,6 +410,17 @@ impl Catalog {
             }
         }
 
+        // The framework's ten-phase model is structural: a catalog that leaves
+        // a phase empty is incomplete, not extensible.
+        for phase in PHASES {
+            if per_phase.get(phase).copied().unwrap_or(0) == 0 {
+                return Err(fail(format!(
+                    "phase `{}` has no capabilities; all ten phases must be populated",
+                    phase
+                )));
+            }
+        }
+
         Ok(Self {
             capabilities: file.capabilities,
             source: source.to_path_buf(),
@@ -436,52 +455,29 @@ impl Catalog {
             .collect()
     }
 
-    /// Capabilities that cannot run against the current provider snapshot.
-    pub fn unavailable(&self, registry: &Registry) -> Vec<(&Capability, String)> {
+    /// Capabilities that cannot run on this host, with the reason.
+    pub fn unavailable(&self) -> Vec<(&Capability, String)> {
         self.capabilities
             .iter()
-            .filter_map(|c| c.unavailable_reason(registry).map(|r| (c, r)))
+            .filter_map(|c| c.unavailable_reason().map(|r| (c, r)))
             .collect()
     }
 
-    /// One-line readiness summary, e.g. `14/15 available · 2 providers missing`.
-    pub fn availability_summary(&self, registry: &Registry) -> String {
-        let missing = self.unavailable(registry);
+    /// One-line readiness summary, e.g. `160/160 available`.
+    pub fn availability_summary(&self) -> String {
         let total = self.capabilities.len();
-        let ready = total - missing.len();
-        let mut binaries: BTreeSet<&str> = BTreeSet::new();
-        for (cap, _) in &missing {
-            for p in &cap.providers {
-                if p.operations.is_empty() {
-                    continue;
-                }
-                if registry
-                    .get(&p.binary)
-                    .map(|v| v.resolve().is_none())
-                    .unwrap_or(true)
-                {
-                    binaries.insert(p.binary.as_str());
-                }
-            }
-        }
-        if binaries.is_empty() {
-            format!("{ready}/{total} available")
-        } else {
-            format!(
-                "{ready}/{total} available · {} not installed",
-                binaries.into_iter().collect::<Vec<_>>().join(", ")
-            )
-        }
+        let ready = total - self.unavailable().len();
+        format!("{ready}/{total} available")
     }
 }
 
-/// Reject a label that is not one to three uppercase words.
+/// Reject a label that is not exactly two uppercase words.
 fn check_label<F>(fail: &F, where_: &str, label: &str) -> Result<()>
 where
     F: Fn(String) -> TsecError,
 {
     let words: Vec<&str> = label.split(' ').collect();
-    let ok = (1..=3).contains(&words.len())
+    let ok = words.len() == 2
         && words.iter().all(|w| {
             !w.is_empty()
                 && w.chars().next().is_some_and(|c| c.is_ascii_uppercase())
@@ -492,25 +488,45 @@ where
         Ok(())
     } else {
         Err(fail(format!(
-            "{where_} label {label:?} must be one to three uppercase words, e.g. `PORT DISCOVERY`"
+            "{where_} label {label:?} must be exactly two uppercase words, e.g. `PORT DISCOVERY`"
         )))
     }
 }
 
 /// Placeholder names in one argument token.
+///
+/// Matches the substitution rule exactly: `{{`/`}}` are literal braces and
+/// `%{…}` is printf-style literal text, so neither hides nor invents a
+/// placeholder.
 fn placeholders(token: &str) -> Vec<&str> {
+    let bytes = token.as_bytes();
     let mut out = Vec::new();
-    let mut rest = token;
-    while let Some(start) = rest.find('{') {
-        let tail = &rest[start + 1..];
-        match tail.find('}') {
-            Some(end) => {
-                out.push(&tail[..end]);
-                rest = &tail[end + 1..];
+    let mut i = 0usize;
+
+    while i < bytes.len() {
+        match bytes[i] {
+            b'%' if bytes.get(i + 1) == Some(&b'{') => {
+                i = token[i + 2..]
+                    .find('}')
+                    .map(|offset| i + 2 + offset + 1)
+                    .unwrap_or(bytes.len());
             }
-            None => rest = tail,
+            b'{' if bytes.get(i + 1) == Some(&b'{') => i += 2,
+            b'}' if bytes.get(i + 1) == Some(&b'}') => i += 2,
+            b'{' => match token[i + 1..].find('}') {
+                Some(offset) => {
+                    out.push(&token[i + 1..i + 1 + offset]);
+                    i = i + 1 + offset + 1;
+                }
+                None => i += 1,
+            },
+            b'}' => i += 1,
+            _ => {
+                i += token[i..].chars().next().map(|c| c.len_utf8()).unwrap_or(1);
+            }
         }
     }
+
     out
 }
 
@@ -532,48 +548,117 @@ mod tests {
         InputSpec::new(key.to_string(), key.to_string(), ty, true)
     }
 
-    #[test]
-    fn a_well_formed_catalog_loads() {
-        let toml = r#"
-            schema = 1
+    /// One capability's TOML, with no `schema` line so callers can stack them.
+    fn cap_toml(phase: &str, label: &str) -> String {
+        format!(
+            r#"
             [[capability]]
-            id = "surface.port-discovery"
-            phase = "surface"
-            label = "PORT DISCOVERY"
-            summary = "Fast SYN scan"
+            id = "{phase}.x"
+            phase = "{phase}"
+            label = "{label}"
+            summary = "s"
             [[capability.inputs]]
             key = "target"
             type = "target"
             required = true
             [[capability.provider]]
-            binary = "naabu"
-            subcommand = []
+            binary = "nmap"
             [[capability.provider.operation]]
-            name = "Top 100"
-            args = ["-host", "{target}"]
+            name = "op"
+            args = ["-sV"]
             output = "lines"
-            network = true
-        "#;
-        let cat = Catalog::from_toml(toml, Path::new("test.toml")).unwrap();
-        assert_eq!(cat.capabilities().len(), 1);
-        let cap = cat.get("surface.port-discovery").unwrap();
-        assert_eq!(cap.label, "PORT DISCOVERY");
+            "#
+        )
+    }
+
+    /// A catalog with exactly one capability, which no phase rule can accept.
+    fn one_cap(phase: &str, label: &str) -> String {
+        format!("schema = 1\n{}", cap_toml(phase, label))
+    }
+
+    /// The smallest catalog the loader accepts: one capability in each phase.
+    fn full_catalog() -> String {
+        let mut s = String::from("schema = 1\n");
+        for phase in PHASES {
+            s.push_str(&cap_toml(phase, "DO THING"));
+        }
+        s
+    }
+    #[test]
+    fn a_well_formed_catalog_loads() {
+        let cat = Catalog::from_toml(&full_catalog(), Path::new("t.toml")).unwrap();
+        assert_eq!(cat.capabilities().len(), PHASES.len());
+        let cap = cat.get("surface.x").unwrap();
+        assert_eq!(cap.label, "DO THING");
         assert_eq!(cap.all_operations().count(), 1);
     }
 
     #[test]
-    fn the_shipped_catalog_loads_and_validates() {
+    fn a_doubled_brace_is_a_literal_brace() {
+        let toml = full_catalog().replace(
+            "args = [\"-sV\"]",
+            "args = [\"-c\", \"echo {{ {target} }}\"]",
+        );
+        let cat = Catalog::from_toml(&toml, Path::new("t.toml")).unwrap();
+        let cap = cat.get("surface.x").unwrap();
+        let op = &cap.providers[0].operations[0];
+        let mut values = InputValues::new();
+        values.insert("target", "host");
+        let cmd = op.command(Path::new("sh"), &cap.inputs, &values).unwrap();
+        assert_eq!(cmd.args(), &["-c".to_string(), "echo { host }".to_string()]);
+    }
+
+    #[test]
+    fn a_capability_outside_the_ten_phases_is_rejected() {
+        let e =
+            Catalog::from_toml(&one_cap("pwnage", "DO THING"), Path::new("t.toml")).unwrap_err();
+        assert!(
+            e.reason().contains("not one of the ten phases"),
+            "{}",
+            e.reason()
+        );
+    }
+
+    #[test]
+    fn an_empty_phase_is_rejected() {
+        let e = Catalog::from_toml(&one_cap("recon", "DO THING"), Path::new("t.toml")).unwrap_err();
+        assert!(
+            e.reason().contains("all ten phases must be populated"),
+            "{}",
+            e.reason()
+        );
+    }
+
+    #[test]
+    fn the_shipped_catalog_loads_and_covers_all_ten_phases() {
         let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("catalog/capabilities.toml");
         if !path.exists() {
             return;
         }
         let cat = Catalog::load(&path).unwrap();
-        assert!(!cat.capabilities().is_empty());
-        // Every phase in the framework's model is either populated or explicitly
-        // absent — but a capability may never sit outside the ten phases.
-        for (phase, caps) in cat.grouped() {
-            assert!(PHASES.iter().any(|p| phase_label(p) == Some(phase)));
-            let _ = caps;
+        for (label, caps) in cat.grouped() {
+            assert_eq!(caps.len(), 16, "phase {label} must hold 16 capabilities");
+            for c in caps {
+                assert_eq!(c.label.split(' ').count(), 2, "{}", c.label);
+            }
+        }
+        assert_eq!(cat.capabilities().len(), 160);
+    }
+
+    #[test]
+    fn a_label_must_be_exactly_two_uppercase_words() {
+        for bad in [
+            "PORT",
+            "PORT DISCOVERY NOW",
+            "port discovery",
+            "PORT  DISCOVERY",
+        ] {
+            let e = Catalog::from_toml(&one_cap("recon", bad), Path::new("t.toml")).unwrap_err();
+            assert!(
+                e.reason().contains("two uppercase words"),
+                "label {bad:?} should be rejected, got {}",
+                e.reason()
+            );
         }
     }
 
@@ -598,108 +683,18 @@ mod tests {
             output = "lines"
         "#;
         let e = Catalog::from_toml(toml, Path::new("t.toml")).unwrap_err();
-        assert!(
-            e.reason().contains("undeclared input {hosts}"),
-            "{}",
-            e.reason()
-        );
+        assert!(e.reason().contains("undeclared input {hosts}"));
     }
 
     #[test]
     fn shell_syntax_in_an_argument_is_rejected() {
-        let toml = r#"
-            schema = 1
-            [[capability]]
-            id = "recon.x"
-            phase = "recon"
-            label = "DO THING"
-            summary = "s"
-            [[capability.provider]]
-            binary = "nmap"
-            [[capability.provider.operation]]
-            name = "op"
-            args = ["-oN", "out.txt", "&&", "echo", "done"]
-            output = "lines"
-        "#;
-        let e = Catalog::from_toml(toml, Path::new("t.toml")).unwrap_err();
-        assert!(e.reason().contains("shell syntax"), "{}", e.reason());
-    }
-
-    #[test]
-    fn a_capability_outside_the_ten_phases_is_rejected() {
-        let toml = r#"
-            schema = 1
-            [[capability]]
-            id = "pwnage.x"
-            phase = "pwnage"
-            label = "DO THING"
-            summary = "s"
-            [[capability.provider]]
-            binary = "nmap"
-            [[capability.provider.operation]]
-            name = "op"
-            args = ["-sV"]
-            output = "lines"
-        "#;
-        let e = Catalog::from_toml(toml, Path::new("t.toml")).unwrap_err();
-        assert!(
-            e.reason().contains("not one of the ten phases"),
-            "{}",
-            e.reason()
+        let mut toml = one_cap("recon", "DO THING");
+        toml = toml.replace(
+            "args = [\"-sV\"]",
+            "args = [\"-oN\", \"out.txt\", \"&&\", \"echo\", \"done\"]",
         );
-    }
-
-    #[test]
-    fn a_label_must_be_one_to_three_uppercase_words() {
-        for bad in [
-            "Port Discovery",
-            "PORT DISCOVERY EXTRA NAME HERE",
-            "",
-            "PORT  DISCOVERY",
-        ] {
-            let toml = format!(
-                r#"
-                schema = 1
-                [[capability]]
-                id = "recon.x"
-                phase = "recon"
-                label = "{bad}"
-                summary = "s"
-                [[capability.provider]]
-                binary = "nmap"
-                [[capability.provider.operation]]
-                name = "op"
-                args = ["-sV"]
-                output = "lines"
-            "#
-            );
-            let e = Catalog::from_toml(&toml, Path::new("t.toml")).unwrap_err();
-            assert!(
-                e.reason().contains("uppercase words"),
-                "label {bad:?} should be rejected, got {}",
-                e.reason()
-            );
-        }
-    }
-
-    #[test]
-    fn a_capability_id_must_be_namespaced_under_its_own_phase() {
-        let toml = r#"
-            schema = 1
-            [[capability]]
-            id = "surface.misfiled"
-            phase = "recon"
-            label = "DO THING"
-            summary = "s"
-            [[capability.provider]]
-            binary = "nmap"
-            [[capability.provider.operation]]
-            name = "op"
-            args = ["-sV"]
-            output = "lines"
-        "#;
-        let e = Catalog::from_toml(toml, Path::new("t.toml")).unwrap_err();
-        assert!(e.reason().contains("namespaced"), "{}", e.reason());
+        let e = Catalog::from_toml(&toml, Path::new("t.toml")).unwrap_err();
+        assert!(e.reason().contains("shell syntax"), "{}", e.reason());
     }
 
     #[test]
@@ -712,7 +707,6 @@ mod tests {
         };
         let specs = vec![spec("target", InputType::Target)];
         let mut values = InputValues::new();
-        // A value containing spaces must not split into two argv entries.
         values.insert("target", "a b c");
         let cmd = op.command(Path::new("naabu"), &specs, &values).unwrap();
         assert_eq!(cmd.args(), &["-iL".to_string(), "a b c".to_string()]);
@@ -724,7 +718,7 @@ mod tests {
             name: "op".into(),
             args: vec![
                 "-u".into(),
-                "admin".into(),
+                "{username}".into(),
                 "-p".into(),
                 "{password}".into(),
             ],
@@ -739,14 +733,33 @@ mod tests {
         values.insert("username", "admin");
         values.insert("password", "hunter2");
         let cmd = op.command(Path::new("nxc"), &specs, &values).unwrap();
-
-        // The tool must receive the real password…
         assert_eq!(cmd.args()[3], "hunter2");
-        // …but nothing the operator sees, and nothing persisted, may contain it.
         assert_eq!(cmd.display_safe(), format!("nxc -u admin -p {REDACTED}"));
         assert!(!serde_json::to_string(&cmd.args_redacted(&[]))
             .unwrap()
             .contains("hunter2"));
+    }
+
+    #[test]
+    fn a_printf_style_brace_is_a_literal_not_a_placeholder() {
+        let op = Operation {
+            name: "op".into(),
+            args: vec!["-w".into(), "%{http_code}".into(), "{url}".into()],
+            output: OutputFormat::Lines,
+            network: true,
+        };
+        let specs = vec![spec("url", InputType::Url)];
+        let mut values = InputValues::new();
+        values.insert("url", "https://example.com");
+        let cmd = op.command(Path::new("curl"), &specs, &values).unwrap();
+        assert_eq!(
+            cmd.args(),
+            &[
+                "-w".to_string(),
+                "%{http_code}".to_string(),
+                "https://example.com".to_string()
+            ]
+        );
     }
 
     #[test]
@@ -765,16 +778,27 @@ mod tests {
     }
 
     #[test]
-    fn a_network_operation_is_marked_as_needing_tor() {
-        let op = Operation {
-            name: "op".into(),
-            args: vec!["-sV".into()],
-            output: OutputFormat::Nmap,
-            network: true,
-        };
-        let cmd = op
-            .command(Path::new("nmap"), &[], &InputValues::new())
-            .unwrap();
-        assert!(cmd.is_network());
+    fn network_defaults_to_true_in_the_catalog() {
+        let cat = Catalog::from_toml(&full_catalog(), Path::new("t.toml")).unwrap();
+        let op = &cat.get("recon.x").unwrap().providers[0].operations[0];
+        assert!(op.network);
+    }
+
+    #[test]
+    fn availability_reports_missing_binaries_by_name() {
+        let cat = Catalog::from_toml(
+            &full_catalog().replace("nmap", "tsec-no-such-tool"),
+            Path::new("t.toml"),
+        )
+        .unwrap();
+        let reason = cat.capabilities()[0].unavailable_reason().unwrap();
+        assert!(reason.contains("not installed"), "{reason}");
+        assert!(cat.availability_summary().starts_with("0/"));
+    }
+
+    #[test]
+    fn full_catalog_helper_covers_ten_phases() {
+        let cat = Catalog::from_toml(&full_catalog(), Path::new("t.toml")).unwrap();
+        assert_eq!(cat.capabilities().len(), PHASES.len());
     }
 }

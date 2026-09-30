@@ -1,3 +1,6 @@
+# Copyright (c) funbinet. All rights reserved.
+# Part of TSEC terminal cybersecurity operations platform by funbinet.
+
 # Ignore build directories and editor configs
 /target/
 **/*.rs.bk
@@ -8,6 +11,9 @@
 
 # Ignore output directory dumps if ran locally
 /output/
+
+# Runtime workspace created on first launch from a checkout
+/config/
 
 # Secrets
 .env

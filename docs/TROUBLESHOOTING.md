@@ -1,8 +1,12 @@
-# TSEC troubleshooting
+# TSEC 3.0 troubleshooting
 
-Every failure TSEC reports names the stage it happened in, a stable error code,
-and — where relevant — the underlying tool's own message. This document maps the
-codes and messages to what to actually do.
+Every failure reports the stage it happened in, a stable error code, and — where
+the tool said something useful — the tool's own message. The same code is
+recorded in `manifest.json`, so a run can be explained long after it happened.
+
+The `OUTPUTS` panel leads with how the tasks ended and the codes they ended
+with. Read that first: `10 FAILED` with `ONIUX_UNAVAILABLE x10` means nothing
+reached the network, not that the network was empty.
 
 ---
 
@@ -12,93 +16,75 @@ codes and messages to what to actually do.
 
 > Oniux network boundary required for `<tool>` is unavailable: *reason*
 
-The framework refuses to run a network command outside oniux. This error means
-the boundary is missing or could not start. It is never bypassed.
+The framework will not run a network command outside oniux. The tool was not
+started — not on the host network, and not at all.
 
 **Diagnose:**
 
 ```sh
 command -v oniux
-oniux /bin/true
+oniux /bin/true; echo "exit=$?"
 ```
 
 | What you see | Meaning | Fix |
 |---|---|---|
 | `oniux: command not found` | Not installed | `paru -S oniux`, or `cargo install --git https://gitlab.torproject.org/tpo/core/oniux --tag v0.4.0 oniux` |
 | `Failed to open tun interface, is tun kmod loaded?` | `tun` module missing | `sudo modprobe tun` |
-| `Operation not permitted` / namespace errors | Unprivileged user namespaces disabled | `sysctl -w kernel.unprivileged_userns_clone=1` and, where present, `sysctl -w kernel.apparmor_restrict_unprivileged_userns=0` |
-| Permission denied on `/etc/resolv.conf` | The bind mount needs a mount namespace | Usually the userns problem above; check `dmesg` |
-| Hangs, then no output | Tor bootstrap cannot complete | Check general connectivity and DNS; the boundary brings up its own client |
+| `Operation not permitted` / namespace errors | Unprivileged user namespaces disabled | `sysctl -w kernel.unprivileged_userns_clone=1`, and where present `sysctl -w kernel.apparmor_restrict_unprivileged_userns=0` |
+| Hangs, then nothing | Tor cannot bootstrap | Check outbound connectivity and DNS; oniux brings up its own client |
+| Works in a shell, but TSEC says unavailable | The binary is not on the search path TSEC sees | Set `execution.oniux_binary` to an absolute path, or add the directory to `tools.search_paths` |
 
-### The probe
+**Where the check happens.** The engine runs the `/bin/true` probe itself,
+immediately before the first network task of a run. The result is remembered for
+the rest of that run: nothing in the interface can skip it, and fixing the
+environment mid-run does not unblock the tasks of the run in progress. On
+success nothing is printed — the only thing worth saying is that it failed.
 
-TSEC runs the `/bin/true` probe itself, inside the engine, immediately before
-the first network-capable task. It is not something a caller may skip and not
-something a configuration file may disable: the function that spawns anything is
-the function that performs the check. The result is remembered for the rest of
-the run, so a burst of concurrent tasks pays for one probe rather than one each.
+**Which capabilities are affected.** Anything the catalog marks
+`network = true`, which is nearly everything. Operations marked `network =
+false` are the local ones (`EVIDENCE PRESERVATION`, `TRANSFER INTEGRITY`, parts
+of `PERSISTENCE`) and they run regardless.
 
-The error therefore surfaces at the first network task, not scattered across the
-capability. On success nothing is reported, because the only thing worth saying
-is that the boundary works.
-
-### `ONIUX_UNAVAILABLE`
-
-The boundary could not be proven usable. The tool was not started: not on the
-host network, and not at all. Resolve the cause from the table above and start a
-new run — a failed probe is remembered for the life of the run, so fixing the
-environment mid-run does not unblock tasks that are still to come.
-
----
-
-## Providers and capabilities
+## Providers
 
 ### `TOOL_NOT_INSTALLED`
 
-The capability is reported unavailable with the missing provider named.
+The capability is listed but dimmed, and the box names the missing binary.
 
 ```sh
 sudo pacman -S <tool>          # Arch
+tsec --status                  # what is available, per phase
 ```
-
-Or see [`REQUIREMENTS.TXT`](../REQUIREMENTS.TXT) for the package name and the
-version the catalog was verified against.
 
 ### `TOOL_VERSION_INCOMPATIBLE`
 
-The tool is installed, but its help output does not document the flags the
-catalog uses. Common after a major tool release renamed something.
+The tool is installed, but it rejected the invocation the catalog describes —
+usually a flag renamed by a major release. The tool's own message is in
+`raw/<stem>.err` and in the manifest.
 
 ```sh
 <tool> --help
 ```
 
-Then update the catalog entry and re-verify:
+Then fix the operation in `catalog/capabilities.toml` and prove the catalog
+still loads:
 
 ```sh
-python3 scripts/verify_catalog.py
+cargo test
 ```
 
-The framework will not run a flag the installed binary does not document.
+### A capability is dimmed but the tools are installed
 
-### A capability says "unavailable" but every tool is installed
-
-Re-run the verifier. The catalog is only offered when the operation verifies
-against the *installed* version:
-
-```sh
-python3 scripts/verify_catalog.py
-```
-
-Look for `unknown flag` or `missing subcommand` in its output.
-
----
+Resolution checks the search paths first, then `PATH`, and requires the file to
+be executable. A tool installed only for another user, or a `bin` directory not
+on the service manager's `PATH`, will not resolve. Point `tools.search_paths` at
+its directory.
 
 ## Execution
 
 ### `SPAWN_FAILED`
 
-The tool could not be started: wrong path, bad interpreter, or a missing shared
+The tool could not be started: wrong path, bad interpreter, missing shared
 library.
 
 ```sh
@@ -107,96 +93,139 @@ ldd "$(command -v <tool>)" | grep "not found"
 
 ### `EXIT_STATUS`
 
-The tool ran and exited non-zero. Its stderr is preserved in
-`raw/<task>.err` and the exit code is in the manifest. A non-zero exit often
-means a flag the tool accepts but the target rejected — read the stderr before
-concluding the target was unreachable.
+The tool ran and exited non-zero. Its stderr is in `raw/<stem>.err` and its exit
+code is in the manifest. A non-zero exit often means the tool accepted a flag the
+target rejected — read the stderr before concluding the target was unreachable.
 
 ### `TIMEOUT`
 
 The tool exceeded `execution.timeout_secs` and its process group was terminated
-(`SIGTERM`, then `SIGKILL` after `kill_grace_ms`). Its partial output is
-preserved — check the raw file before raising the timeout.
+(`SIGTERM`, then `SIGKILL` after `kill_grace_ms`). Partial output is kept, and is
+usually worth reading before raising the timeout.
 
 ### `INTERRUPTED`
 
-`Ctrl+C`. The tool was terminated as a process group and everything gathered so
-far was kept. The run is still a valid run.
+`Ctrl+C`. The process group was terminated and everything gathered so far was
+kept. The run is still a valid run: the manifest is complete up to that point.
 
-### Runs feel very slow
+### `IO_FAILURE`
 
-Expected. Each network task launches its own oniux, which boots its own Tor
-client — that is what per-task isolation costs, and it is the property that
-prevents one tool from observing another's traffic. The first boot after a
-machine starts is the slowest; later ones use a warm Tor directory.
+Usually a permissions or space problem writing under `general.output_dir`.
 
-Adjust `execution.max_concurrency` (default 6) to trade memory for wall clock.
+```sh
+ls -ld /opt/tsec/output
+df -h /opt/tsec
+```
 
----
+### Runs feel slow, or use a lot of memory
+
+Expected. Every network task is its own oniux process with its own Tor client —
+that is what per-task isolation costs. Lower `execution.max_concurrency` (default
+6) to reduce peak memory; raise it to trade memory for wall clock. The first task
+after boot is the slowest; later ones reuse a warm Tor directory.
 
 ## Parsing and harvest
 
-### A capability produced no findings
+### `0 FINDINGS` with tasks marked complete
 
-Usually the tool wrote to its own output file rather than stdout, or produced
-nothing. Check the raw capture:
+The tool probably wrote to its own output file rather than stdout. Check the raw
+capture and its size:
 
 ```sh
-cat /opt/tsec/output/<run-id>/raw/T01.out
-wc -c /opt/tsec/output/<run-id>/raw/T01.out
+wc -c /opt/tsec/output/<run-id>/raw/<stem>.out
 ```
 
-The harvest records unparsed and empty output explicitly rather than omitting
-it, so "no findings" and "not reported" are distinguishable.
+An empty file with `exit_code = 0` means the flags produced no output — usually a
+missing wordlist or a target that resolved to nothing.
+
+### `PARSER_FAILURE`
+
+The declared `output` format does not match what the tool emitted. Look at the
+first bytes of the raw file and correct `output` for that operation
+(`nmap`, `json`, `lines`, `raw`).
+
+### Output was truncated
+
+An artifact larger than 32 MiB is truncated, and the truncation is recorded as a
+note and a finding. The raw file still holds everything; narrow the scan rather
+than raising the cap.
 
 ### Findings look wrong
 
-They are checkable. Every finding names the tools that reported it, and the
-manifest holds the exact command. Read the raw bytes:
+They are checkable. Each finding names the providers that reported it, and the
+manifest holds the exact redacted command:
 
 ```sh
-grep -n '<value>' /opt/tsec/output/<run-id>/raw/T01.out
+grep -n '<value>' /opt/tsec/output/<run-id>/raw/<stem>.out
 ```
 
 Nothing is written to `harvest.txt` that is not in a raw file.
 
-### Output was truncated
-
-An artifact larger than 32 MiB is truncated by the parser, and the truncation is
-recorded as a note and as a finding. The raw file still holds everything; narrow
-the scan (fewer ports, a smaller wordlist) rather than raising the cap.
-
----
-
 ## Configuration
 
-### `CONFIG_ERROR` mentioning `oniux_binary`
+### `CONFIG_ERROR`
 
-`execution.oniux_binary` is empty. It must name the boundary executable.
+The message names the key. Common causes: `color` that is not
+`auto`/`always`/`never`, `max_concurrency` of zero, an empty
+`execution.oniux_binary`, or a path that cannot be created.
 
-### A v2 config was rewritten
+### A config from an older release was rewritten
 
-Expected. `[anonymity]`, `torsocks_binary` and `tor_socks_proxy` describe a
-SOCKS proxy; oniux is not one, so those keys are dropped on load and not
-rewritten. Everything else in the file is preserved.
+Expected. Keys describing a SOCKS proxy (`[anonymity]`, `torsocks_binary`,
+`tor_socks_proxy`) are dropped with a note, because oniux has no endpoint to
+configure. `version` is bumped to `3` and everything else is preserved.
 
 ### `CATALOG_ERROR`
 
-`catalog/capabilities.toml` is malformed — usually an unknown phase, a label
-longer than three words, a placeholder with no matching input, or a template
-containing a shell metacharacter. The error names the capability and the reason.
+`catalog/capabilities.toml` is malformed. The message names the capability and
+the reason. The rejections are:
 
----
+- a phase that is not one of the ten, or a phase with no capabilities;
+- a label that is not exactly two uppercase words;
+- an input declared twice, or required *and* carrying a default;
+- a placeholder with no matching input;
+- an argument containing shell syntax (`|`, `&`, `;`, `<`, `>`, `` ` ``, `$`,
+  `(`, `)`);
+- a capability with no providers, or a provider with no operations, or an
+  operation with no arguments.
+
+## The interface
+
+### `Esc` does nothing
+
+A bare `Esc` is only distinguishable from the start of an escape sequence once
+the terminal has stopped sending bytes. Terminals and multiplexers differ here;
+`J` and `←` close a box in exactly the same way, and always work.
+
+### Colours are wrong, or absent
+
+`general.color` and the environment decide this:
+
+```sh
+NO_COLOR=1 tsec         # no colour at all
+TSEC_PALETTE=graphite tsec
+```
+
+`COLORFGBG` is consulted to pick a light or dark palette when it is set.
+
+### The box is drawn too narrow
+
+Geometry comes from the terminal's own size and is re-measured on every redraw.
+Resize the terminal, then open a box again.
 
 ## Still stuck
 
-Gather these before asking:
+Gather this much before asking:
 
 ```sh
-tsec                                    # startup output, including BOUNDARY line
-oniux /bin/true; echo "exit=$?"         # does the boundary work at all
-<tool> --version                        # is the version what you think it is
-python3 scripts/verify_catalog.py       # what does the framework believe
-cat /opt/tsec/output/<run-id>/manifest.json   # what actually ran, and how
-cat /opt/tsec/output/<run-id>/raw/*.err      # what the tool said
+tsec --status                            # availability and the boundary
+oniux /bin/true; echo "exit=$?"          # does the boundary work at all
+<tool> --help                            # does the flag the catalog names exist
+cat /opt/tsec/output/<run-id>/manifest.json  # what ran, and how it ended
+cat /opt/tsec/output/<run-id>/raw/<stem>.err # what the tool said
 ```
+
+---
+
+TSEC 3.0 — terminal cybersecurity operations platform, built by funbinet.
+© funbinet. All rights reserved.

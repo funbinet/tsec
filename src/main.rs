@@ -35,25 +35,22 @@ fn run() -> Result<()> {
     let cfg = Config::load_or_create()?;
     let root = data_root();
     let catalog = Catalog::load(&root.join("catalog/capabilities.toml"))?;
-    let registry = Registry::load(&root.join("catalog/verification.json"))?
-        .with_search_paths(cfg.tools.search_paths.clone());
+    let registry = Registry::from_catalog(&catalog, cfg.tools.search_paths.clone());
 
     let args: Vec<String> = std::env::args().collect();
     if args.len() > 1 {
         match args[1].as_str() {
             "--status" | "-s" => {
-                println!("{}", catalog.availability_summary(&registry));
+                println!("TSEC {}", tsec::VERSION);
+                println!("{}", catalog.availability_summary());
                 for (phase, caps) in catalog.grouped() {
-                    if caps.is_empty() {
-                        continue;
-                    }
-                    let ready = caps.iter().filter(|c| c.is_available(&registry)).count();
-                    println!("  {phase:<14} {ready}/{} available", caps.len());
+                    let ready = caps.iter().filter(|c| c.is_available()).count();
+                    println!("{:<14} {ready}/{}", phase, caps.len());
                 }
                 let backend = OniuxBackend::new(&cfg.execution.oniux_binary);
                 match backend.resolve() {
-                    Ok(path) => println!("  {:<14} {}", "BOUNDARY", path.display()),
-                    Err(e) => println!("  {:<14} UNAVAILABLE — {}", "BOUNDARY", e.reason()),
+                    Ok(path) => println!("{:<14} {}", "BOUNDARY", path.display()),
+                    Err(e) => println!("{:<14} UNAVAILABLE · {}", "BOUNDARY", e.reason()),
                 }
                 return Ok(());
             }
@@ -62,12 +59,14 @@ fn run() -> Result<()> {
                 return Ok(());
             }
             "--help" | "-h" => {
-                println!("TSEC — Tactical Security Enumeration & Compromise Framework");
+                println!("TSEC {}", tsec::VERSION);
                 println!();
                 println!("Usage: tsec [OPTIONS]");
                 println!();
                 println!("Options:");
-                println!("  -s, --status    Display capability availability and network boundary status");
+                println!(
+                    "  -s, --status    Report capability availability and the network boundary"
+                );
                 println!("  -v, --version   Display version information");
                 println!("  -h, --help      Display this help message");
                 return Ok(());
@@ -79,20 +78,26 @@ fn run() -> Result<()> {
     main_menu(&cfg, &catalog, &registry)
 }
 
+/// Where `catalog/capabilities.toml` lives.
+///
+/// The order matters for installed use: an explicit `TSEC_HOME` wins, then the
+/// framework root an installer populated, then the build tree the binary was
+/// compiled from. A path without a catalog is never chosen, so a wrong guess
+/// fails as "catalog not found" instead of silently reading someone else's.
 fn data_root() -> PathBuf {
     if let Some(dir) = std::env::var_os("TSEC_HOME") {
-        return PathBuf::from(dir);
-    }
-    if let Ok(exe) = std::env::current_exe() {
-        if let Some(root) = exe
-            .parent()
-            .and_then(|p| p.parent())
-            .and_then(|p| p.parent())
-        {
-            if root.join("catalog").is_dir() {
-                return root.to_path_buf();
-            }
+        let dir = PathBuf::from(dir);
+        if !dir.as_os_str().is_empty() {
+            return dir;
         }
     }
-    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+    let system = PathBuf::from("/opt/tsec");
+    if system.join("catalog").is_dir() {
+        return system;
+    }
+    let build_tree = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    if build_tree.join("catalog").is_dir() {
+        return build_tree;
+    }
+    system
 }

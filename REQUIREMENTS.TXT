@@ -1,88 +1,172 @@
-# TSEC — external requirements
+# TSEC 3.0 — external requirements
 #
-# Every binary the framework launches is listed here with the Arch package that
-# provides it and the release whose help output the catalog was verified
-# against. The framework refuses to offer a capability whose tool is missing or
-# whose flags are not documented by the installed version, so this file is the
-# single place that says "install these to get the full toolset".
+# TSEC 3.0 ships one mandatory dependency and a large set of optional provider
+# tools. The optional ones are genuinely optional: a capability whose providers
+# are missing is still listed, is reported unavailable with the missing binary
+# named, and is never substituted. The mandatory one is not a tool.
 #
-# ONE REQUIREMENT IS NOT A TOOL
+# ── The network boundary: oniux ──────────────────────────────────────────────
 #
-#   oniux   the network-execution boundary; see below.
-#
-# Every other entry is optional in the sense that TSEC still starts without it —
-# the affected capabilities simply report themselves unavailable, with a reason.
-# oniux is different: without it, no network-capable task can run at all.
-
-# ── The network boundary ──────────────────────────────────────────────────────
-# oniux is the required Linux network-execution boundary. The framework launches
-# every network-capable command as `oniux <tool> <args…>`, inside a private
-# network/mount/PID/user namespace whose only route is an embedded Tor (Arti)
-# client. There is no SOCKS endpoint to configure, no proxy flag to set, and no
-# in-framework switch to turn it off: Tor and oniux are configured and
-# supervised by the operating system, and the framework's job is only to
-# guarantee that nothing reaches the network except through them.
+# oniux is the required Linux network-execution boundary. Every network-capable
+# command is launched as `oniux <tool> <args…>` inside a private network, mount,
+# PID and user namespace whose only route is an embedded Tor (Arti) client.
+# There is no SOCKS endpoint to configure, no proxy flag to set, and no switch
+# in the framework or in the configuration file that turns it off. Tor and oniux
+# are configured and supervised by the operating system; the framework's only
+# responsibility is to guarantee that nothing else reaches the network.
 #
 #   Arch (AUR):   paru -S oniux          (or: yay -S oniux)
 #   from source:  cargo install --git https://gitlab.torproject.org/tpo/core/oniux --tag v0.4.0 oniux
 #
-# The framework is written against oniux v0.4.0, whose entire CLI is
-# `oniux [command] [args...]` — it takes no options, so TSEC injects none.
+# TSEC is written against oniux v0.4.0, whose entire CLI is
+# `oniux [command] [args...]` — it takes no options, so none is ever injected.
 #
 # oniux needs:
 #   * the `tun` kernel module:            sudo modprobe tun
 #   * unprivileged user namespaces, and on distributions that restrict them:
 #       kernel.unprivileged_userns_clone = 1
 #       kernel.apparmor_restrict_unprivileged_userns = 0
-# Verify with:  oniux /bin/true   — silence and a zero exit code means the
-# boundary works; the framework runs this same probe automatically before the
-# first network task.
 #
-# Verify from TSEC:  tsec doctor        (or just run tsec and read the
-# BOUNDARY line in the startup output).
+# Verify the boundary on its own:  oniux /bin/true
+# Silence and a zero exit code means it works. TSEC runs this same probe before
+# the first network task of a run, and reports the result in `tsec --status`.
+#
+# ── Provider tools ───────────────────────────────────────────────────────────
+#
+# The list below is the common toolset, in the form:
+#
+#     binary            Arch package            purpose
+#
+# Package names are for Arch; other distributions package the same upstream
+# tools under similar names. Versions are deliberately not pinned: the catalog
+# names the exact argument vector an operation runs, and a tool whose CLI has
+# changed fails loudly, with its own message in raw/<artifact>.err and in the
+# run manifest, rather than being worked around silently.
 
 # ── Reconnaissance ───────────────────────────────────────────────────────────
-nmap                 7.99      # host discovery, port scan, service version probe
-naabu                2.3.3     # fast SYN port discovery
-masscan              1.3.2     # internet-scale port discovery
-unicornscan          7.1.0     # large-scale host and port discovery
+subfinder             subfinder           passive subdomain enumeration
+amass                 amass               active and passive subdomain enumeration
+assetfinder           assetfinder         subdomain discovery from public data
+dnsx                  dnsx                DNS resolution and record extraction
+dig                   bind                direct DNS record queries
+tlsx                  tlsx                certificate collection and analysis
+whois                 whois               registration and ownership data
+maigret               maigret             username and identity correlation
+sherlock              sherlock            username hunting across sites
+whatweb               whatweb             web technology fingerprinting
+katana                katana              crawling and endpoint discovery
+gau                   gau                 known-URL harvesting
+theharvester          theharvester        email and host harvesting
+cloud_enum            cloud-enum          multi-cloud asset enumeration
+s3scanner             s3scanner           bucket discovery and permissions
 
 # ── Attack surface ───────────────────────────────────────────────────────────
-subfinder            2.6.6     # passive subdomain enumeration
-amass                4.2.0     # active and passive subdomain enumeration
-assetfinder          2.10.0    # subdomain enumeration from search APIs
-dnsx                 1.2.1     # DNS resolution and record extraction
-tlsx                 1.1.9     # TLS certificate collection and analysis
-whatweb              0.5.0     # web technology fingerprinting
-ffuf                 2.1.0     # content discovery and parameter fuzzing
-httpx                1.6.10    # HTTP probing, technology and title detection
-katana                1.1.2     # web crawling and endpoint discovery
-gospider             0.4.0     # endpoint collection from search engines and sites
+nmap                  nmap                host discovery, port and service scanning
+naabu                 naabu               fast SYN port discovery
+masscan               masscan             high-rate port discovery
+rustscan              rustscan            fast port discovery with nmap handoff
+fping                 fping               host discovery by ICMP
+httpx                 httpx               HTTP probing, titles, technology
+ffuf                  ffuf                content and parameter fuzzing
+feroxbuster           feroxbuster         recursive content discovery
+gobuster              gobuster            directory, file and vhost brute force
+dirsearch             dirsearch           web path scanning
+gospider              gospider            endpoint collection
+testssl               testssl.sh         TLS configuration analysis
+sslscan               sslscan             TLS cipher and protocol enumeration
+trivy                 trivy               container and dependency exposure
 
 # ── Vulnerability ────────────────────────────────────────────────────────────
-nuclei               3.3.6     # template-based vulnerability scanning
-nikto                2.5.0     # web server misconfiguration scanner
-dalfox               3.2.2     # XSS detection and exploitation
-sqlmap               1.8.3     # SQL injection detection and exploitation
-wpscan               3.3.3     # WordPress vulnerability enumeration
+nuclei                nuclei              template-based vulnerability scanning
+nikto                 nikto               web server misconfiguration scanner
+dalfox                dalfox              XSS detection and exploitation
+sqlmap                sqlmap              SQL injection detection and exploitation
+wpscan                wpscan              WordPress enumeration
+wafw00f               wafw00f             web application firewall detection
+searchsploit          exploitdb           exploit database search
 
-# ── Credentials ──────────────────────────────────────────────────────────────
-maigret              1.4.234   # username and identity correlation
-gitleaks             8.24.0    # secrets in git history
-trufflehog           3.90.0    # broad secret detection across sources
+# ── Payload ──────────────────────────────────────────────────────────────────
+msfvenom              metasploit          payload generation and encoding
+sliver                sliver              implant building and listeners
+donut                 donut               position-independent shellcode
+upx                   upx                 executable packing
+yara                  yara                signature-based payload testing
+objdump               binutils            binary disassembly
+readelf               binutils            ELF inspection
+strings               binutils            embedded string extraction
+ncat                  nmap                network listeners
+socat                 socat               advanced listeners and relays
+pwncat-cs             pwncat-cs           session handling
 
-# ── Lateral movement ─────────────────────────────────────────────────────────
-nxc                  6.0.0     # NetNTX: SMB, LDAP, RDP, SSH, WinRM, FTP
-bloodhound-python    2.4.0     # Active Directory relationship mapping
-certipy-ad           5.1.0     # Active Directory certificate abuse
-responder            3.1.4.0   # LLMNR, NBT-NS and MDNS poisoning
+# ── Privilege escalation / persistence ───────────────────────────────────────
+linpeas               peass-ng            local privilege escalation enumeration
+linenum               linenum             local enumeration
+pspy                  pspy                process monitoring
+linux-exploit-suggester  linux-exploit-suggester  kernel exploit suggestions
+pypykatz              pypykatz            offline credential parsing
+impacket              impacket            protocol tooling (secretsdump, GetUserSPNs, …)
+certipy-ad            certipy-ad          Active Directory certificate abuse
+ntdsutil              (built-in)          directory snapshot and hash extraction
+hashcat               hashcat             offline hash cracking
+john                  john                password auditing and cracking
+trufflehog            trufflehog          secret discovery across sources
+gitleaks              gitleaks            secrets in git history
+
+# ── Lateral movement / credentials ───────────────────────────────────────────
+nxc                   netexec             SMB, LDAP, RDP, SSH, WinRM, FTP
+bloodhound-python     bloodhound-python   Active Directory relationship mapping
+responder             responder           LLMNR, NBT-NS and MDNS poisoning
+proxychains-ng        proxychains-ng      proxy-aware command wrapping
+chisel                chisel              tunnelling over HTTP
+sshuttle              sshuttle            transparent VPN over SSH
+rclone                rclone              universal cloud storage sync
+sqlcmd                mssql-tools         Microsoft SQL Server client
 
 # ── Objectives ───────────────────────────────────────────────────────────────
-hashcat              6.2.6     # hash cracking
-john                 1.9.1     # password auditing and cracking
-hydra                9.5       # online brute force
+ripgrep               ripgrep             fast recursive search and pattern matching
+fd                    fd                  file discovery
+jq                    jq                  JSON inspection and extraction
+sqlite3               sqlite              local database extraction
+tar                   tar                 archive creation with metadata
+openssl               openssl             encryption, hashing and certificate work
+gpg                   gnupg               signing and encryption
+pandoc                pandoc              report rendering
+rclone                rclone              bucket harvesting
+tcpdump               tcpdump             packet capture
+tshark                wireshark-cli       capture analysis and conversion
 
 # ── Wireless ─────────────────────────────────────────────────────────────────
-aircrack-ng          1.7       # 802.11 auditing and cracking
-hcxtools             0.7.0     # 802.11 capture, conversion and analysis
-bettercap            2.0.0     # 802.11 reconnaissance and attacks
+aircrack-ng           aircrack-ng         802.11 auditing and cracking
+airmon-ng             aircrack-ng         monitor mode management
+airodump-ng           aircrack-ng         capture and spectrum reconnaissance
+aireplay-ng           aircrack-ng         frame injection and deauthentication
+airdecap-ng           aircrack-ng         decrypting captured traffic
+hcxdumptool           hcxtools            PMKID and handshake capture
+hcxpcapngtool         hcxtools            capture conversion to hash format
+hcxhashtool           hcxtools            hash inspection
+wash                  reaver              WPS access point discovery
+reaver                reaver              WPS attacks, including Pixie Dust
+bully                 bully               WPS brute force
+pixiewps              pixiewps            offline WPS PIN calculation
+hostapd-wpe           hostapd-wpe         rogue enterprise AP
+hostapd-mana          hostapd-mana        karma and MANA attacks
+eaphammer             eaphammer           enterprise evil twin and captive portal
+dnsmasq               dnsmasq             DHCP and DNS for a rogue AP
+iw                    iw                  modern wireless configuration
+wireless_tools        wireless_tools      legacy iwconfig/iwlist
+rfkill                util-linux          radio blocking
+kismet                kismet              headless RF logging
+gpsd                  gpsd                GPS coordinates during a survey
+wavemon               wavemon             wireless signal monitoring
+
+# ── Notes ────────────────────────────────────────────────────────────────────
+# * `tsec --status` prints per-phase availability and the boundary status; it is
+#   the fastest way to see which of the above this host is missing.
+# * Installing every provider is not required and not expected. Start with the
+#   phase you are working in.
+# * A tool installed somewhere unusual can be found by adding its directory to
+#   `tools.search_paths` in config.toml; those directories are searched before
+#   PATH, in order.
+
+# TSEC 3.0 — terminal cybersecurity operations platform, built by funbinet.
+# © funbinet. All rights reserved.

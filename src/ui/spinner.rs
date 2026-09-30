@@ -1,72 +1,82 @@
+//! A one-line progress indicator for the duration of a task.
+//!
+//! The runner is synchronous from the caller's point of view, so the animation
+//! lives on its own thread and stops the moment the task ends. A task that
+//! never completes never claims to have completed: the line simply keeps
+//! turning until the timeout or an interrupt ends it.
+
 // Copyright (c) funbinet. All rights reserved.
 // Part of TSEC terminal cybersecurity operations platform by funbinet.
 
-use std::io::{self, Write};
-use std::sync::{
-    atomic::{AtomicBool, Ordering},
-    Arc,
-};
+use std::io::Write;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 use std::thread::{self, JoinHandle};
 use std::time::Duration;
 
-const FRAMES: &[&str] = &["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+use crossterm::style::{Color, Print, ResetColor, SetForegroundColor};
+use crossterm::{cursor, execute};
 
+const FRAMES: [&str; 8] = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧"];
+const TICK: Duration = Duration::from_millis(90);
+
+/// A turning line with a label, stopped by [`Spinner::stop`] or by drop.
+#[derive(Debug)]
 pub struct Spinner {
     stop: Arc<AtomicBool>,
-    handle: Option<JoinHandle<()>>,
-    width: usize,
-}
-
-impl std::fmt::Debug for Spinner {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("Spinner")
-            .field("width", &self.width)
-            .finish()
-    }
+    worker: Option<JoinHandle<()>>,
 }
 
 impl Spinner {
-    pub fn start(msg: &str) -> Self {
+    /// Start turning `label` until stopped.
+    pub fn start(label: impl Into<String>) -> Self {
+        let label = label.into();
         let stop = Arc::new(AtomicBool::new(false));
-        let stop2 = Arc::clone(&stop);
-        let msg = msg.to_string();
-        let width = msg.len() + 6;
-
-        let handle = thread::spawn(move || {
-            let mut i = 0usize;
-            while !stop2.load(Ordering::Relaxed) {
-                let frame = FRAMES[i % FRAMES.len()];
-                print!("\r\x1b[36m{}\x1b[0m \x1b[37m{}\x1b[0m   ", frame, msg);
-                let _ = io::stdout().flush();
-                thread::sleep(Duration::from_millis(80));
-                i += 1;
+        let flag = stop.clone();
+        let worker = thread::spawn(move || {
+            let mut frame = 0usize;
+            while !flag.load(Ordering::Relaxed) {
+                let mut out = std::io::stdout();
+                let _ = execute!(
+                    out,
+                    SetForegroundColor(Color::DarkGrey),
+                    Print(format!("\r{} {}", FRAMES[frame % FRAMES.len()], label)),
+                    ResetColor
+                );
+                let _ = out.flush();
+                frame += 1;
+                thread::sleep(TICK);
             }
+            let mut out = std::io::stdout();
+            let _ = execute!(
+                out,
+                cursor::MoveToColumn(0),
+                Print(" ".repeat(label.len() + 4))
+            );
+            let _ = execute!(out, cursor::MoveToColumn(0), ResetColor);
+            let _ = out.flush();
         });
-
-        Spinner {
+        Self {
             stop,
-            handle: Some(handle),
-            width,
+            worker: Some(worker),
         }
     }
 
+    /// Stop the animation and clear the line.
     pub fn stop(mut self) {
+        self.halt();
+    }
+
+    fn halt(&mut self) {
         self.stop.store(true, Ordering::Relaxed);
-        if let Some(h) = self.handle.take() {
-            let _ = h.join();
+        if let Some(handle) = self.worker.take() {
+            let _ = handle.join();
         }
-        print!("\r{}\r", " ".repeat(self.width + 4));
-        let _ = io::stdout().flush();
     }
 }
 
 impl Drop for Spinner {
     fn drop(&mut self) {
-        self.stop.store(true, Ordering::Relaxed);
-        if let Some(h) = self.handle.take() {
-            let _ = h.join();
-        }
-        print!("\r{}\r", " ".repeat(self.width + 4));
-        let _ = io::stdout().flush();
+        self.halt();
     }
 }

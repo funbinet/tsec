@@ -1,210 +1,208 @@
-# TSEC architecture
+# TSEC 3.0 architecture
 
-This document explains how the layers fit together and, more importantly, *why*
-the boundaries between them are where they are.
-
----
-
-## Layers
-
-```
-                    ┌──────────────────────────────┐
-   operator  ──▶    │  catalog/capabilities.toml   │   declarative: what exists
-                    └───────────────┬──────────────┘
-                                    │ loaded + validated
-                    ┌───────────────▼──────────────┐
-                    │      src/catalog.rs          │   resolves + expands argv
-                    └───────────────┬──────────────┘
-                                    │ validated Command (no shell)
-                    ┌───────────────▼──────────────┐
-                    │    src/exec/launch.rs        │   ◀── THE boundary decision
-                    │      src/exec/oniux.rs        │
-                    └───────────────┬──────────────┘
-                                    │ Launch { program, args, boundary }
-                    ┌───────────────▼──────────────┐
-                    │      src/exec/mod.rs          │   the ONE spawn site
-                    └───────────────┬──────────────┘
-                                    │ raw bytes on disk
-                    ┌───────────────▼──────────────┐
-                    │      src/parser.rs           │   findings + provenance
-                    └───────────────┬──────────────┘
-                                    │
-                    ┌───────────────▼──────────────┐
-                    │       src/store.rs            │   atomic, append-only
-                    └──────────────────────────────┘
-```
+How the pieces fit, and the invariants the code is written to keep.
 
 ---
 
-## The execution boundary
+## 1. The shape of the system
+
+```
+            catalog/capabilities.toml
+                     │  (loaded and validated at startup)
+                     ▼
+  src/catalog.rs ─────────────► src/provider.rs
+   capabilities, operations       which binaries resolve here
+                     │
+   src/domain/       ▼
+   inputs, commands, plans ─► src/exec/ ─► oniux ─► the tool
+                                  │            (or the host, if local)
+                                  ▼
+                             src/store.rs ─► raw evidence + manifest
+                                  │
+                             src/parser.rs ─► findings
+                                  │
+                             src/ui/  ─► panels, menus, harvest
+```
+
+The operator never names a tool. A **capability** is chosen, the catalog says
+which providers implement it and exactly how each is invoked, and the engine
+runs those argument vectors behind the network boundary.
+
+## 2. The catalog is the source of truth
+
+`catalog/capabilities.toml` describes ten phases and sixteen capabilities per
+phase. `Catalog::from_toml` refuses to load a file that breaks any of these:
+
+| Rule | Why |
+|---|---|
+| `phase` is one of the ten phases | The phase model is structural, not extensible |
+| every phase holds at least one capability | A half-populated catalog is incomplete, not extensible |
+| `label` is exactly two uppercase words | Labels are the interface, and the interface is fixed |
+| every `{placeholder}` names a declared input | A renamed input must fail at startup, not reach a tool as `{target}` |
+| no argument contains shell syntax | Arguments are executed as a vector; a template that implies a shell is a bug |
+| a capability has providers, each with operations, each with arguments | An empty operation would run a bare binary |
+| ids are unique and namespaced under their phase | Reports and manifests key on the id |
+
+Validation happens at load time, not at run time, so a malformed catalog is a
+startup failure naming the file, the capability and the reason.
+
+### Placeholders and escapes
+
+Substitution is per argument token, never textual across the whole vector:
+
+- A token that is *exactly* `{key}` becomes one argv entry, however much
+  whitespace the value contains — a target can never split into two arguments.
+- A placeholder inside a larger token (`--rate={rate}`) is interpolated in place.
+- `{{` and `}}` are literal braces, so a tool that needs to receive `{ ... }` can
+  be described exactly.
+- `%{…}` is printf-style literal text and is copied through untouched, which is
+  what makes curl's `%{http_code}` expressible.
+
+Inputs are validated against their declared `type` (`domain`, `target`, `url`,
+`port`, `ports`, `path`, `file`, `interface`, `mac`, `hash`, `list`, …). Values
+of a sensitive type (`secret`, `password`) are registered on the command as
+sensitive, and every rendering — terminal, manifest, report — masks them.
+
+## 3. Execution
+
+There is **exactly one `Command::spawn` in the engine**, in
+`exec::Runner::run`. Everything that decides *what* runs feeds that one site, so
+the boundary is a property of the code path rather than a rule someone has to
+remember.
+
+1. **Evidence first.** Both capture files are created before anything can fail,
+   so a task that is refused still leaves two (empty) files and a manifest entry
+   that points at something real.
+2. **Preflight.** A network command cannot proceed until `oniux /bin/true` has
+   succeeded. The probe is memoized on the launcher (`OnceCell`), so concurrent
+   tasks pay for exactly one; a failure is remembered for the run.
+3. **Routing.** `Launcher::plan` returns the argument vector to execute. For a
+   network command argv[0] is the resource path of the oniux binary and argv[1]
+   is the tool; for a local command argv[0] is the tool. There is no third case
+   and no unwrapped network vector.
+4. **Isolation of the process group.** Each child gets its own process group, so
+   a timeout or an interrupt reaches grandchildren too: `SIGTERM` to the group,
+   then `SIGKILL` after `kill_grace_ms`.
+5. **Concurrency.** A capability's operations are dispatched together and bounded
+   by a semaphore sized from `execution.max_concurrency`, so a slow tool never
+   holds back a fast one. Each task writes its own artifacts, so there is nothing
+   to serialise. Records are sorted back into catalog order before the manifest
+   is written, which keeps runs diffable.
+6. **Cancellation.** `Ctrl+C` sets a `Cancellation` flag from a watcher thread;
+   running tasks observe it within one poll interval and are terminated as a
+   group. Their records come back marked `INTERRUPTED` with their partial output
+   intact.
 
 ### Why oniux and not a proxy
 
-A SOCKS proxy is advisory. A tool that ignores `ALL_PROXY` — or that opens a
-raw socket, or that uses a protocol the proxy does not understand — reaches the
-internet anyway. `torsocks` mitigates this with `LD_PRELOAD`, which is bypassable
-and does not cover statically linked or unusual binaries.
+A SOCKS proxy is a per-tool option: it only works for tools that honour it, it
+can be forgotten for one invocation, and it does not isolate the process. oniux
+is a namespace whose only route is an embedded Tor client, so isolation is a
+property of the process rather than of the tool's flags. That is also why there
+is no anonymity toggle: a switch that silently changes the security property of
+every command is the thing this design removes.
 
-oniux is not a proxy at all. It creates a **network namespace** containing a
-single TUN interface whose default route is an embedded Tor client. A process
-inside that namespace has no interface to send traffic through except Tor, so
-"ignoring the proxy setting" is not a concept that applies.
+## 4. Evidence
 
-This is why the framework treats it as an invariant rather than a feature.
+```
+<output_dir>/<run_id>/
+├── manifest.json     one record per task, written after each task completes
+├── harvest.txt       consolidated findings
+├── harvest.json      findings with their sources
+└── raw/<stem>.out|.err
+```
 
-### Why there is exactly one spawn site
+- **Artifact stems** are `YYYYMMDD_HHMMSS_PHASE_CAPABILITY_PROVIDER_OPERATION`,
+  sanitised to `[a-z0-9_]`, so a file found in isolation still identifies itself.
+- **Every write is atomic**: a same-directory temporary file, `fsync`, then
+  `rename`. A machine that dies mid-run cannot leave a truncated manifest.
+- **The manifest is appended per task**, which is what makes a partial run
+  useful: everything that finished is already recorded.
+- **The record holds the redacted command** that was run, the boundary it ran
+  under, exit status, byte counts, and the error code when it failed.
 
-`Runner::run` in `src/exec/mod.rs` is the only place in the codebase that calls
-`Command::spawn`. It never receives a raw argv — it receives a validated
-`Command` and asks the `Launcher` to plan it.
+## 5. Parsing and harvest
 
-`Launcher::plan` has two branches:
+`parse_artifact` reads a raw capture according to the format the catalog declared
+for that operation (`nmap`, `json`, `lines`, `raw`) and produces findings with
+provenance. Choosing the format per *operation* rather than per tool matters:
+one provider can emit different formats per operation, and reading nmap's XML as
+a line list would silently lose the structured ports.
 
-- `cmd.is_network()` is false → return the command as-is (`Boundary::Local`)
-- `cmd.is_network()` is true → resolve oniux, wrap, return (`Boundary::Oniux`)
+Findings from every task are merged, deduplicated by (category, value), and
+correlated by counting their sources. Unparsed or empty output is recorded as a
+finding of its own rather than dropped, so "the tool reported nothing" and "the
+parser could not read this" stay distinguishable. Input larger than 32 MiB is
+truncated with a note and a finding; the raw file keeps everything.
 
-There is deliberately no third branch, and the network branch has no error path
-that returns the unwrapped command. A missing boundary is an `Err`, and the
-caller records a failure. A capability cannot "forget" to route a command,
-because routing is not something a capability does.
+## 6. Presentation
 
-### Why the default is network-capable
+`ui/panel.rs` owns geometry and drawing: a centred box, a one-word title, rows,
+and `-[ENTER]` underneath. `ui/menu.rs` builds screens out of panels; `ui/output.rs`
+builds the harvest panel; `ui/theme.rs` resolves palettes and colour depth;
+`ui/spinner.rs` animates one line while tasks run.
 
-`Command::new` sets `network: true`. A caller must write `.local()` to opt out.
+Keys are fixed: `I`/`↑` up, `K`/`↓` down, `J`/`←` back, `L`/`→`/Enter select,
+`Esc` close, `Ctrl+C` leave. Rows that cannot be chosen are skipped by the cursor
+and explain themselves when the cursor lands on them.
 
-The default could be the other way round, and both are defensible — but the
-failure modes are asymmetric. A command wrongly sent through oniux costs a
-namespace and some startup time. A command wrongly marked local puts a scan on
-the host network, silently, and that is precisely the failure the whole design
-exists to prevent. When in doubt, oniux is the correct answer.
+The theme adapts: palettes (`midnight`, `graphite`, `solarized-dark`,
+`solarized-light`, `daylight`, `ashen`), depth detection (truecolor → 256 → 16 →
+none), `NO_COLOR` honoured, and `color = "always"` for pipes. Styling never
+changes the text, only its colour, so a screenshot and a log agree.
 
-### Preflight is enforced, not requested
+## 7. Configuration
 
-Before the first network task, the framework proves the boundary works:
+`Config::load_or_create` writes defaults when no file exists, validates ranges
+on load, and reports the file and the key when something is wrong. Paths are
+discovered (`TSEC_HOME`, `/opt/tsec`, XDG, `~/.local/share/tsec`) so the same
+binary works from a checkout and from a system install. Configuration describing
+a removed feature — a SOCKS proxy, a per-tool override — is dropped on load with
+a note rather than rejected.
 
-1. `oniux` resolves on `PATH` and is executable
-2. `oniux --help` parses (it is really oniux)
-3. `oniux /bin/true` runs and exits 0
+## 8. Error model
 
-Step 3 is the only honest test of "can this boundary establish its environment
-right now" — it exercises the user namespace, `/proc`, the private `/tmp`, the
-TUN device and the Tor bootstrap. Failure is fatal and is reported with oniux's
-own stderr. There is no degraded mode.
+Every failure carries a **stage** (`PLAN`, `EXECUTE`, `CAPTURE`, `PARSE`, …), a
+stable **code** (`ONIUX_UNAVAILABLE`, `TIMEOUT`, `EXIT_STATUS`,
+`CATALOG_ERROR`, …) and, where useful, a hint. Codes are what
+`docs/TROUBLESHOOTING.md` documents and what the manifest records, so a record
+can be read months later without guessing which layer failed.
 
-The enforcement is the part that matters. This check lives inside `Runner::run` —
-the single function that can spawn — not in a helper a caller is expected to
-remember. There is consequently no path to a network tool that has not passed
-it, and no configuration setting that skips it. The result is memoized on the
-`Launcher` in a `tokio::sync::OnceCell`, so twenty concurrent tasks wait on one
-probe instead of racing twenty of them; a *failure* is memoized too, so every
-task in the run reports the same clear cause rather than a scatter of vaguer
-ones.
+A task never fails the run. It fails *itself*, with a record, and the run
+continues — which is why the harvest panel leads with a task tally and the error
+codes before it shows any findings.
 
-Because the check cannot be bypassed, a task that fails it never reaches the
-spawn. Its record still says `network: true` and `boundary: ONIUX`, so the
-harvest distinguishes "this did not run because the boundary was down" from
-"this did not run because the tool was broken".
+## 9. Deliberate non-features
 
-### Tor stays outside the framework
-
-oniux runs its own embedded Tor client, so the framework has nothing to
-configure: no SOCKS port, no control port, no circuit settings. Tor is the
-operating system's concern, exactly as it should be. The framework's only
-responsibility is the routing invariant.
-
----
-
-## Concurrency
-
-Independent tasks in a plan run concurrently, bounded by
-`execution.max_concurrency`. Each task gets:
-
-- its own process group, so a timeout or `Ctrl+C` reaches the tool's children
-- its own stdout and stderr files, written directly by the child through the
-  kernel — never through a shared pipe, which would interleave concurrent output
-  and can block a child once the buffer fills
-- its own oniux process, and therefore its own namespace
-
-That last point has a real cost: every network task boots a Tor client. The
-isolation is per process, which is the property that matters, and the cost is
-why `max_concurrency` defaults to a modest 6 rather than the CPU count.
-
-Timeouts escalate `SIGTERM` → grace period → `SIGKILL`, addressed to the
-negative pid so the whole process group dies. Cancellation is cooperative,
-wakeable through a `Notify` rather than polled, so an interrupt is acted on
-within milliseconds instead of at the next tick.
-
----
-
-## The parser
-
-`src/parser.rs` handles four output shapes, declared per operation in the
-catalog:
-
-| Format | Shape | Approach |
-|---|---|---|
-| `Nmap` | XML report | open-tag scanner, one finding per observation |
-| `Json` | NDJSON (nuclei) | per-record field extraction |
-| `Lines` | one finding per line | a classifier that recognises the shapes that occur |
-| `Raw` | anything else | kept verbatim as evidence |
-
-The `Lines` classifier is worth explaining. Different tools disagree about what
-a line looks like — naabu emits `1.2.3.4:443`, httpx emits
-`http://h [200] [title] [ip] [Tech:1.0]`, subfinder emits a bare hostname. Rather
-than a bespoke parser per tool, the classifier recognises those shapes and keeps
-anything it does not recognise **as evidence rather than dropping it**. Silently
-losing a tool's output is how a framework becomes quietly untrustworthy.
-
-Deduplication keeps every source: two tools reporting the same host produce one
-finding listing both, with occurrence counts — not one finding pretending a
-single tool said it. Order is deterministic so two runs over the same evidence
-produce byte-identical harvests, which is what makes diffing runs meaningful.
-
----
-
-## The store
-
-`src/store.rs` writes everything under one directory per run, atomically:
-write to a temporary file in the same directory, `fsync`, then `rename`.
-
-`rename` within a directory is atomic on POSIX, so a concurrent reader sees
-either the whole old file or the whole new one. A partial run is still a useful
-run: the manifest is written after *every* task, not at the end, so an operator
-who interrupts a long scan keeps everything that already finished.
-
-Raw evidence is never rewritten by the parser. Anything derived goes in a
-separate file, so a disputed finding can always be checked against the original
-bytes.
-
----
-
-## Verification model
-
-Two independent gates stand between the catalog and the operator:
-
-1. **`scripts/verify_catalog.py`** runs each catalog operation against the
-   installed binary's help and reports unknown flags, missing subcommands and
-   uninstalled providers.
-2. **`src/provider.rs`** loads `catalog/verification.json` and offers an
-   operation only when its provider resolves *and* its syntax verifies.
-
-An operation whose command contains shell constructs is classified `suspect`,
-never `verified`. The catalog loader independently rejects such templates, so a
-`suspect` entry can never reach execution.
-
-The reason this is two separate gates is that a framework which both authors and
-grades its own data is not really checking anything. The Python script has no
-knowledge of the Rust code; the Rust code has no knowledge of the script.
-
----
-
-## Deliberate non-features
-
-| Not present | Why |
+| Not present | Because |
 |---|---|
-| Anonymity toggle or mode | Anonymity is not a feature; the boundary is the invariant. |
-| SOCKS endpoint configuration | oniux is not a proxy and has no endpoint. |
-| A shell execution path | Templates needing one are rejected at load. |
-| Automatic provider substitution | An unavailable capability says so. |
-| Flag inference | Only flags a real binary documents are used. |
-| Silent output truncation | A truncated artifact is recorded as truncated. |
+| A shell, or shell syntax in the catalog | An argument vector is the only thing that can be verified |
+| An anonymity toggle, `--no-proxy`, per-tool overrides | The boundary is not optional, so it is not a setting |
+| A fallback to the host network | A silent downgrade is worse than a failure |
+| Guessed flags or tool invocation templates | A flag the catalog does not name is never passed |
+| Silent substitution of a missing tool | An operator must know what did *not* run |
+| Telemetry, phone-home, crash uploads | Evidence leaves the machine only when the operator moves it |
+| A `main.rs` that knows how the framework works | `main.rs` parses arguments, loads config and hands over |
+
+## 10. Verification
+
+The test suite pins the parts that are expensive to get wrong:
+
+- the shipped catalog loads, every phase holds sixteen capabilities, and every
+  label is two uppercase words;
+- shell syntax in an argument, an undeclared placeholder, a label that is not
+  two uppercase words, and an empty phase are all rejected;
+- placeholder substitution keeps a whitespace-bearing value as one argument,
+  `{{ … }}` survives as literal braces, and `%{http_code}` is not treated as a
+  placeholder;
+- a sensitive input is masked in the rendered command and in serialised output;
+- availability reports missing binaries by name;
+- provider search paths are honoured ahead of `PATH`.
+
+`cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`,
+`cargo test` and `cargo build --release` are the gate for every change.
+
+---
+
+TSEC 3.0 — terminal cybersecurity operations platform, built by funbinet.
+© funbinet. All rights reserved.

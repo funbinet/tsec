@@ -1,50 +1,54 @@
 #!/usr/bin/env bash
-# TSEC Installer v2.0.0
+# TSEC 3.0 installer
+# Copyright (c) funbinet. All rights reserved.
+# Part of TSEC terminal cybersecurity operations platform by funbinet.
+#
+# Installs:
+#   /usr/bin/tsec                     the framework binary
+#   /opt/tsec/catalog/capabilities.toml   the operational surface
+#   /opt/tsec/{config,output,logs,...}    the runtime workspace
 
 set -e
 
-# 1. Require root or prompt for sudo FIRST
+ROOT="${TSEC_ROOT:-/opt/tsec}"
+
+# 1. Require root, or re-enter through sudo, before doing anything.
 if [ "$EUID" -ne 0 ]; then
     exec sudo "$0" "$@"
 fi
 
-echo -e "\033[32m╔═══════════════════════════════════════════════════════════════╗\033[0m"
-echo -e "\033[32m║  \033[1;32mTSEC  \033[0m \033[37mInstaller        \033[0m                                     \033[32m║\033[0m"
-echo -e "\033[32m╚═══════════════════════════════════════════════════════════════╝\033[0m"
+echo "TSEC 3.0 installer"
 echo ""
 
-
-# 2. Find cargo — look in the real user's home even when running as root
+# 2. Find cargo — look in the real user's home even when running through sudo.
 find_cargo() {
-    # If invoked via sudo, check that user's .cargo/bin first
     if [ -n "$SUDO_USER" ]; then
         local user_home
         user_home=$(getent passwd "$SUDO_USER" | cut -d: -f6)
         local cargo_bin="$user_home/.cargo/bin"
         if [ -f "$cargo_bin/cargo" ]; then
             export PATH="$cargo_bin:$PATH"
-            echo -e "\033[32m[OK]\033[0m Found cargo at $cargo_bin"
+            echo "[ok] cargo found at $cargo_bin"
             return 0
         fi
     fi
-    # Fall back to checking current PATH
     if command -v cargo &> /dev/null; then
-        echo -e "\033[32m[OK]\033[0m Found cargo in PATH"
+        echo "[ok] cargo found in PATH"
         return 0
     fi
     return 1
 }
 
 if ! find_cargo; then
-    echo -e "\033[31m[x] ERROR: Cargo (Rust) is not installed or not in PATH.\033[0m"
-    echo "Please install Rust via rustup:"
-    echo "  curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh"
-    echo "Then open a new terminal and run this installer again."
+    echo "[!] cargo (Rust) is not installed or not in PATH."
+    echo "    Install it with:"
+    echo "      curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh"
+    echo "    then open a new terminal and run this installer again."
     exit 1
 fi
 
-# 3. Compile project as the invoking user (avoids root-owned target/ files)
-echo -e "\033[36m[i]\033[0m Compiling TSEC in release mode..."
+# 3. Compile as the invoking user, so the build tree is not left root-owned.
+echo "[..] compiling in release mode"
 if [ -n "$SUDO_USER" ]; then
     USER_HOME=$(getent passwd "$SUDO_USER" | cut -d: -f6)
     sudo -u "$SUDO_USER" env PATH="$USER_HOME/.cargo/bin:$PATH" cargo build --release
@@ -52,70 +56,86 @@ else
     cargo build --release
 fi
 
-if [ ! -f "target/release/tsec" ]; then
-    echo -e "\033[31m[x] ERROR: Build failed — cannot find target/release/tsec.\033[0m"
+if [ ! -f target/release/tsec ]; then
+    echo "[!] build failed: target/release/tsec is missing"
     exit 1
 fi
 
-# 4. Install binary
-echo -e "\033[36m[i]\033[0m Installing binary to /usr/bin/tsec..."
-cp -f target/release/tsec /usr/bin/tsec
-chmod +x /usr/bin/tsec
+# 4. Install the binary.
+echo "[..] installing /usr/bin/tsec"
+install -m 0755 -o root -g root target/release/tsec /usr/bin/tsec
 
-# 5. Create workspace directories
-echo -e "\033[36m[i]\033[0m Creating workspace at /opt/tsec/..."
-mkdir -p /opt/tsec/output /opt/tsec/logs /opt/tsec/config /opt/tsec/wordlists /opt/tsec/scripts /opt/tsec/configs /opt/tsec/tools /opt/tsec/projects
+# 5. Install the catalog and create the workspace.
+#
+# The binary looks for catalog/capabilities.toml in TSEC_HOME, then in
+# $ROOT, then in the directory it was built from. Installing it here is what
+# makes `tsec` work from any directory on this machine, without TSEC_HOME.
+echo "[..] installing the catalog to $ROOT/catalog"
+install -d -m 0755 "$ROOT/catalog"
+install -m 0644 catalog/capabilities.toml "$ROOT/catalog/capabilities.toml"
 
+echo "[..] creating the workspace at $ROOT"
+mkdir -p "$ROOT"/{config,output,logs,wordlists,scripts,tools}
 if [ -n "$SUDO_USER" ]; then
-    chown -R "$SUDO_USER:$SUDO_USER" /opt/tsec
+    chown -R "$SUDO_USER:$SUDO_USER" "$ROOT"
 fi
 
-# 6. Install the network-execution boundary
+# 6. Install and check the network-execution boundary.
 #
 # oniux is not a provider tool: it is the boundary every network-capable command
-# is launched through. TSEC has no proxy configuration and no in-framework
-# switch, so a missing or broken oniux means no network capability can run at
-# all. Install it here, or let the operator do it, but never silently skip it.
+# is launched through. TSEC has no proxy configuration and no switch that turns
+# the boundary off, so a missing or broken oniux means no network capability can
+# run at all. Install it if we can; otherwise say so plainly.
 echo ""
-echo -e "\033[36m[i]\033[0m Checking the oniux network boundary..."
+echo "[..] checking the oniux network boundary"
 
 install_oniux() {
     if command -v paru >/dev/null 2>&1; then
-        paru -S --needed oniux && return $?
+        paru -S --needed oniux && return 0
     elif command -v yay >/dev/null 2>&1; then
-        yay -S --needed oniux && return $?
+        yay -S --needed oniux && return 0
     fi
     return 1
 }
 
 if command -v oniux >/dev/null 2>&1; then
-    echo -e "\033[32m[OK]\033[0m oniux found at $(command -v oniux)"
+    echo "[ok] oniux found at $(command -v oniux)"
 elif install_oniux; then
-    echo -e "\033[32m[OK]\033[0m oniux installed"
+    echo "[ok] oniux installed"
 else
-    echo -e "\033[33m[!]\033[0m oniux was not installed automatically."
-    echo -e "    Install it with one of:"
-    echo -e "      paru -S oniux          # Arch / AUR"
-    echo -e "      cargo install --git https://gitlab.torproject.org/tpo/core/oniux --tag v0.4.0 oniux"
-    echo -e "    Network capabilities will report the boundary as unavailable until you do."
+    echo "[!] oniux was not installed automatically. Install it with one of:"
+    echo "      paru -S oniux"
+    echo "      cargo install --git https://gitlab.torproject.org/tpo/core/oniux --tag v0.4.0 oniux"
+    echo "    Until then, every network capability will report the boundary unavailable."
 fi
 
-# The TUN device oniux creates inside its namespace; without the module it
-# cannot establish its network at all.
+# The TUN device oniux creates inside its namespace.
 if [ ! -e /dev/net/tun ]; then
-    modprobe tun 2>/dev/null && echo -e "\033[32m[OK]\033[0m loaded the tun module" \
-        || echo -e "\033[33m[!]\033[0m could not load the tun module: run 'sudo modprobe tun'."
+    if modprobe tun 2>/dev/null; then
+        echo "[ok] loaded the tun module"
+    else
+        echo "[!] could not load the tun module: run 'sudo modprobe tun'"
+    fi
 fi
 
-# oniux builds its own network namespace with unprivileged user namespaces.
-# Some distributions disable them; oniux then cannot isolate anything.
+# oniux builds its network namespace from unprivileged user namespaces, which
+# some distributions restrict.
 if [ -r /proc/sys/kernel/unprivileged_userns_clone ] \
    && [ "$(cat /proc/sys/kernel/unprivileged_userns_clone)" != "1" ]; then
-    echo -e "\033[33m[!]\033[0m kernel.unprivileged_userns_clone=0 — oniux cannot create"
-    echo -e "    namespaces. Set it to 1 to let the boundary work."
+    echo "[!] kernel.unprivileged_userns_clone=0 — oniux cannot create namespaces."
+    echo "    Set it to 1 to let the boundary work."
+fi
+
+# Prove the boundary rather than assume it.
+if command -v oniux >/dev/null 2>&1; then
+    if oniux /bin/true >/dev/null 2>&1; then
+        echo "[ok] the boundary works: oniux /bin/true exited zero"
+    else
+        echo "[!] 'oniux /bin/true' failed. Network capabilities will refuse to run."
+        echo "    Diagnose with: oniux /bin/true"
+    fi
 fi
 
 echo ""
-echo -e "\033[32m[OK] Installation Complete!\033[0m"
-echo -e "Run \033[1;32mtsec\033[0m from anywhere to launch the framework."
-echo -e "Network capabilities run as 'oniux <tool> ...'. Check the boundary with: oniux /bin/true"
+echo "[ok] installation complete"
+echo "     run 'tsec' to start, or 'tsec --status' to see availability per phase"
