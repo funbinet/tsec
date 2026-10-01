@@ -143,7 +143,7 @@ pub fn main_menu(cfg: &Config, catalog: &Catalog, registry: &Registry) -> Result
                     catalog,
                     registry,
                     PHASES[index],
-                    &[root.panel.clone()],
+                    std::slice::from_ref(&root.panel),
                 )?;
                 if flow == Flow::Exit {
                     exit_requested = true;
@@ -190,6 +190,7 @@ enum Flow {
 /// One phase's capabilities, drawn as a box titled with the phase name.
 /// Every capability stays selectable; a missing provider opens installation
 /// guidance rather than a dead end. `Esc` here closes the system.
+#[allow(clippy::too_many_arguments)]
 fn phase_menu(
     theme: &Theme,
     renderer: &mut Renderer,
@@ -601,8 +602,8 @@ fn run_capability(
     )
     .map_err(|e| TsecError::io("running the execution monitor", &e))?;
 
-    for (_, record) in outcome.records {
-        store.commit(record)?;
+    for (_, record) in &outcome.records {
+        store.commit(record.clone())?;
     }
 
     let header = OutputHeader {
@@ -628,7 +629,14 @@ fn run_capability(
         }),
     )?;
 
-    maybe_show_failure_panel(theme, renderer, out, &outcome.records, &harvest.state, stack)?;
+    maybe_show_failure_panel(
+        theme,
+        renderer,
+        out,
+        &outcome.records,
+        &harvest.state,
+        stack,
+    )?;
 
     show_output(theme, renderer, out, &store.output_txt(), Some(&run_prefix))
         .map_err(|e| TsecError::io("drawing output screen", &e))?;
@@ -664,7 +672,10 @@ fn maybe_show_failure_panel(
 
     let mut rows: Vec<(String, Role)> = vec![
         (pair("STATE", state), Role::Error),
-        (pair("FAILED TASKS", &format!("{}/{}", failed.len(), total)), Role::Error),
+        (
+            pair("FAILED TASKS", &format!("{}/{}", failed.len(), total)),
+            Role::Error,
+        ),
         (String::new(), Role::Muted),
     ];
     for (_, record) in failed.iter().take(6) {
