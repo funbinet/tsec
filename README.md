@@ -9,6 +9,11 @@ tools implement it and exactly how to invoke each one. Nothing about a tool's
 flags is written in Rust; all of it lives in one reviewed file,
 [`catalog/capabilities.toml`](catalog/capabilities.toml).
 
+Reference docs:
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
+- [`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md)
+- [`docs/CAPABILITY_OPERATIONS.md`](docs/CAPABILITY_OPERATIONS.md)
+
 The framework is organised as **ten phases, sixteen capabilities each**. Every
 phase is mandatory: a catalog that leaves one empty is rejected at startup
 rather than shipped half-finished.

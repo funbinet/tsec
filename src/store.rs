@@ -490,9 +490,9 @@ fn output_document(
 ) -> String {
     use crate::domain::execution::TaskStatus;
 
-    // A fixed reference width keeps the saved artifact stable regardless of
-    // whichever terminal happened to be watching the run.
-    const WIDTH: usize = 78;
+    // A wide fixed reference width keeps the saved artifact stable regardless
+    // of whichever terminal happened to be watching the run.
+    const WIDTH: usize = 120;
     let centre = |text: &str| {
         let width = text.chars().count();
         if width >= WIDTH {

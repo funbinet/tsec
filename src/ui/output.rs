@@ -48,6 +48,7 @@ pub fn show_output(
     renderer: &mut Renderer,
     out: &mut io::Stdout,
     path: &Path,
+    prefix: Option<&crate::ui::panel::Frame>,
 ) -> io::Result<()> {
     let all = match read_lines(path) {
         Ok(lines) => lines,
@@ -111,7 +112,14 @@ pub fn show_output(
             theme,
             "-[I/K] SCROLL   -[L] OPEN FULL   -[J/ESC] CLOSE",
         ));
-        renderer.present(out, &frame)?;
+        if let Some(prefix) = prefix {
+            let mut composed = prefix.clone();
+            composed.line(String::new());
+            composed.append(frame);
+            renderer.present(out, &composed)?;
+        } else {
+            renderer.present(out, &frame)?;
+        }
 
         match panel::next_input()? {
             panel::Input::Resize => continue,
@@ -242,7 +250,7 @@ pub fn show_error(
 ) -> io::Result<()> {
     let mut frame = box_frame(
         theme,
-        Layout::Information,
+        Layout::Execution,
         "ERROR",
         &[(message.to_string(), Role::Error)],
     );

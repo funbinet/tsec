@@ -38,8 +38,8 @@ use crate::ui::execution::{self, Job, Processing};
 use crate::ui::input::{self, Answer, Prompt};
 use crate::ui::output::{show_output, view_document};
 use crate::ui::panel::{
-    box_frame, hint_frame, is_interrupt, next_input, print_plain, wait_close, Geometry, Input,
-    Layout, Renderer,
+    box_frame, hint_frame, is_interrupt, next_input, print_plain, wait_close, Frame, Geometry,
+    Input, Layout, Renderer,
 };
 use crate::ui::theme::{Role, Theme};
 
@@ -65,6 +65,23 @@ enum Decision {
     Back,
     /// `Esc`: leave the system through the exit screen.
     Exit,
+}
+
+#[derive(Debug, Clone)]
+struct MenuOutcome {
+    decision: Decision,
+    panel: Frame,
+}
+
+fn compose_stack(stack: &[Frame], panel: &Frame, hint: &str, theme: &Theme) -> Frame {
+    let mut out = Frame::default();
+    for frame in stack {
+        out.append(frame.clone());
+        out.line(String::new());
+    }
+    out.append(panel.clone());
+    out.append(hint_frame(theme, hint));
+    out
 }
 
 /// Full uppercase name for each phase.
@@ -107,14 +124,16 @@ pub fn main_menu(cfg: &Config, catalog: &Catalog, registry: &Registry) -> Result
         let outputs_row = items.len();
         items.push(Item::new("OUTPUTS"));
 
-        match menu(
+        let root = menu(
             &theme,
             &mut renderer,
             &mut out,
             "TSEC",
             &items,
             "-[I/K] MOVE   -[L/ENTER] SELECT   -[ESC] EXIT",
-        )? {
+            &[],
+        )?;
+        match root.decision {
             Decision::Chosen(index) if index < PHASES.len() => {
                 let flow = phase_menu(
                     &theme,
@@ -124,6 +143,7 @@ pub fn main_menu(cfg: &Config, catalog: &Catalog, registry: &Registry) -> Result
                     catalog,
                     registry,
                     PHASES[index],
+                    &[root.panel.clone()],
                 )?;
                 if flow == Flow::Exit {
                     exit_requested = true;
@@ -131,10 +151,11 @@ pub fn main_menu(cfg: &Config, catalog: &Catalog, registry: &Registry) -> Result
                 }
             }
             Decision::Chosen(index) if index == status_row => {
-                status_screen(&theme, &mut renderer, &mut out, cfg, catalog)?;
+                status_screen(&theme, &mut renderer, &mut out, cfg, catalog, &[root.panel])?;
             }
             Decision::Chosen(index) if index == outputs_row => {
-                if let Err(e) = outputs_screen(&theme, &mut renderer, &mut out, cfg) {
+                if let Err(e) = outputs_screen(&theme, &mut renderer, &mut out, cfg, &[root.panel])
+                {
                     if e.is_flow_exit() {
                         exit_requested = true;
                         break;
@@ -177,6 +198,7 @@ fn phase_menu(
     catalog: &Catalog,
     registry: &Registry,
     phase: &str,
+    stack: &[Frame],
 ) -> Result<Flow> {
     let title = phase_display_name(phase);
 
@@ -189,6 +211,7 @@ fn phase_menu(
                 out,
                 title,
                 &[("no capabilities in this phase".to_string(), Role::Muted)],
+                stack,
             )?;
             return Ok(Flow::Continue);
         }
@@ -198,20 +221,24 @@ fn phase_menu(
             .map(|cap| Item::new(cap.label.clone()))
             .collect();
 
-        match menu(
+        let phase_panel = menu(
             theme,
             renderer,
             out,
             title,
             &items,
             "-[I/K] MOVE   -[J] BACK   -[L/ENTER] SELECT   -[ESC] EXIT",
-        )? {
+            stack,
+        )?;
+        match phase_panel.decision {
             Decision::Chosen(index) => {
                 let cap = caps[index];
+                let mut child_stack = stack.to_vec();
+                child_stack.push(phase_panel.panel.clone());
                 if capability_is_unavailable(cap, registry) {
-                    provider_guidance(theme, renderer, out, cfg, cap, registry)?;
+                    provider_guidance(theme, renderer, out, cfg, cap, registry, &child_stack)?;
                 } else {
-                    run_capability(theme, renderer, out, cfg, registry, cap)?;
+                    run_capability(theme, renderer, out, cfg, registry, cap, &child_stack)?;
                 }
             }
             Decision::Back => return Ok(Flow::Continue),
@@ -251,9 +278,13 @@ fn menu(
     title: &str,
     items: &[Item],
     hint: &str,
-) -> Result<Decision> {
+    stack: &[Frame],
+) -> Result<MenuOutcome> {
     if items.is_empty() {
-        return Ok(Decision::Back);
+        return Ok(MenuOutcome {
+            decision: Decision::Back,
+            panel: box_frame(theme, Layout::Menu, title, &[]),
+        });
     }
     let mut selected = 0usize;
     let mut top = 0usize;
@@ -281,8 +312,8 @@ fn menu(
             rows.push((format!("{} OF {}", selected + 1, items.len()), Role::Muted));
         }
 
-        let mut frame = box_frame(theme, Layout::Menu, title, &rows);
-        frame.append(hint_frame(theme, hint));
+        let panel = box_frame(theme, Layout::Menu, title, &rows);
+        let frame = compose_stack(stack, &panel, hint, theme);
         renderer
             .present(out, &frame)
             .map_err(|e| TsecError::io("drawing the menu", &e))?;
@@ -291,7 +322,10 @@ fn menu(
             Input::Resize => continue,
             Input::Key(key) => {
                 if is_interrupt(&key) {
-                    return Ok(Decision::Exit);
+                    return Ok(MenuOutcome {
+                        decision: Decision::Exit,
+                        panel,
+                    });
                 }
                 match key.code {
                     KeyCode::Char('i') | KeyCode::Char('I') | KeyCode::Up => {
@@ -301,15 +335,26 @@ fn menu(
                         selected = (selected + 1).min(items.len() - 1);
                     }
                     KeyCode::Char('j') | KeyCode::Char('J') | KeyCode::Left => {
-                        return Ok(Decision::Back);
+                        return Ok(MenuOutcome {
+                            decision: Decision::Back,
+                            panel,
+                        });
                     }
-                    KeyCode::Esc => return Ok(Decision::Exit),
+                    KeyCode::Esc => {
+                        return Ok(MenuOutcome {
+                            decision: Decision::Exit,
+                            panel,
+                        })
+                    }
                     KeyCode::Char('l')
                     | KeyCode::Char('L')
                     | KeyCode::Enter
                     | KeyCode::Right
                     | KeyCode::Char(' ') => {
-                        return Ok(Decision::Chosen(selected));
+                        return Ok(MenuOutcome {
+                            decision: Decision::Chosen(selected),
+                            panel,
+                        });
                     }
                     _ => {}
                 }
@@ -326,6 +371,7 @@ fn provider_guidance(
     cfg: &Config,
     cap: &Capability,
     registry: &Registry,
+    stack: &[Frame],
 ) -> Result<()> {
     let mut rows: Vec<(String, Role)> = Vec::new();
     rows.push((format!("CAPABILITY: {}", cap.label), Role::Primary));
@@ -384,8 +430,8 @@ fn provider_guidance(
         Role::Muted,
     ));
 
-    let mut frame = box_frame(theme, Layout::Information, "PROVIDERS NOT INSTALLED", &rows);
-    frame.append(hint_frame(theme, "-[ENTER/J/ESC] RETURN"));
+    let panel = box_frame(theme, Layout::Form, "PROVIDERS NOT INSTALLED", &rows);
+    let frame = compose_stack(stack, &panel, "-[ENTER/J/ESC] RETURN", theme);
     renderer
         .present(out, &frame)
         .map_err(|e| TsecError::io("drawing the guidance box", &e))?;
@@ -409,15 +455,21 @@ fn collect_inputs(
     renderer: &mut Renderer,
     out: &mut io::Stdout,
     cap: &Capability,
+    stack: &[Frame],
 ) -> Result<Answers> {
     let mut values = InputValues::new();
-    let header = box_frame(theme, Layout::Form, &cap.label, &[]);
+    let mut header = Frame::default();
+    for frame in stack {
+        header.append(frame.clone());
+        header.line(String::new());
+    }
 
     for spec in &cap.inputs {
         let mut error: Option<String> = None;
         loop {
             let label = format!("{} [{}]", spec.label.to_uppercase(), spec.ty.label());
             let prompt = Prompt {
+                capability: &cap.label,
                 label: &label,
                 help: spec.help.as_deref(),
                 default: spec.default.as_deref(),
@@ -460,8 +512,9 @@ fn run_capability(
     cfg: &Config,
     registry: &Registry,
     cap: &Capability,
+    stack: &[Frame],
 ) -> Result<()> {
-    let values = match collect_inputs(theme, renderer, out, cap)? {
+    let values = match collect_inputs(theme, renderer, out, cap, stack)? {
         Answers::Given(values) => values,
         Answers::Cancelled => return Ok(()),
     };
@@ -469,6 +522,12 @@ fn run_capability(
     let phase_word = phase_label(&cap.phase).unwrap_or(&cap.phase);
     let run_id = RunId::for_run(phase_word, &cap.label);
     let mut store = RunStore::open(&cfg.general.output_dir, &run_id)?;
+    let mut run_prefix = Frame::default();
+    for frame in stack {
+        run_prefix.append(frame.clone());
+        run_prefix.line(String::new());
+    }
+    run_prefix.append(box_frame(theme, Layout::Form, &cap.label, &[]));
 
     let mut missing_providers: Vec<String> = Vec::new();
     let mut formats: BTreeMap<String, OutputFormat> = BTreeMap::new();
@@ -517,7 +576,7 @@ fn run_capability(
     }
 
     if jobs.is_empty() {
-        return provider_guidance(theme, renderer, out, cfg, cap, registry);
+        return provider_guidance(theme, renderer, out, cfg, cap, registry, stack);
     }
 
     let runner = Runner::new(
@@ -538,6 +597,7 @@ fn run_capability(
         &cap.label,
         runner,
         cfg.execution.max_concurrency,
+        Some(run_prefix.clone()),
     )
     .map_err(|e| TsecError::io("running the execution monitor", &e))?;
 
@@ -553,12 +613,12 @@ fn run_capability(
         cancelled: outcome.cancelled,
     };
 
-    let mut processing = Processing::new(renderer, theme);
+    let mut processing = Processing::new(renderer, theme, Some(run_prefix.clone()));
     processing
         .begin(out)
         .map_err(|e| TsecError::io("drawing processing screen", &e))?;
 
-    let _harvest = store.harvest(
+    let harvest = store.harvest(
         &formats,
         &header,
         Some(&mut |stage: HarvestStage| {
@@ -568,10 +628,66 @@ fn run_capability(
         }),
     )?;
 
-    show_output(theme, renderer, out, &store.output_txt())
+    maybe_show_failure_panel(theme, renderer, out, &outcome.records, &harvest.state, stack)?;
+
+    show_output(theme, renderer, out, &store.output_txt(), Some(&run_prefix))
         .map_err(|e| TsecError::io("drawing output screen", &e))?;
 
     Ok(())
+}
+
+fn maybe_show_failure_panel(
+    theme: &Theme,
+    renderer: &mut Renderer,
+    out: &mut io::Stdout,
+    records: &[(usize, crate::domain::execution::ExecutionRecord)],
+    state: &str,
+    stack: &[Frame],
+) -> Result<()> {
+    use crate::domain::execution::TaskStatus;
+    let total = records.len();
+    if total == 0 {
+        return Ok(());
+    }
+    let failed: Vec<_> = records
+        .iter()
+        .filter(|(_, r)| {
+            matches!(
+                r.status,
+                TaskStatus::Failed | TaskStatus::TimedOut | TaskStatus::Interrupted
+            )
+        })
+        .collect();
+    if failed.is_empty() || failed.len() < total {
+        return Ok(());
+    }
+
+    let mut rows: Vec<(String, Role)> = vec![
+        (pair("STATE", state), Role::Error),
+        (pair("FAILED TASKS", &format!("{}/{}", failed.len(), total)), Role::Error),
+        (String::new(), Role::Muted),
+    ];
+    for (_, record) in failed.iter().take(6) {
+        rows.push((
+            format!(
+                "{} · {} · {}",
+                record.provider,
+                record.operation,
+                record.error_code.as_deref().unwrap_or("UNKNOWN")
+            ),
+            Role::Foreground,
+        ));
+        if let Some(message) = &record.error_message {
+            rows.push((format!("  {}", message), Role::Error));
+        }
+    }
+    rows.push((String::new(), Role::Muted));
+    rows.push((
+        "Review missing providers, boundary status, and raw stderr in OUTPUTS > RAW EVIDENCE."
+            .to_string(),
+        Role::Muted,
+    ));
+    show_notice(theme, renderer, out, "RUN FAILURE", &rows, stack)
 }
 
 /// Locate a provider binary, preferring the resolved registry entry.
@@ -603,6 +719,7 @@ fn status_screen(
     out: &mut io::Stdout,
     cfg: &Config,
     catalog: &Catalog,
+    stack: &[Frame],
 ) -> Result<()> {
     let boundary = match OniuxBackend::new(&cfg.execution.oniux_binary).resolve() {
         Ok(path) => path.display().to_string(),
@@ -634,7 +751,7 @@ fn status_screen(
     rows.push((String::new(), Role::Muted));
     rows.push((catalog.source().display().to_string(), Role::Secondary));
 
-    show_notice(theme, renderer, out, "STATUS", &rows)
+    show_notice(theme, renderer, out, "STATUS", &rows, stack)
 }
 
 /// `KEY` in a fixed column, so the box stays legible without a table.
@@ -665,6 +782,7 @@ fn outputs_screen(
     renderer: &mut Renderer,
     out: &mut io::Stdout,
     cfg: &Config,
+    stack: &[Frame],
 ) -> Result<()> {
     loop {
         let runs = recorded_runs(&cfg.general.output_dir);
@@ -678,6 +796,7 @@ fn outputs_screen(
                     "no runs recorded in output directory".to_string(),
                     Role::Muted,
                 )],
+                stack,
             )?;
             return Ok(());
         }
@@ -693,16 +812,20 @@ fn outputs_screen(
             })
             .collect();
 
-        match menu(
+        let pick = menu(
             theme,
             renderer,
             out,
             "OUTPUTS",
             &items,
             "-[I/K] MOVE   -[J] BACK   -[L/ENTER] SELECT   -[ESC] EXIT",
-        )? {
+            stack,
+        )?;
+        match pick.decision {
             Decision::Chosen(index) => {
-                run_actions_menu(theme, renderer, out, &runs[index])?;
+                let mut child_stack = stack.to_vec();
+                child_stack.push(pick.panel.clone());
+                run_actions_menu(theme, renderer, out, &runs[index], &child_stack)?;
             }
             Decision::Back => return Ok(()),
             Decision::Exit => return Err(crate::error::TsecError::flow_exit()),
@@ -716,6 +839,7 @@ fn run_actions_menu(
     renderer: &mut Renderer,
     out: &mut io::Stdout,
     run_dir: &Path,
+    stack: &[Frame],
 ) -> Result<Flow> {
     let run_name = run_dir
         .file_name()
@@ -729,21 +853,25 @@ fn run_actions_menu(
     ];
 
     loop {
-        match menu(
+        let action = menu(
             theme,
             renderer,
             out,
             &run_name,
             &actions,
             "-[I/K] MOVE   -[J] BACK   -[L/ENTER] SELECT   -[ESC] EXIT",
-        )? {
+            stack,
+        )?;
+        match action.decision {
             Decision::Chosen(0) => {
                 let path = run_dir.join("output.txt");
                 view_document(theme, renderer, out, "OUTPUT", &path)
                     .map_err(|e| TsecError::io("viewing output", &e))?;
             }
             Decision::Chosen(1) => {
-                raw_outputs_menu(theme, renderer, out, run_dir)?;
+                let mut child_stack = stack.to_vec();
+                child_stack.push(action.panel.clone());
+                raw_outputs_menu(theme, renderer, out, run_dir, &child_stack)?;
             }
             Decision::Chosen(2) => {
                 let path = run_dir.join("manifest.json");
@@ -763,6 +891,7 @@ fn raw_outputs_menu(
     renderer: &mut Renderer,
     out: &mut io::Stdout,
     run_dir: &Path,
+    stack: &[Frame],
 ) -> Result<Flow> {
     let raw_dir = run_dir.join("raw");
     let mut files = Vec::new();
@@ -783,6 +912,7 @@ fn raw_outputs_menu(
             out,
             "RAW EVIDENCE",
             &[("no raw artifacts in this run".to_string(), Role::Muted)],
+            stack,
         )?;
         return Ok(Flow::Continue);
     }
@@ -799,14 +929,16 @@ fn raw_outputs_menu(
         .collect();
 
     loop {
-        match menu(
+        let pick = menu(
             theme,
             renderer,
             out,
             "RAW EVIDENCE",
             &items,
             "-[I/K] MOVE   -[J] BACK   -[L/ENTER] SELECT   -[ESC] EXIT",
-        )? {
+            stack,
+        )?;
+        match pick.decision {
             Decision::Chosen(index) => {
                 view_document(theme, renderer, out, "RAW EVIDENCE", &files[index])
                     .map_err(|e| TsecError::io("viewing raw artifact", &e))?;
@@ -824,9 +956,10 @@ fn show_notice(
     out: &mut io::Stdout,
     title: &str,
     rows: &[(String, Role)],
+    stack: &[Frame],
 ) -> Result<()> {
-    let mut frame = box_frame(theme, Layout::Information, title, rows);
-    frame.append(hint_frame(theme, "-[ENTER/J/ESC] RETURN"));
+    let panel = box_frame(theme, Layout::Form, title, rows);
+    let frame = compose_stack(stack, &panel, "-[ENTER/J/ESC] RETURN", theme);
     renderer
         .present(out, &frame)
         .map_err(|e| TsecError::io("drawing the notice", &e))?;
