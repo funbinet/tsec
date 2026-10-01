@@ -109,6 +109,7 @@ pub fn execute(
     capability: &str,
     runner: Runner,
     max_concurrency: usize,
+    prefix: Option<crate::ui::panel::Frame>,
 ) -> io::Result<RunOutcome> {
     let rows: Vec<TaskRow> = jobs.iter().map(TaskRow::new).collect();
     let total = rows.len();
@@ -157,6 +158,7 @@ pub fn execute(
         started: Instant::now(),
         last_draw: Instant::now(),
         tick: 0,
+        prefix,
     };
     let outcome = monitor.run()?;
 
@@ -181,6 +183,7 @@ struct Monitor<'a> {
     started: Instant,
     last_draw: Instant,
     tick: usize,
+    prefix: Option<crate::ui::panel::Frame>,
 }
 
 impl Monitor<'_> {
@@ -312,7 +315,14 @@ impl Monitor<'_> {
 
         let mut frame = box_frame(self.theme, Layout::Execution, "EXECUTION", &window);
         frame.append(hint_frame(self.theme, &self.hint()));
-        self.renderer.present(self.out, &frame)
+        if let Some(prefix) = &self.prefix {
+            let mut composed = prefix.clone();
+            composed.line(String::new());
+            composed.append(frame);
+            self.renderer.present(self.out, &composed)
+        } else {
+            self.renderer.present(self.out, &frame)
+        }
     }
 
     /// Every body line, tagged with the task it belongs to (usize::MAX for
@@ -496,15 +506,21 @@ fn run_jobs(
 pub struct Processing<'a> {
     renderer: &'a mut Renderer,
     theme: &'a Theme,
+    prefix: Option<crate::ui::panel::Frame>,
     done: usize,
     tick: usize,
 }
 
 impl<'a> Processing<'a> {
-    pub fn new(renderer: &'a mut Renderer, theme: &'a Theme) -> Self {
+    pub fn new(
+        renderer: &'a mut Renderer,
+        theme: &'a Theme,
+        prefix: Option<crate::ui::panel::Frame>,
+    ) -> Self {
         Self {
             renderer,
             theme,
+            prefix,
             done: 0,
             tick: 0,
         }
@@ -543,7 +559,14 @@ impl<'a> Processing<'a> {
             rows.push(row);
         }
         let frame = box_frame(self.theme, Layout::Execution, "PROCESSING", &rows);
-        self.renderer.present(out, &frame)
+        if let Some(prefix) = &self.prefix {
+            let mut composed = prefix.clone();
+            composed.line(String::new());
+            composed.append(frame);
+            self.renderer.present(out, &composed)
+        } else {
+            self.renderer.present(out, &frame)
+        }
     }
 }
 

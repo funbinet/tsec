@@ -25,6 +25,8 @@ use crate::ui::theme::{Role, Theme};
 /// One field's worth of prompt decoration.
 #[derive(Debug)]
 pub struct Prompt<'a> {
+    /// Capability name displayed as the box title.
+    pub capability: &'a str,
     /// e.g. `DOMAIN [domain]` — becomes the box title row.
     pub label: &'a str,
     /// Optional one-line help, shown muted under the box.
@@ -133,12 +135,7 @@ fn input_frame(
 
     frame.line(String::new());
 
-    // Row 1 — the title: `DOMAIN [domain]`, centred in a closed box.
-    frame.append(box_frame_in(&g, theme, Layout::Form, prompt.label, &[]));
-
-    // Row 2 — the typing row, as a second closed box so the value line is a
-    // full-width part of its own. The caret is a glyph so the renderer never
-    // chases the hardware cursor around the frame.
+    // One closed three-part box: capability title, input label row, input row.
     let value: String = buffer.iter().collect();
     let shown = if prompt.sensitive && !value.is_empty() {
         "*".repeat(buffer.len())
@@ -147,13 +144,15 @@ fn input_frame(
     };
     let (before, after) = split_at_char(&shown, cursor);
     let value_row = format!("{before}▌{after}");
-
     frame.append(box_frame_in(
         &g,
         theme,
         Layout::Form,
-        "",
-        &[(value_row, Role::Foreground)],
+        prompt.capability,
+        &[
+            (prompt.label.to_string(), Role::Primary),
+            (value_row, Role::Foreground),
+        ],
     ));
 
     if let Some(help) = prompt.help {
@@ -203,9 +202,10 @@ mod tests {
     }
 
     #[test]
-    fn input_frame_is_two_closed_boxes_with_a_centred_hint() {
+    fn input_frame_is_one_closed_box_with_three_sections() {
         let theme = Theme::plain();
         let prompt = Prompt {
+            capability: "SUBDOMAIN DISCOVERY",
             label: "DOMAIN [domain]",
             help: Some("the target you are enumerating"),
             default: Some("example.com"),
@@ -226,9 +226,8 @@ mod tests {
             .filter(|l| !l.is_empty())
             .map(str::to_string)
             .collect();
-        // Title box (3), value box (4: top, row, bottom... plus the value),
-        // help, error, hint.
-        assert!(lines.iter().any(|l| l.contains("DOMAIN [DOMAIN]")));
+        assert!(lines.iter().any(|l| l.contains("SUBDOMAIN DISCOVERY")));
+        assert!(lines.iter().any(|l| l.contains("DOMAIN [domain]")));
         assert!(lines.iter().any(|l| l.contains('▌')));
         assert!(
             lines
