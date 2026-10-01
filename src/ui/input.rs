@@ -1,12 +1,11 @@
-//! Structured input collection: one prompt, one line, always cancellable.
+//! Structured input collection: one closed box per field, always cancellable.
 //!
-//! Prompts are the documented exception to the box system — a clean
-//! interactive line under the capability's title box. They run in the same
-//! raw-mode, single-render-owner frame loop as every other screen, which is
-//! what makes two things possible at once: the operator can walk away from a
-//! field with `Esc` or `Ctrl+C` (returning to the capability menu, not
-//! terminating TSEC), and a terminal resize mid-answer redraws correctly
-//! instead of corrupting the line.
+//! Each input is a closed box of two full-width rows: the title row carries
+//! the input's label (centred), the content row is where the operator types
+//! (centred). The box is rebuilt in place on every keystroke by the same
+//! renderer that draws every other screen, so typing never scrolls, never
+//! appends, never duplicates. `Enter` submits; `Esc` cancels back to the
+//! capability menu — never exiting the framework from inside a form.
 
 // Copyright (c) funbinet. All rights reserved.
 // Part of TSEC terminal cybersecurity operations platform by funbinet.
@@ -19,15 +18,16 @@ use std::io;
 
 use crossterm::event::{KeyCode, KeyModifiers};
 
-use crate::ui::panel::{self, Frame, Geometry, Renderer};
+use crate::ui::panel;
+use crate::ui::panel::{box_frame_in, centre, wrap, Frame, Geometry, Layout, Renderer};
 use crate::ui::theme::{Role, Theme};
 
 /// One field's worth of prompt decoration.
 #[derive(Debug)]
 pub struct Prompt<'a> {
-    /// e.g. `DOMAIN [domain]`.
+    /// e.g. `DOMAIN [domain]` — becomes the box title row.
     pub label: &'a str,
-    /// Optional one-line help, shown muted under the value.
+    /// Optional one-line help, shown muted under the box.
     pub help: Option<&'a str>,
     /// Pre-filled value; Enter on an untouched field accepts it.
     pub default: Option<&'a str>,
@@ -45,10 +45,12 @@ pub enum Answer {
     Cancelled,
 }
 
-/// Ask for one value, drawing under `above` (usually the capability box).
+/// Ask for one value: a closed two-row box — title row, typing row — drawn
+/// after `above` (usually the capability's own box), plus centred help, error
+/// and hint lines.
 ///
 /// Returns as soon as the operator submits or withdraws; resizes and ordinary
-/// keys only trigger redraws.
+/// keys only trigger in-place redraws.
 pub fn ask(
     out: &mut io::Stdout,
     renderer: &mut Renderer,
@@ -65,7 +67,7 @@ pub fn ask(
         if let Some(header) = above {
             frame.append(header.clone());
         }
-        frame.append(prompt_lines(theme, prompt, &shown_error, &buffer, cursor));
+        frame.append(input_frame(theme, prompt, &shown_error, &buffer, cursor));
         renderer.present(out, &frame)?;
 
         match panel::next_input()? {
@@ -117,9 +119,8 @@ pub fn ask(
     }
 }
 
-/// The unboxed prompt block: label line, value with a visible caret, optional
-/// help and error lines, then the key hint.
-fn prompt_lines(
+/// The closed input box plus its centred help, error and hint lines.
+fn input_frame(
     theme: &Theme,
     prompt: &Prompt<'_>,
     error: &Option<String>,
@@ -127,39 +128,48 @@ fn prompt_lines(
     cursor: usize,
 ) -> Frame {
     let g = Geometry::detect();
-    let width = g.cols.saturating_sub(1);
-    let mut rows: Vec<(String, Role)> = Vec::new();
+    let content = g.inner.saturating_sub(2);
+    let mut frame = Frame::default();
 
-    rows.push((String::new(), Role::Muted));
-    rows.push((prompt.label.to_string(), Role::Accent));
+    frame.line(String::new());
 
+    // Row 1 — the title: `DOMAIN [domain]`, centred in a closed box.
+    frame.append(box_frame_in(&g, theme, Layout::Form, prompt.label, &[]));
+
+    // Row 2 — the typing row, as a second closed box so the value line is a
+    // full-width part of its own. The caret is a glyph so the renderer never
+    // chases the hardware cursor around the frame.
     let value: String = buffer.iter().collect();
-    let (value, role) = if prompt.sensitive && !value.is_empty() {
-        ("*".repeat(buffer.len()), Role::Foreground)
+    let shown = if prompt.sensitive && !value.is_empty() {
+        "*".repeat(buffer.len())
     } else {
-        (value, Role::Foreground)
+        value
     };
-    // The caret is drawn as a glyph so the renderer never has to chase the
-    // hardware cursor around the frame.
-    let caret = "▌";
-    let (before, after) = split_at_char(&value, cursor);
-    rows.push((format!("{before}{caret}{after}"), role));
+    let (before, after) = split_at_char(&shown, cursor);
+    let value_row = format!("{before}▌{after}");
+
+    frame.append(box_frame_in(
+        &g,
+        theme,
+        Layout::Form,
+        "",
+        &[(value_row, Role::Foreground)],
+    ));
 
     if let Some(help) = prompt.help {
-        rows.push((help.to_string(), Role::Muted));
+        for segment in wrap(help, content) {
+            frame.line(theme.paint(Role::Muted, &centre(&segment, g.cols.saturating_sub(1))));
+        }
     }
     if let Some(error) = error {
-        rows.push((format!("! {error}"), Role::Error));
+        for segment in wrap(&format!("! {error}"), content) {
+            frame.line(theme.paint(Role::Error, &centre(&segment, g.cols.saturating_sub(1))));
+        }
     }
-    rows.push((String::new(), Role::Muted));
-    rows.push(("-[ENTER] ACCEPT   -[ESC] CANCEL".to_string(), Role::Muted));
-
-    // prompt_lines is built directly (not through box_frame) so it stays
-    // unboxed, exactly as the input-form exception requires.
-    let mut frame = Frame::default();
-    for (text, role) in rows {
-        frame.line(theme.paint(role, &panel::fit(&text, width)));
-    }
+    frame.line(theme.paint(
+        Role::Muted,
+        &centre("-[ENTER] ACCEPT   -[ESC] CANCEL", g.cols.saturating_sub(1)),
+    ));
     frame
 }
 
@@ -180,7 +190,7 @@ fn split_at_char(text: &str, at: usize) -> (String, String) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ui::panel::Layout;
+    use crate::ui::panel::{display_width, fit, Layout};
 
     #[test]
     fn split_at_char_splits_on_character_boundaries() {
@@ -193,7 +203,7 @@ mod tests {
     }
 
     #[test]
-    fn prompt_lines_stay_unboxed_and_within_the_terminal() {
+    fn input_frame_is_two_closed_boxes_with_a_centred_hint() {
         let theme = Theme::plain();
         let prompt = Prompt {
             label: "DOMAIN [domain]",
@@ -202,26 +212,54 @@ mod tests {
             sensitive: false,
             error: Some("not a valid domain name"),
         };
-        let frame = prompt_lines(
+        let frame = input_frame(
             &theme,
             &prompt,
             &prompt.error.map(str::to_string),
             &['e'],
             1,
         );
-        for line in frame.text.split("\r\n").filter(|l| !l.is_empty()) {
-            assert!(
-                !line.contains('│') && !line.contains('║'),
-                "unboxed: {line:?}"
-            );
-            assert!(panel::display_width(line) <= 160, "line too wide: {line:?}");
+
+        let lines: Vec<String> = frame
+            .text
+            .split("\r\n")
+            .filter(|l| !l.is_empty())
+            .map(str::to_string)
+            .collect();
+        // Title box (3), value box (4: top, row, bottom... plus the value),
+        // help, error, hint.
+        assert!(lines.iter().any(|l| l.contains("DOMAIN [DOMAIN]")));
+        assert!(lines.iter().any(|l| l.contains('▌')));
+        assert!(
+            lines
+                .iter()
+                .any(|l| l.contains("-[ENTER] ACCEPT   -[ESC] CANCEL")),
+            "the accept/cancel hint is present"
+        );
+        // The hint line is present and padded (centred): it starts with
+        // spaces rather than at column zero.
+        let hint = lines
+            .iter()
+            .find(|l| l.contains("-[ENTER] ACCEPT"))
+            .expect("hint line present");
+        assert!(hint.starts_with(' '), "centred hint is padded: {hint:?}");
+        // Box rows never exceed terminal width.
+        for line in lines.iter().filter(|l| l.contains('║')) {
+            assert!(display_width(line) <= 80, "overflow: {line:?}");
         }
-        assert!(frame.text.contains('▌'), "caret is visible");
+        assert!(!lines.iter().any(|l| l.contains('│')), "closed box only");
     }
 
     #[test]
-    fn layout_input_is_left_aligned() {
-        assert!(!Layout::Input.title_centred());
-        assert!(!Layout::Input.rows_centred());
+    fn layout_form_is_fully_centred() {
+        assert!(Layout::Form.title_centred());
+        assert!(Layout::Form.rows_centred());
+    }
+
+    #[test]
+    fn fit_and_centre_agree_on_painted_text() {
+        let painted = "\x1b[31mred\x1b[0m";
+        assert_eq!(display_width(&centre(painted, 7)), 7);
+        assert_eq!(display_width(&fit(painted, 5)), 5);
     }
 }

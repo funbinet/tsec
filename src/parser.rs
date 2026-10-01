@@ -127,7 +127,11 @@ impl Harvest {
                 || matches!(
                     value.to_ascii_lowercase().as_str(),
                     "n/a" | "na" | "none" | "null" | "-" | "--" | "?" | "unknown"
-                );
+                )
+                // A pure annotation (`— line 3`, `— [tool]`) carries no
+                // observed value at all: drop it here rather than render an
+                // empty finding with only its provenance tail.
+                || value.starts_with('—');
             if junk {
                 return false;
             }

@@ -1,0 +1,21 @@
+version = 0
+
+[general]
+output_dir = "/home/iturn/tsec/output"
+log_dir = "/home/iturn/tsec/logs"
+preview_lines = 500
+color = "auto"
+keep_raw = true
+
+[execution]
+max_concurrency = 6
+timeout_secs = 300
+oniux_binary = "oniux"
+kill_grace_ms = 2000
+group_kill_grace_ms = 500
+
+[tools]
+search_paths = []
+strict_versions = false
+
+[providers]

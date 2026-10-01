@@ -2,15 +2,14 @@
 //!
 //! One file — `output.txt`, written by the store — is the single source of
 //! truth. The preview shows its first [`PREVIEW_LIMIT`] lines inside a
-//! full-width, left-aligned box with the `OUTPUT FILE <path>` line and the
-//! `Open full output? [Y/n]` question underneath (default `N`; Enter, `N`,
-//! `J` or `Esc` all mean "no"). A `Y` opens the complete file in the
-//! scrollable viewer, which renders every line — the 500-line cap applies to
-//! the preview only, never to the saved artifact or the viewer.
+//! full-width box; underneath, a small closed box names the saved file, and
+//! the hint line lists exactly three operations plus `ESC`: scroll, open the
+//! full viewer (`L`), close. There is no confirmation question — `L` opens
+//! the viewer directly. `ESC` always closes the screen.
 
 // Copyright (c) funbinet. All rights reserved.
 // Part of TSEC terminal cybersecurity operations platform by funbinet.
-//
+
 // Repository: github.com/funbinet/tsec.git (origin)
 // Mirror:     codeberg.org/funbinet/tsec.git (codeberg)
 // Owner:      funbinet
@@ -20,7 +19,8 @@ use std::path::Path;
 
 use crossterm::event::KeyCode;
 
-use crate::ui::panel::{self, box_frame, hint_frame, plain_frame, Geometry, Layout, Renderer};
+use crate::ui::panel;
+use crate::ui::panel::{box_frame, box_frame_in, hint_frame, Geometry, Layout, Renderer};
 use crate::ui::theme::{Role, Theme};
 
 /// The initial preview shows at most this many lines of the document.
@@ -66,17 +66,18 @@ pub fn show_output(
 
     loop {
         let g = Geometry::detect();
-        // Chrome: four box rows, five prompt rows under it, one hint line.
-        let visible = g.body_rows(4 + 5 + 1);
+        // Chrome: 4 preview-box rows + 4 file-box rows + 1 hint line.
+        let visible = g.body_rows(4 + 4 + 1).saturating_sub(1);
 
         if scroll + visible > preview.len() {
             scroll = preview.len().saturating_sub(visible);
         }
 
+        let body = visible.saturating_sub(1);
         let mut rows: Vec<(String, Role)> = preview
             .iter()
             .skip(scroll)
-            .take(visible.saturating_sub(1))
+            .take(body)
             .map(|line| (line.to_string(), Role::Foreground))
             .collect();
         if truncated && scroll + rows.len() >= preview.len() {
@@ -95,19 +96,20 @@ pub fn show_output(
         }
 
         let mut frame = box_frame(theme, Layout::Output, "OUTPUT", &rows);
-        frame.append(plain_frame(
+
+        // The saved file, in its own closed two-row centred box.
+        let file_box = box_frame_in(
+            &g,
             theme,
-            &[
-                (String::new(), Role::Muted),
-                ("OUTPUT FILE".to_string(), Role::Secondary),
-                (path.display().to_string(), Role::Accent),
-                (String::new(), Role::Muted),
-                ("Open full output? [Y/n]".to_string(), Role::Foreground),
-            ],
-        ));
+            Layout::Form,
+            "OUTPUT FILE",
+            &[(path.display().to_string(), Role::Accent)],
+        );
+        frame.append(file_box);
+
         frame.append(hint_frame(
             theme,
-            "-[I/K] SCROLL   -[Y] OPEN FULL   -[J] CLOSE",
+            "-[I/K] SCROLL   -[L] OPEN FULL   -[J/ESC] CLOSE",
         ));
         renderer.present(out, &frame)?;
 
@@ -118,16 +120,12 @@ pub fn show_output(
                     return Ok(());
                 }
                 match key.code {
-                    KeyCode::Char('y') | KeyCode::Char('Y') => {
+                    KeyCode::Char('l') | KeyCode::Char('L') => {
                         view_document(theme, renderer, out, "OUTPUT", path)?;
                     }
-                    KeyCode::Char('n')
-                    | KeyCode::Char('N')
-                    | KeyCode::Enter
-                    | KeyCode::Esc
-                    | KeyCode::Char('j')
-                    | KeyCode::Char('J')
-                    | KeyCode::Left => return Ok(()),
+                    KeyCode::Esc | KeyCode::Char('j') | KeyCode::Char('J') | KeyCode::Left => {
+                        return Ok(())
+                    }
                     KeyCode::Char('i') | KeyCode::Char('I') | KeyCode::Up => {
                         scroll = scroll.saturating_sub(1)
                     }
@@ -242,12 +240,13 @@ pub fn show_error(
     theme: &Theme,
     message: &str,
 ) -> io::Result<()> {
-    let frame = box_frame(
+    let mut frame = box_frame(
         theme,
         Layout::Information,
         "ERROR",
         &[(message.to_string(), Role::Error)],
     );
+    frame.append(hint_frame(theme, "-[ENTER/J/ESC] CLOSE"));
     renderer.present(out, &frame)?;
     panel::wait_close()
 }

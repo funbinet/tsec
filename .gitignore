@@ -1,19 +1,19 @@
 # Copyright (c) funbinet. All rights reserved.
 # Part of TSEC terminal cybersecurity operations platform by funbinet.
 
-# Ignore build directories and editor configs
+# Build artifacts
 /target/
+
+# Runtime data: nothing a run produces belongs in version control.
+# The directories themselves are kept via .gitkeep files.
+/output/*
+!/output/.gitkeep
+/logs/*
+!/logs/.gitkeep
+
+# Editor / backup files
 **/*.rs.bk
-
-# Ignore user configuration generated during testing locally
-/opt/
-*.log
-
-# Ignore output directory dumps if ran locally
-/output/
-
-# Runtime workspace created on first launch from a checkout
-/config/
+*.swp
 /.freebuff
 
 # Secrets

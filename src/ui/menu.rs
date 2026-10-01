@@ -1,15 +1,13 @@
 //! The interactive surface: boxed menus, navigation, provider guidance and
 //! the capability run flow.
 //!
-//! Features:
-//! - Full-terminal-width boxes adapting dynamically to terminal resize.
-//! - Content inside selection menus is centered; informational and status screens are left-aligned.
-//! - Linear navigation with I/K (and Arrow Up/Down) that clamps within bounds without skipping any entry.
-//! - Every capability in the catalog remains selectable; missing providers open verified Arch Linux installation guidance.
-//! - Escapable input flow using `ui::input::ask`.
-//! - Live execution monitoring via `ui::execution::execute` and 6-stage harvesting with `ui::execution::Processing`.
-//! - Output presentation via `ui::output::show_output` and scrollable viewer `ui::output::view_document`.
-//! - Output browser distinguishing normalized outputs, raw evidence captures, and run manifests.
+//! One [`Renderer`] session is open for the whole visit: every screen —
+//! menus, forms, execution, processing, output, viewer — overwrites the same
+//! alternate-screen frame in place, so moving the pointer repaints one box,
+//! never a second copy. Escaping works by context: `Esc` cancels an input
+//! back to the capability menu, asks before stopping a live run, closes
+//! documents, and everywhere on a menu it closes the system through the exit
+//! screen. Capability rows carry their names only — no availability junk.
 
 // Copyright (c) funbinet. All rights reserved.
 // Part of TSEC terminal cybersecurity operations platform by funbinet.
@@ -19,9 +17,9 @@
 // Owner:      funbinet
 
 use std::collections::BTreeMap;
-use std::io;
+use std::io::{self, Write};
 use std::path::{Path, PathBuf};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use crossterm::event::KeyCode;
 
@@ -39,31 +37,22 @@ use crate::store::{HarvestStage, OutputHeader, RunStore};
 use crate::ui::execution::{self, Job, Processing};
 use crate::ui::input::{self, Answer, Prompt};
 use crate::ui::output::{show_output, view_document};
-use crate::ui::panel::{self, box_frame, hint_frame, Geometry, Layout, RawMode, Renderer};
+use crate::ui::panel::{
+    box_frame, hint_frame, is_interrupt, next_input, print_plain, wait_close, Geometry, Input,
+    Layout, Renderer,
+};
 use crate::ui::theme::{Role, Theme};
 
-/// One choice in a box.
+/// One choice in a box: its name, and nothing else.
 #[derive(Debug, Clone)]
 struct Item {
     label: String,
-    status: Option<&'static str>,
-    unavailable: bool,
 }
 
 impl Item {
     fn new(label: impl Into<String>) -> Self {
         Self {
             label: label.into(),
-            status: None,
-            unavailable: false,
-        }
-    }
-
-    fn capability(label: impl Into<String>, status: &'static str, unavailable: bool) -> Self {
-        Self {
-            label: label.into(),
-            status: Some(status),
-            unavailable,
         }
     }
 }
@@ -72,7 +61,9 @@ impl Item {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Decision {
     Chosen(usize),
+    /// `J`/`Left`: back one level (meaningless at the root, which has none).
     Back,
+    /// `Esc`: leave the system through the exit screen.
     Exit,
 }
 
@@ -94,11 +85,17 @@ fn phase_display_name(slug: &str) -> &str {
 }
 
 /// Enter the framework's top level: the ten phases, then status and outputs.
+/// The alternate-screen session lives for the whole visit; leaving it prints
+/// the exit screen onto the restored main buffer.
 pub fn main_menu(cfg: &Config, catalog: &Catalog, registry: &Registry) -> Result<()> {
     let theme = Theme::detect(cfg.general.color);
-    let _raw = RawMode::enter()?;
-    let mut renderer = Renderer::new();
+    let started = Instant::now();
+
+    let mut renderer =
+        Renderer::enter().map_err(|e| TsecError::io("entering the terminal session", &e))?;
     let mut out = io::stdout();
+    #[allow(unused_assignments)]
+    let mut exit_requested = false;
 
     loop {
         let mut items: Vec<Item> = PHASES
@@ -110,9 +107,16 @@ pub fn main_menu(cfg: &Config, catalog: &Catalog, registry: &Registry) -> Result
         let outputs_row = items.len();
         items.push(Item::new("OUTPUTS"));
 
-        match menu(&theme, &mut renderer, &mut out, "TSEC", &items, true)? {
+        match menu(
+            &theme,
+            &mut renderer,
+            &mut out,
+            "TSEC",
+            &items,
+            "-[I/K] MOVE   -[L/ENTER] SELECT   -[ESC] EXIT",
+        )? {
             Decision::Chosen(index) if index < PHASES.len() => {
-                phase_menu(
+                let flow = phase_menu(
                     &theme,
                     &mut renderer,
                     &mut out,
@@ -121,19 +125,50 @@ pub fn main_menu(cfg: &Config, catalog: &Catalog, registry: &Registry) -> Result
                     registry,
                     PHASES[index],
                 )?;
+                if flow == Flow::Exit {
+                    exit_requested = true;
+                    break;
+                }
             }
             Decision::Chosen(index) if index == status_row => {
                 status_screen(&theme, &mut renderer, &mut out, cfg, catalog)?;
             }
             Decision::Chosen(index) if index == outputs_row => {
-                outputs_screen(&theme, &mut renderer, &mut out, cfg)?;
+                if let Err(e) = outputs_screen(&theme, &mut renderer, &mut out, cfg) {
+                    if e.is_flow_exit() {
+                        exit_requested = true;
+                        break;
+                    }
+                    return Err(e);
+                }
             }
-            _ => return Ok(()),
+            Decision::Exit => {
+                exit_requested = true;
+                break;
+            }
+            Decision::Chosen(_) | Decision::Back => {}
         }
     }
+
+    renderer
+        .close()
+        .map_err(|e| TsecError::io("restoring the terminal", &e))?;
+    if exit_requested {
+        exit_screen(cfg, started).map_err(|e| TsecError::io("drawing the exit screen", &e))?;
+    }
+    Ok(())
+}
+
+/// Whether a nested screen wants the session to end altogether.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Flow {
+    Continue,
+    Exit,
 }
 
 /// One phase's capabilities, drawn as a box titled with the phase name.
+/// Every capability stays selectable; a missing provider opens installation
+/// guidance rather than a dead end. `Esc` here closes the system.
 fn phase_menu(
     theme: &Theme,
     renderer: &mut Renderer,
@@ -142,94 +177,90 @@ fn phase_menu(
     catalog: &Catalog,
     registry: &Registry,
     phase: &str,
-) -> Result<()> {
+) -> Result<Flow> {
     let title = phase_display_name(phase);
 
     loop {
         let caps = catalog.in_phase(phase);
         if caps.is_empty() {
-            return show_notice(
+            show_notice(
                 theme,
                 renderer,
                 out,
                 title,
                 &[("no capabilities in this phase".to_string(), Role::Muted)],
-            );
+            )?;
+            return Ok(Flow::Continue);
         }
 
         let items: Vec<Item> = caps
             .iter()
-            .map(|cap| {
-                let (status, unavailable) = capability_status(cap, registry);
-                Item::capability(cap.label.clone(), status, unavailable)
-            })
+            .map(|cap| Item::new(cap.label.clone()))
             .collect();
 
-        match menu(theme, renderer, out, title, &items, false)? {
+        match menu(
+            theme,
+            renderer,
+            out,
+            title,
+            &items,
+            "-[I/K] MOVE   -[J] BACK   -[L/ENTER] SELECT   -[ESC] EXIT",
+        )? {
             Decision::Chosen(index) => {
                 let cap = caps[index];
-                let (_, unavailable) = capability_status(cap, registry);
-                if unavailable {
+                if capability_is_unavailable(cap, registry) {
                     provider_guidance(theme, renderer, out, cfg, cap, registry)?;
                 } else {
                     run_capability(theme, renderer, out, cfg, registry, cap)?;
                 }
             }
-            Decision::Back | Decision::Exit => return Ok(()),
+            Decision::Back => return Ok(Flow::Continue),
+            Decision::Exit => return Ok(Flow::Exit),
         }
     }
 }
 
-/// Determine availability status for a capability.
-fn capability_status(cap: &Capability, registry: &Registry) -> (&'static str, bool) {
+/// True when no provider of the capability is installed on this host.
+fn capability_is_unavailable(cap: &Capability, registry: &Registry) -> bool {
     let with_ops: Vec<_> = cap
         .providers
         .iter()
         .filter(|p| !p.operations.is_empty())
         .collect();
     if with_ops.is_empty() {
-        return ("PROVIDER MISSING", true);
+        return true;
     }
-    let installed = with_ops
-        .iter()
-        .filter(|p| {
-            registry
-                .get(&p.binary)
-                .map(|pr| pr.installed())
-                .unwrap_or(false)
-                || crate::provider::find_in_path(&p.binary).is_some()
-        })
-        .count();
-    if installed == with_ops.len() {
-        ("READY", false)
-    } else if installed > 0 {
-        ("PARTIAL", false)
-    } else {
-        ("PROVIDER MISSING", true)
-    }
+    !with_ops.iter().any(|p| {
+        registry
+            .get(&p.binary)
+            .map(|pr| pr.installed())
+            .unwrap_or(false)
+            || crate::provider::find_in_path(&p.binary).is_some()
+    })
 }
 
 /// Draw a boxed menu and read keys until the operator decides.
 ///
 /// Navigation is linear and bound-clamped: every entry is reachable, and no
-/// entry is silently skipped. Content inside the box is centered.
+/// entry is silently skipped. The frame is rebuilt in place on every key, so
+/// there is exactly one box on screen and the pointer moves inside it.
 fn menu(
     theme: &Theme,
     renderer: &mut Renderer,
     out: &mut io::Stdout,
     title: &str,
     items: &[Item],
-    root: bool,
+    hint: &str,
 ) -> Result<Decision> {
     if items.is_empty() {
-        return Ok(back_or_exit(root));
+        return Ok(Decision::Back);
     }
     let mut selected = 0usize;
     let mut top = 0usize;
 
     loop {
         let g = Geometry::detect();
-        // Chrome: 4 box border rows + 2 internal padding blank rows + 1 hint line
+        // Chrome: 4 box border rows + 2 internal padding blank rows + 1 hint line.
         let max_body = g.body_rows(7);
         let visible = items.len().min(max_body);
 
@@ -242,42 +273,25 @@ fn menu(
 
         let mut rows: Vec<(String, Role)> = Vec::new();
         for (index, item) in items.iter().enumerate().take(end).skip(top) {
-            let is_sel = index == selected;
-            let marker = if is_sel { ">" } else { " " };
-            let row_text = if let Some(status) = item.status {
-                format!("{marker} {:<28} {status}", item.label)
-            } else {
-                format!("{marker} {}", item.label)
-            };
-
-            let role = if is_sel {
-                Role::Highlight
-            } else if item.unavailable {
-                Role::Muted
-            } else {
-                Role::Foreground
-            };
-            rows.push((row_text, role));
+            let marker = if index == selected { ">" } else { " " };
+            rows.push((format!("{marker} {}", item.label), Role::Foreground));
         }
 
         if items.len() > visible {
-            rows.push((format!("{} of {}", selected + 1, items.len()), Role::Muted));
+            rows.push((format!("{} OF {}", selected + 1, items.len()), Role::Muted));
         }
 
         let mut frame = box_frame(theme, Layout::Menu, title, &rows);
-        let hint_text = if root {
-            "-[I/K] MOVE   -[L/ENTER] SELECT   -[ESC] EXIT"
-        } else {
-            "-[I/K] MOVE   -[J] BACK   -[L/ENTER] SELECT"
-        };
-        frame.append(hint_frame(theme, hint_text));
-        renderer.present(out, &frame)?;
+        frame.append(hint_frame(theme, hint));
+        renderer
+            .present(out, &frame)
+            .map_err(|e| TsecError::io("drawing the menu", &e))?;
 
-        match panel::next_input()? {
-            panel::Input::Resize => continue,
-            panel::Input::Key(key) => {
-                if panel::is_interrupt(&key) {
-                    return Ok(back_or_exit(root));
+        match next_input().map_err(|e| TsecError::io("reading a key", &e))? {
+            Input::Resize => continue,
+            Input::Key(key) => {
+                if is_interrupt(&key) {
+                    return Ok(Decision::Exit);
                 }
                 match key.code {
                     KeyCode::Char('i') | KeyCode::Char('I') | KeyCode::Up => {
@@ -286,9 +300,10 @@ fn menu(
                     KeyCode::Char('k') | KeyCode::Char('K') | KeyCode::Down => {
                         selected = (selected + 1).min(items.len() - 1);
                     }
-                    KeyCode::Char('j') | KeyCode::Char('J') | KeyCode::Left | KeyCode::Esc => {
-                        return Ok(back_or_exit(root));
+                    KeyCode::Char('j') | KeyCode::Char('J') | KeyCode::Left => {
+                        return Ok(Decision::Back);
                     }
+                    KeyCode::Esc => return Ok(Decision::Exit),
                     KeyCode::Char('l')
                     | KeyCode::Char('L')
                     | KeyCode::Enter
@@ -300,15 +315,6 @@ fn menu(
                 }
             }
         }
-    }
-}
-
-/// `J`/Esc close the current box; at the top level closing means leaving.
-fn back_or_exit(root: bool) -> Decision {
-    if root {
-        Decision::Exit
-    } else {
-        Decision::Back
     }
 }
 
@@ -364,7 +370,7 @@ fn provider_guidance(
             rows.push((
                 pair(
                     "NOTE",
-                    "Network tasks require oniux (paru -S oniux / yay -S oniux)",
+                    "Network tasks require oniux (yay -S oniux, or ./tools.sh -recon)",
                 ),
                 Role::Muted,
             ));
@@ -373,14 +379,17 @@ fn provider_guidance(
     }
 
     rows.push((
-        "Install the missing provider(s) or select an available capability.".to_string(),
+        "Install the missing provider(s), run tools.sh for this phase, or pick another capability."
+            .to_string(),
         Role::Muted,
     ));
 
     let mut frame = box_frame(theme, Layout::Information, "PROVIDERS NOT INSTALLED", &rows);
     frame.append(hint_frame(theme, "-[ENTER/J/ESC] RETURN"));
-    renderer.present(out, &frame)?;
-    panel::wait_close()?;
+    renderer
+        .present(out, &frame)
+        .map_err(|e| TsecError::io("drawing the guidance box", &e))?;
+    wait_close().map_err(|e| TsecError::io("reading a key", &e))?;
     Ok(())
 }
 
@@ -392,8 +401,9 @@ enum Answers {
 
 /// Ask for every declared input, validating each against its declared type.
 ///
-/// Prompts are drawn under a clean capability title box and can be cancelled
-/// with Esc or Ctrl+C at any time without terminating TSEC.
+/// The capability's own closed box — titled with its name — sits above one
+/// input box per field. `Esc` on any field withdraws the whole capability
+/// back to the capability menu; it never leaves the system from here.
 fn collect_inputs(
     theme: &Theme,
     renderer: &mut Renderer,
@@ -401,12 +411,7 @@ fn collect_inputs(
     cap: &Capability,
 ) -> Result<Answers> {
     let mut values = InputValues::new();
-    let header = box_frame(
-        theme,
-        Layout::Information,
-        "CAPABILITY",
-        &[(cap.label.clone(), Role::Primary)],
-    );
+    let header = box_frame(theme, Layout::Form, &cap.label, &[]);
 
     for spec in &cap.inputs {
         let mut error: Option<String> = None;
@@ -420,7 +425,9 @@ fn collect_inputs(
                 error: error.as_deref(),
             };
 
-            match input::ask(out, renderer, theme, Some(&header), &prompt)? {
+            match input::ask(out, renderer, theme, Some(&header), &prompt)
+                .map_err(|e| TsecError::io("drawing the input box", &e))?
+            {
                 Answer::Cancelled => return Ok(Answers::Cancelled),
                 Answer::Given(raw) => {
                     let raw = raw.trim();
@@ -522,12 +529,10 @@ fn run_capability(
         },
     );
 
-    let title = format!("EXECUTION — {}", cap.label);
     let outcome = execution::execute(
         theme,
         out,
         renderer,
-        &title,
         jobs,
         phase_word,
         &cap.label,
@@ -664,7 +669,7 @@ fn outputs_screen(
     loop {
         let runs = recorded_runs(&cfg.general.output_dir);
         if runs.is_empty() {
-            return show_notice(
+            show_notice(
                 theme,
                 renderer,
                 out,
@@ -673,7 +678,8 @@ fn outputs_screen(
                     "no runs recorded in output directory".to_string(),
                     Role::Muted,
                 )],
-            );
+            )?;
+            return Ok(());
         }
 
         let items: Vec<Item> = runs
@@ -687,11 +693,19 @@ fn outputs_screen(
             })
             .collect();
 
-        match menu(theme, renderer, out, "OUTPUTS", &items, false)? {
+        match menu(
+            theme,
+            renderer,
+            out,
+            "OUTPUTS",
+            &items,
+            "-[I/K] MOVE   -[J] BACK   -[L/ENTER] SELECT   -[ESC] EXIT",
+        )? {
             Decision::Chosen(index) => {
                 run_actions_menu(theme, renderer, out, &runs[index])?;
             }
-            Decision::Back | Decision::Exit => return Ok(()),
+            Decision::Back => return Ok(()),
+            Decision::Exit => return Err(crate::error::TsecError::flow_exit()),
         }
     }
 }
@@ -702,7 +716,7 @@ fn run_actions_menu(
     renderer: &mut Renderer,
     out: &mut io::Stdout,
     run_dir: &Path,
-) -> Result<()> {
+) -> Result<Flow> {
     let run_name = run_dir
         .file_name()
         .map(|n| n.to_string_lossy().to_string())
@@ -715,7 +729,14 @@ fn run_actions_menu(
     ];
 
     loop {
-        match menu(theme, renderer, out, &run_name, &actions, false)? {
+        match menu(
+            theme,
+            renderer,
+            out,
+            &run_name,
+            &actions,
+            "-[I/K] MOVE   -[J] BACK   -[L/ENTER] SELECT   -[ESC] EXIT",
+        )? {
             Decision::Chosen(0) => {
                 let path = run_dir.join("output.txt");
                 view_document(theme, renderer, out, "OUTPUT", &path)
@@ -729,8 +750,9 @@ fn run_actions_menu(
                 view_document(theme, renderer, out, "MANIFEST", &path)
                     .map_err(|e| TsecError::io("viewing manifest", &e))?;
             }
-            Decision::Back | Decision::Exit => return Ok(()),
-            _ => {}
+            Decision::Chosen(_) => {}
+            Decision::Back => return Ok(Flow::Continue),
+            Decision::Exit => return Ok(Flow::Exit),
         }
     }
 }
@@ -741,7 +763,7 @@ fn raw_outputs_menu(
     renderer: &mut Renderer,
     out: &mut io::Stdout,
     run_dir: &Path,
-) -> Result<()> {
+) -> Result<Flow> {
     let raw_dir = run_dir.join("raw");
     let mut files = Vec::new();
     if let Ok(entries) = std::fs::read_dir(&raw_dir) {
@@ -755,13 +777,14 @@ fn raw_outputs_menu(
     files.sort();
 
     if files.is_empty() {
-        return show_notice(
+        show_notice(
             theme,
             renderer,
             out,
             "RAW EVIDENCE",
             &[("no raw artifacts in this run".to_string(), Role::Muted)],
-        );
+        )?;
+        return Ok(Flow::Continue);
     }
 
     let items: Vec<Item> = files
@@ -776,12 +799,20 @@ fn raw_outputs_menu(
         .collect();
 
     loop {
-        match menu(theme, renderer, out, "RAW EVIDENCE", &items, false)? {
+        match menu(
+            theme,
+            renderer,
+            out,
+            "RAW EVIDENCE",
+            &items,
+            "-[I/K] MOVE   -[J] BACK   -[L/ENTER] SELECT   -[ESC] EXIT",
+        )? {
             Decision::Chosen(index) => {
                 view_document(theme, renderer, out, "RAW EVIDENCE", &files[index])
                     .map_err(|e| TsecError::io("viewing raw artifact", &e))?;
             }
-            Decision::Back | Decision::Exit => return Ok(()),
+            Decision::Back => return Ok(Flow::Continue),
+            Decision::Exit => return Ok(Flow::Exit),
         }
     }
 }
@@ -796,7 +827,84 @@ fn show_notice(
 ) -> Result<()> {
     let mut frame = box_frame(theme, Layout::Information, title, rows);
     frame.append(hint_frame(theme, "-[ENTER/J/ESC] RETURN"));
-    renderer.present(out, &frame)?;
-    panel::wait_close()?;
+    renderer
+        .present(out, &frame)
+        .map_err(|e| TsecError::io("drawing the notice", &e))?;
+    wait_close().map_err(|e| TsecError::io("reading a key", &e))?;
     Ok(())
+}
+
+/// The closing screen, printed onto the restored main buffer after the
+/// session ends: the TSEC title, three lines of metadata, and a goodbye.
+fn exit_screen(cfg: &Config, started: Instant) -> io::Result<()> {
+    let theme = Theme::detect(cfg.general.color);
+    let outputs = recorded_runs(&cfg.general.output_dir).len();
+
+    let elapsed = started.elapsed();
+    let runtime = if elapsed.as_secs() >= 60 {
+        format!("{}M {}S", elapsed.as_secs() / 60, elapsed.as_secs() % 60)
+    } else {
+        format!("{}S", elapsed.as_secs())
+    };
+
+    let rows = vec![
+        (pair("OUTPUTS", &outputs.to_string()), Role::Foreground),
+        (pair("RUNTIME", &runtime), Role::Foreground),
+        (pair("VERSION", crate::VERSION), Role::Foreground),
+        (String::new(), Role::Muted),
+        (
+            "BYE — STAY LOW, STAY GHOST. SEE YOU IN THE SHELL.".to_string(),
+            Role::Muted,
+        ),
+    ];
+    let frame = box_frame(&theme, Layout::Form, "TSEC", &rows);
+    let mut out = io::stdout();
+    out.write_all(b"\r\n")?;
+    print_plain(&mut out, &frame)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn outputs_exit_flows_through_the_error_channel() {
+        // The outputs browser reports a session-wide exit by returning it
+        // through the error channel (TsecError::flow_exit), which main_menu
+        // intercepts before it can reach the operator.
+        let e = TsecError::flow_exit();
+        assert!(e.is_flow_exit());
+    }
+
+    #[test]
+    fn phase_names_are_full_uppercase_words() {
+        assert_eq!(phase_display_name("recon"), "RECONNAISSANCE");
+        assert_eq!(
+            phase_display_name("persistence"),
+            "PERSISTENCE & DEFENSE EVASION"
+        );
+        assert_eq!(phase_display_name("unknown"), "unknown");
+    }
+
+    #[test]
+    fn exit_screen_rows_carry_the_three_metadata_lines() {
+        let rows = exit_rows(3, "1M 2S", "3.0.0");
+        assert!(rows[0].0.starts_with("OUTPUTS"));
+        assert!(rows[1].0.starts_with("RUNTIME"));
+        assert!(rows[2].0.starts_with("VERSION"));
+        assert!(rows[4].0.starts_with("BYE"));
+    }
+
+    fn exit_rows(outputs: usize, runtime: &str, version: &str) -> Vec<(String, Role)> {
+        vec![
+            (pair("OUTPUTS", &outputs.to_string()), Role::Foreground),
+            (pair("RUNTIME", runtime), Role::Foreground),
+            (pair("VERSION", version), Role::Foreground),
+            (String::new(), Role::Muted),
+            (
+                "BYE — STAY LOW, STAY GHOST. SEE YOU IN THE SHELL.".to_string(),
+                Role::Muted,
+            ),
+        ]
+    }
 }

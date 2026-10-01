@@ -4,10 +4,12 @@
 //!
 //! * **One render owner.** Worker tasks never touch the terminal; they send
 //!   [`Event`]s over a channel. This monitor is the only writer, and it draws
-//!   one complete frame per tick (≈12 fps) through the shared renderer.
+//!   one complete frame per tick (≈12 fps) through the shared renderer. The
+//!   renderer overwrites the screen in place, so the box never duplicates and
+//!   never scrolls.
 //! * **Every state is real.** A spinner glyph appears only while a child
 //!   process is genuinely running; the instant it exits its tick, cross,
-//!   timeout or cancelled marker takes its place. `Ctrl+C` asks
+//!   timeout or cancelled marker takes its place. `Esc` or `Ctrl+C` asks
 //!   `Stop ongoing operations? [y/N]` — default `N` means the run continues
 //!   completely untouched — and only a confirmed `Y` cancels tasks, with
 //!   evidence preserved and a partial manifest still written.
@@ -31,7 +33,8 @@ use crate::domain::command::Command;
 use crate::domain::execution::{ExecutionRecord, TaskStatus};
 use crate::exec::{Cancellation, Runner, TaskSpec};
 use crate::store::HarvestStage;
-use crate::ui::panel::{self, box_frame, hint_frame, Geometry, Layout, Renderer};
+use crate::ui::panel::{box_frame, fit, hint_frame, is_interrupt, poll_input, Input, Renderer};
+use crate::ui::panel::{Geometry, Layout};
 use crate::ui::spinner;
 use crate::ui::theme::{Role, Theme};
 
@@ -101,7 +104,6 @@ pub fn execute(
     theme: &Theme,
     out: &mut io::Stdout,
     renderer: &mut Renderer,
-    title: &str,
     jobs: Vec<Job>,
     phase: &str,
     capability: &str,
@@ -144,7 +146,6 @@ pub fn execute(
         theme,
         out,
         renderer,
-        title: title.to_string(),
         rows,
         rx,
         cancel,
@@ -168,7 +169,6 @@ struct Monitor<'a> {
     theme: &'a Theme,
     out: &'a mut io::Stdout,
     renderer: &'a mut Renderer,
-    title: String,
     rows: Vec<TaskRow>,
     rx: Receiver<Event>,
     cancel: Cancellation,
@@ -241,12 +241,12 @@ impl Monitor<'_> {
             let wait = spinner::TICK
                 .saturating_sub(self.last_draw.elapsed())
                 .max(std::time::Duration::from_millis(10));
-            match panel::poll_input(wait)? {
-                Some(panel::Input::Resize) => {
+            match poll_input(wait)? {
+                Some(Input::Resize) => {
                     self.draw()?;
                     self.last_draw = Instant::now();
                 }
-                Some(panel::Input::Key(key)) => self.on_key(&key)?,
+                Some(Input::Key(key)) => self.on_key(&key)?,
                 None => {}
             }
         }
@@ -267,12 +267,13 @@ impl Monitor<'_> {
                     // cleared results. The run resumes exactly where it was.
                     self.confirm = false;
                 }
-                _ if panel::is_interrupt(key) => self.confirm = false,
+                _ if is_interrupt(key) => self.confirm = false,
                 _ => {}
             }
-        } else if panel::is_interrupt(key) {
-            // Ask, never act. Escape during execution is deliberately inert so
-            // an accidental key press cannot kill child processes.
+        } else if is_interrupt(key) || key.code == KeyCode::Esc {
+            // Ask, never act. Esc and Ctrl+C during execution both open the
+            // same stop confirmation; an accidental key press cannot kill
+            // child processes.
             self.confirm = true;
         }
         self.draw()?;
@@ -309,7 +310,7 @@ impl Monitor<'_> {
             .map(|(text, role, _)| (text.clone(), *role))
             .collect();
 
-        let mut frame = box_frame(self.theme, Layout::Execution, &self.title, &window);
+        let mut frame = box_frame(self.theme, Layout::Execution, "EXECUTION", &window);
         frame.append(hint_frame(self.theme, &self.hint()));
         self.renderer.present(self.out, &frame)
     }
@@ -327,13 +328,13 @@ impl Monitor<'_> {
                 other => other.marker().to_string(),
             };
             let status = status_label(row.status);
-            let head = format!("{marker} {} {}", row.id, row.label);
+            let head = format!("{} {} {}", marker, row.id, row.label);
             // Right-align the status word within the row, in the row's colour.
             let status_w = unicode_width::UnicodeWidthStr::width(status);
-            let head = panel::fit(&head, content.saturating_sub(status_w + 1));
+            let head = fit(&head, content.saturating_sub(status_w + 1));
             lines.push((format!("{head}{status}"), role_for(row.status), row.index));
 
-            if row.status != TaskStatus::Pending {
+            if row.started {
                 lines.push((format!("  {}", row.command), Role::Secondary, row.index));
                 if let Some(error) = &row.error {
                     lines.push((format!("  ! {error}"), Role::Error, row.index));
@@ -379,7 +380,7 @@ impl Monitor<'_> {
         } else if self.cancelled {
             "-[STOPPING OPERATIONS]".to_string()
         } else {
-            "-[CTRL+C] STOP OPERATIONS".to_string()
+            "-[ESC] STOP OPERATIONS".to_string()
         }
     }
 }

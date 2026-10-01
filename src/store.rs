@@ -471,24 +471,51 @@ fn outcome_state(
 
 /// The complete operator document written to `output.txt`.
 ///
-/// Header (run, state, task tally, missing providers, pipeline counts), then
-/// the findings grouped under their category headings — left-aligned, no
-/// decoration, the full harvest with nothing truncated.
+/// Layout (every header line centred against a 78-column reference width,
+/// findings left-aligned below the rule):
+///
+/// ```text
+///                                  TSEC 3.0.0
+///              RUN <name> | PHASE <p> | CAPABILITY <c>
+///                      STATE <s> | PIPELINE <p>
+///                                 TASKS <t>
+/// ──────────────────────────────────────────────────────────────
+///                                   FINDINGS
+///  <findings, left-aligned, grouped by category>
+/// ```
 fn output_document(
     records: &[ExecutionRecord],
     outcome: &HarvestOutcome,
     header: &OutputHeader<'_>,
 ) -> String {
     use crate::domain::execution::TaskStatus;
-    let mut text = String::new();
 
-    text.push_str(&format!("TSEC {}\n", crate::VERSION));
-    text.push_str(&format!("RUN      {}\n", header.run_name));
-    text.push_str(&format!(
-        "PHASE    {}\nCAPABILITY {}\n",
-        header.phase, header.capability
-    ));
-    text.push_str(&format!("STATE    {}\n", outcome.state));
+    // A fixed reference width keeps the saved artifact stable regardless of
+    // whichever terminal happened to be watching the run.
+    const WIDTH: usize = 78;
+    let centre = |text: &str| {
+        let width = text.chars().count();
+        if width >= WIDTH {
+            return text.to_string();
+        }
+        let left = (WIDTH - width) / 2;
+        format!("{}{}", " ".repeat(left), text)
+    };
+
+    let mut text = String::new();
+    text.push_str(&centre(&format!("TSEC {}", crate::VERSION)));
+    text.push('\n');
+    text.push_str(&centre(&format!(
+        "RUN {} | PHASE {} | CAPABILITY {}",
+        header.run_name, header.phase, header.capability
+    )));
+    text.push('\n');
+    text.push_str(&centre(&format!(
+        "STATE {} | PIPELINE {}",
+        outcome.state,
+        outcome.stats.summary()
+    )));
+    text.push('\n');
 
     // Task tally straight from the records, in a stable order.
     let statuses = [
@@ -505,21 +532,24 @@ fn output_document(
             format!("{label} {count}")
         })
         .collect();
-    text.push_str(&format!("TASKS    {}\n", counts.join(" · ")));
-
-    if !header.missing_providers.is_empty() {
-        text.push_str(&format!(
-            "PROVIDERS NOT INSTALLED  {}\n",
-            header.missing_providers.join(", ")
-        ));
-    }
-    text.push_str(&format!("PIPELINE {}\n", outcome.stats.summary()));
-    for note in &outcome.notes {
-        text.push_str(&format!("NOTE     {note}\n"));
-    }
+    text.push_str(&centre(&format!("TASKS {}", counts.join(" · "))));
     text.push('\n');
 
-    // Findings grouped by category, discovery order within each group.
+    if !header.missing_providers.is_empty() {
+        text.push_str(&centre(&format!(
+            "PROVIDERS NOT INSTALLED {}",
+            header.missing_providers.join(", ")
+        )));
+        text.push('\n');
+    }
+
+    // Full-width rule, then the findings section: title centred, entries left.
+    let rule = "─".repeat(WIDTH);
+    text.push_str(&rule);
+    text.push('\n');
+    text.push_str(&centre("FINDINGS"));
+    text.push('\n');
+
     let mut last_heading: Option<&'static str> = None;
     for finding in &outcome.findings {
         let heading = finding.category.heading();
@@ -527,13 +557,13 @@ fn output_document(
             if last_heading.is_some() {
                 text.push('\n');
             }
-            text.push_str(&format!("{heading}\n"));
+            text.push_str(&format!("  {heading}\n"));
             last_heading = Some(heading);
         }
         text.push_str(&format!("  {}\n", finding.line()));
     }
     if outcome.findings.is_empty() {
-        text.push_str("NO FINDINGS RECORDED\n");
+        text.push_str("  NO FINDINGS RECORDED\n");
     }
     text
 }

@@ -2,16 +2,12 @@
 //!
 //! Every screen is one *full-width* box whose horizontal dimension is derived
 //! from the current terminal width (`inner = cols - 2`), so the container grows
-//! and shrinks with the terminal; there is no artificial centred minimum-size
-//! card. What *is* centred is the content, and only for menu screens: [`Layout`]
-//! separates the six screen families (menu, information, execution, output,
-//! viewer, input) so one universal centring function cannot be applied to a
-//! document by accident.
-//!
-//! A frame is built completely — borders, title, wrapped rows, hint — and
-//! written to the terminal in a single `write` + `flush`, against the
-//! alternate screen, so a redraw replaces the previous picture atomically.
-//! Nothing clears the whole screen, and no background thread ever writes.
+//! and shrinks with the terminal. The [`Renderer`] owns an alternate-screen
+//! session: frames are written in place — cursor home, the frame, erase-below —
+//! so a redraw *replaces* the previous frame pixel for pixel. Nothing is ever
+//! appended, nothing scrolls, nothing is duplicated, and the operator's own
+//! terminal history (the main buffer) is never touched: entering and leaving
+//! the session restores it exactly as it was. No background thread ever writes.
 
 // Copyright (c) funbinet. All rights reserved.
 // Part of TSEC terminal cybersecurity operations platform by funbinet.
@@ -25,7 +21,7 @@ use std::time::Duration;
 
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 use crossterm::style::ResetColor;
-use crossterm::terminal;
+use crossterm::terminal::{self, EnterAlternateScreen, LeaveAlternateScreen};
 use crossterm::{cursor, execute};
 use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 
@@ -214,33 +210,39 @@ pub fn wrap(text: &str, cols: usize) -> Vec<String> {
     out
 }
 
-/// How a screen arranges its content. The variants exist so menu centring
-/// cannot leak into an output document by calling the wrong helper.
+/// How a screen arranges its content. The variants exist so one screen's
+/// alignment cannot leak into another's by calling the wrong helper.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Layout {
-    /// Selection lists: centred title, centred rows.
+    /// Selection lists: centred title, rows block-centred — every entry shares
+    /// one left column and the *block* is centred, not each line.
     Menu,
-    /// Status, guidance, errors: left title, left rows.
+    /// Input forms and closed metadata boxes: centred title, rows block-centred.
+    Form,
+    /// Status, guidance, errors: left title, left rows (commands stay copyable).
     Information,
-    /// Live task and processing screens: left title, left rows.
+    /// Live task and processing screens: centred title, left rows.
     Execution,
     /// The `OUTPUT` document: centred title, left rows.
     Output,
     /// The full-file viewer: centred title, left rows.
     Viewer,
-    /// Input prompts, which are drawn unboxed but keep the left alignment.
+    /// Unboxed prompt fragments, which keep the left alignment.
     Input,
 }
 
 impl Layout {
     pub fn title_centred(self) -> bool {
-        !matches!(
-            self,
-            Layout::Information | Layout::Execution | Layout::Input
-        )
+        !matches!(self, Layout::Information | Layout::Input)
     }
 
     pub fn rows_centred(self) -> bool {
+        matches!(self, Layout::Menu | Layout::Form)
+    }
+
+    /// Menu boxes carry breathing room around their entries; form boxes stay
+    /// closed and tight (title row, content row, bottom border — nothing else).
+    fn padded(self) -> bool {
         matches!(self, Layout::Menu)
     }
 }
@@ -304,7 +306,7 @@ pub fn box_frame_in(
     ));
     frame.line(theme.paint(Role::Border, &format!("╠{border}╣")));
 
-    if layout.rows_centred() {
+    if layout.padded() {
         frame.line(format!(
             "{}{}{}",
             theme.paint(Role::Border, "║ "),
@@ -313,41 +315,55 @@ pub fn box_frame_in(
         ));
     }
 
-    for (text, role) in rows {
-        let wrapped = if content == 0 {
-            vec![String::new()]
-        } else {
-            wrap(text, content)
-        };
-        for segment in wrapped {
-            let row = if layout.rows_centred() {
-                // Pads stay outside the paint: a highlighted selection covers
-                // the label itself, not the whole row.
-                let visible = segment.trim_end();
-                let w = display_width(visible);
-                let left = content.saturating_sub(w) / 2;
-                let right = content.saturating_sub(w) - left;
-                format!(
-                    "{}{}{}{}{}",
-                    theme.paint(Role::Border, "║ "),
-                    " ".repeat(left),
-                    theme.paint(*role, visible),
-                    " ".repeat(right),
-                    theme.paint(Role::Border, " ║")
-                )
+    // Block centring: wrap every row first, find the widest one, then give
+    // every row the same left offset — the block sits in the middle of the
+    // box while the entries stay aligned with each other on the left.
+    let prepared: Vec<(String, Role)> = rows
+        .iter()
+        .flat_map(|(text, role)| {
+            if content == 0 {
+                vec![String::new()]
             } else {
-                format!(
-                    "{}{}{}",
-                    theme.paint(Role::Border, "║ "),
-                    theme.paint(*role, &fit(&segment, content)),
-                    theme.paint(Role::Border, " ║")
-                )
-            };
-            frame.line(row);
-        }
+                wrap(text, content)
+            }
+            .into_iter()
+            .map(move |segment| (segment, *role))
+        })
+        .collect();
+
+    let block_w = prepared
+        .iter()
+        .map(|(text, _)| display_width(text.trim_end()))
+        .max()
+        .unwrap_or(0)
+        .min(content);
+    let block_left = content.saturating_sub(block_w) / 2;
+
+    for (text, role) in prepared {
+        let row = if layout.rows_centred() {
+            let visible = text.trim_end().to_string();
+            let w = display_width(&visible);
+            let right = content.saturating_sub(block_left + w);
+            format!(
+                "{}{}{}{}{}",
+                theme.paint(Role::Border, "║ "),
+                " ".repeat(block_left),
+                theme.paint(role, &visible),
+                " ".repeat(right),
+                theme.paint(Role::Border, " ║")
+            )
+        } else {
+            format!(
+                "{}{}{}",
+                theme.paint(Role::Border, "║ "),
+                theme.paint(role, &fit(&text, content)),
+                theme.paint(Role::Border, " ║")
+            )
+        };
+        frame.line(row);
     }
 
-    if layout.rows_centred() {
+    if layout.padded() {
         frame.line(format!(
             "{}{}{}",
             theme.paint(Role::Border, "║ "),
@@ -360,7 +376,7 @@ pub fn box_frame_in(
     frame
 }
 
-/// Unboxed lines, left aligned — for prompts and hints under a box.
+/// Unboxed lines, left aligned — for fragments under a box.
 pub fn plain_frame(theme: &Theme, rows: &[(String, Role)]) -> Frame {
     let g = Geometry::detect();
     let mut frame = Frame::default();
@@ -372,7 +388,7 @@ pub fn plain_frame(theme: &Theme, rows: &[(String, Role)]) -> Frame {
     frame
 }
 
-/// The one-line key hint drawn under a menu box, centred and unboxed.
+/// The one-line key hint drawn under a box, centred and unboxed.
 pub fn hint_frame(theme: &Theme, text: &str) -> Frame {
     let g = Geometry::detect();
     let mut frame = Frame::default();
@@ -380,29 +396,72 @@ pub fn hint_frame(theme: &Theme, text: &str) -> Frame {
     frame
 }
 
-/// Builds frames and replaces the screen with them, one write per frame.
+/// The alternate-screen render session: the single writer for the whole UI.
 ///
-/// The renderer goes home (`ESC[H`) and clears to the end of the display
-/// (`ESC[J`) *around* the whole frame instead of erasing the previous frame
-/// line by line: one ordered byte stream, one flush, no flicker, no
-/// `ClearType::All`, and a resize simply becomes a frame built at the new
-/// width.
-#[derive(Debug, Default)]
-pub struct Renderer;
+/// [`Renderer::enter`] switches to the alternate screen and hides the cursor;
+/// every [`Renderer::present`] then overwrites the frame in place — cursor
+/// home, the complete frame, erase-below — in one buffered write, so a redraw
+/// never appends, never scrolls, never duplicates. [`Renderer::close`] (and
+/// `Drop`, for error paths) returns the terminal to the main buffer with the
+/// operator's prior history untouched and the cursor visible again.
+#[derive(Debug)]
+pub struct Renderer {
+    active: bool,
+}
 
 impl Renderer {
-    pub fn new() -> Self {
-        Self
+    /// Begin the session: raw mode, alternate screen, hidden cursor.
+    pub fn enter() -> io::Result<Self> {
+        terminal::enable_raw_mode()?;
+        let mut out = io::stdout();
+        execute!(out, EnterAlternateScreen, cursor::Hide, ResetColor)?;
+        Ok(Self { active: true })
     }
 
+    /// Overwrite the screen with `frame`, in place, in one write.
     pub fn present(&mut self, out: &mut io::Stdout, frame: &Frame) -> io::Result<()> {
-        let mut buf: Vec<u8> = Vec::with_capacity(frame.text.len() + 8);
+        if !self.active {
+            return Ok(());
+        }
+        let mut buf: Vec<u8> = Vec::with_capacity(frame.text.len() + 16);
+        // Cursor to the top-left, the frame, then erase below: a shorter
+        // frame leaves no residue of the longer one it replaces.
         buf.extend_from_slice(b"\x1b[H");
         buf.extend_from_slice(frame.text.as_bytes());
         buf.extend_from_slice(b"\x1b[J");
         out.write_all(&buf)?;
         out.flush()
     }
+
+    /// End the session, restoring the operator's terminal exactly.
+    pub fn close(mut self) -> io::Result<()> {
+        self.leave()?;
+        Ok(())
+    }
+
+    fn leave(&mut self) -> io::Result<()> {
+        if !self.active {
+            return Ok(());
+        }
+        self.active = false;
+        let mut out = io::stdout();
+        let _ = execute!(out, LeaveAlternateScreen, cursor::Show, ResetColor);
+        let _ = terminal::disable_raw_mode();
+        out.flush()
+    }
+}
+
+impl Drop for Renderer {
+    fn drop(&mut self) {
+        let _ = self.leave();
+    }
+}
+
+/// Write a finished frame after the session has closed (the exit screen):
+/// a plain, one-time append to the restored main buffer.
+pub fn print_plain(out: &mut io::Stdout, frame: &Frame) -> io::Result<()> {
+    out.write_all(frame.text.as_bytes())?;
+    out.flush()
 }
 
 /// What the terminal reported while we were waiting for a key.
@@ -410,40 +469,6 @@ impl Renderer {
 pub enum Input {
     Key(KeyEvent),
     Resize,
-}
-
-/// Alternate screen, raw mode and a hidden cursor; all restored on drop.
-///
-/// One guard is held for the whole interactive session so screen transitions
-/// never flash back to the shell's picture in between.
-#[derive(Debug)]
-pub struct RawMode;
-
-impl RawMode {
-    pub fn enter() -> io::Result<Self> {
-        terminal::enable_raw_mode()?;
-        let mut out = io::stdout();
-        let _ = execute!(
-            out,
-            terminal::EnterAlternateScreen,
-            cursor::Hide,
-            ResetColor
-        );
-        Ok(Self)
-    }
-}
-
-impl Drop for RawMode {
-    fn drop(&mut self) {
-        let mut out = io::stdout();
-        let _ = execute!(
-            out,
-            cursor::Show,
-            ResetColor,
-            terminal::LeaveAlternateScreen
-        );
-        let _ = terminal::disable_raw_mode();
-    }
 }
 
 /// True for Ctrl+C, the context-sensitive interrupt key.
@@ -483,9 +508,9 @@ pub fn poll_input(timeout: Duration) -> io::Result<Option<Input>> {
     })
 }
 
-/// Block until the operator closes the screen with Enter or Esc. Resizes are
-/// swallowed; Ctrl+C is reported to the caller through the same channel the
-/// other screens use, so this helper only exists for still boxes.
+/// Block until the operator closes the screen with Enter, J or Esc. Resizes
+/// are swallowed; Ctrl+C is reported through the same channel the other
+/// screens use, so this helper only exists for still boxes.
 pub fn wait_close() -> io::Result<()> {
     loop {
         match next_input()? {
@@ -576,6 +601,7 @@ mod tests {
             ];
             for layout in [
                 Layout::Menu,
+                Layout::Form,
                 Layout::Information,
                 Layout::Execution,
                 Layout::Output,
@@ -610,20 +636,50 @@ mod tests {
     }
 
     #[test]
-    fn menu_boxes_pad_their_rows_while_document_boxes_do_not() {
+    fn menu_boxes_pad_their_rows_while_form_boxes_do_not() {
         let g = Geometry::for_size(40, 24);
         let rows = vec![("DATA".to_string(), Role::Foreground)];
         let menu = box_frame_in(&g, &theme(), Layout::Menu, "T", &rows);
-        let output = box_frame_in(&g, &theme(), Layout::Output, "T", &rows);
-        // Menu boxes carry blank rows above and below the entries.
-        assert!(menu.lines > output.lines);
+        let form = box_frame_in(&g, &theme(), Layout::Form, "T", &rows);
+        assert!(menu.lines > form.lines, "menus breathe, forms stay closed");
+    }
+
+    /// The centring contract: entries share one left column, and that column
+    /// is chosen so the block as a whole is centred in the box.
+    #[test]
+    fn menu_rows_share_a_left_edge_and_the_block_is_centred() {
+        let g = Geometry::for_size(60, 24);
+        let rows = vec![
+            ("RECONNAISSANCE".to_string(), Role::Foreground),
+            ("PAYLOAD".to_string(), Role::Foreground),
+        ];
+        let frame = box_frame_in(&g, &theme(), Layout::Menu, "TSEC", &rows);
+        let body: Vec<String> = frame
+            .text
+            .split("\r\n")
+            .filter(|l| l.contains("RECON") || l.contains("PAYLOAD"))
+            .map(strip_ansi)
+            .collect();
+        assert_eq!(body.len(), 2);
+        // Measure in display columns, not bytes: the border glyph is multi-byte.
+        let first = display_width(&body[0][..body[0].find("RECONNAISSANCE").unwrap()]);
+        let second = display_width(&body[1][..body[1].find("PAYLOAD").unwrap()]);
+        assert_eq!(first, second, "entries aligned to one left column");
+
+        // The block's left offset inside the content area (border prefix is
+        // two display columns wide).
+        let content = g.inner - 2;
+        let widest = 14usize; // "RECONNAISSANCE"
+        let block_left = (content.saturating_sub(widest)) / 2;
+        assert_eq!(first - 2, block_left, "the block itself is centred");
     }
 
     #[test]
     fn layouts_pick_the_right_alignment() {
         assert!(Layout::Menu.title_centred() && Layout::Menu.rows_centred());
+        assert!(Layout::Form.title_centred() && Layout::Form.rows_centred());
         assert!(!Layout::Information.title_centred() && !Layout::Information.rows_centred());
-        assert!(!Layout::Execution.title_centred());
+        assert!(Layout::Execution.title_centred() && !Layout::Execution.rows_centred());
         assert!(Layout::Output.title_centred() && !Layout::Output.rows_centred());
         assert!(Layout::Viewer.title_centred());
     }

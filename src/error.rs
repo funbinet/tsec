@@ -100,6 +100,10 @@ pub enum ExecutionErrorKind {
     Catalog { reason: String },
     /// A framework bug: an invariant was violated.
     Internal { reason: String },
+    /// Control-flow signal, not a failure: a nested screen asked to end the
+    /// whole session (the session-wide `Esc` contract). Intercepted by the
+    /// top-level menu before it can reach the operator.
+    FlowExit,
 }
 
 impl ExecutionErrorKind {
@@ -122,6 +126,7 @@ impl ExecutionErrorKind {
             ExecutionErrorKind::Config { .. } => "CONFIG_ERROR",
             ExecutionErrorKind::Catalog { .. } => "CATALOG_ERROR",
             ExecutionErrorKind::Internal { .. } => "INTERNAL_ERROR",
+            ExecutionErrorKind::FlowExit => "FLOW_EXIT",
         }
     }
 }
@@ -187,6 +192,16 @@ impl TsecError {
         )
     }
 
+    /// The session-wide-exit control signal (see [`ExecutionErrorKind::FlowExit`]).
+    pub fn flow_exit() -> Self {
+        Self::new(Stage::Display, ExecutionErrorKind::FlowExit)
+    }
+
+    /// True when this error is the session-wide-exit control signal.
+    pub fn is_flow_exit(&self) -> bool {
+        matches!(self.kind, ExecutionErrorKind::FlowExit)
+    }
+
     pub fn internal(reason: impl Into<String>) -> Self {
         Self::new(
             Stage::Validate,
@@ -241,6 +256,7 @@ impl TsecError {
             ExecutionErrorKind::Config { reason } => reason.clone(),
             ExecutionErrorKind::Catalog { reason } => reason.clone(),
             ExecutionErrorKind::Internal { reason } => reason.clone(),
+            ExecutionErrorKind::FlowExit => "session ended".to_string(),
         }
     }
 }

