@@ -267,7 +267,7 @@ impl PlanBuilder {
             operation: operation.to_string(),
             label: label.into(),
             command,
-            timeout: Duration::from_secs(300),
+            timeout: Duration::from_secs(0),
             stem,
             depends_on: Vec::new(),
             raw_ext: "txt".to_string(),

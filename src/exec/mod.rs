@@ -402,6 +402,7 @@ impl Runner {
         cancel: &Cancellation,
     ) -> Outcome {
         let pid = child.id().map(|p| p as i32);
+        let has_timeout = !timeout.is_zero();
         let deadline = Instant::now() + timeout;
         loop {
             // Check cancellation first so a cancel issued before the first poll
@@ -419,7 +420,7 @@ impl Runner {
                 }
                 Ok(Err(_)) => return Outcome::Signalled(-1),
                 Err(_) => {
-                    if Instant::now() >= deadline {
+                    if has_timeout && Instant::now() >= deadline {
                         self.terminate(child, pid).await;
                         return Outcome::TimedOut;
                     }

@@ -27,8 +27,7 @@ use std::io::{self, Write};
 use std::time::Duration;
 
 use crossterm::event::{
-    self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyEvent, KeyEventKind,
-    KeyModifiers, MouseEventKind,
+    self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers, MouseEventKind,
 };
 use crossterm::style::ResetColor;
 use crossterm::terminal::{self, EnterAlternateScreen, LeaveAlternateScreen};
@@ -465,14 +464,13 @@ pub struct Renderer {
 }
 
 impl Renderer {
-    /// Begin the session: raw mode, alternate screen, mouse capture, hidden cursor.
+    /// Begin the session: raw mode, alternate screen, hidden cursor.
     pub fn enter() -> io::Result<Self> {
         terminal::enable_raw_mode()?;
         let mut out = io::stdout();
         execute!(
             out,
             EnterAlternateScreen,
-            EnableMouseCapture,
             cursor::Hide,
             ResetColor
         )?;
@@ -551,7 +549,9 @@ impl Renderer {
         if !self.active {
             return Ok(());
         }
-        let rows = Geometry::detect().rows;
+        let g = Geometry::detect();
+        let rows = g.rows;
+        let cols = g.cols;
         let lines = window_lines(&self.history, frame, rows, self.scroll);
         let mut buf: Vec<u8> =
             Vec::with_capacity(frame.text.len() + history_bytes(&self.history) + 64);
@@ -565,7 +565,11 @@ impl Renderer {
             }
             buf.extend_from_slice(line.as_bytes());
             // Clear to end of line so changed text length leaves no artifacts.
-            buf.extend_from_slice(b"\x1b[K");
+            // When a line reaches or exceeds cols, emitting \x1b[K causes terminal
+            // emulators to erase column `cols`, stripping the right border glyphs.
+            if display_width(line) < cols {
+                buf.extend_from_slice(b"\x1b[K");
+            }
         }
         // Only erase below if the drawn lines do not fill the entire terminal window.
         // Emitting \r\n on the bottom-most row causes the terminal to scroll up by one row.
@@ -592,7 +596,6 @@ impl Renderer {
         let mut out = io::stdout();
         let _ = execute!(
             out,
-            DisableMouseCapture,
             LeaveAlternateScreen,
             cursor::Show,
             ResetColor

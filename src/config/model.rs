@@ -174,7 +174,7 @@ impl Default for General {
 pub struct Execution {
     /// Maximum number of tool processes running simultaneously.
     pub max_concurrency: usize,
-    /// Default per-task timeout in seconds.
+    /// Default per-task timeout in seconds (0 = disabled / run to completion).
     pub timeout_secs: u64,
     /// Name or path of the oniux binary that provides the network boundary.
     ///
@@ -193,7 +193,7 @@ impl Default for Execution {
     fn default() -> Self {
         Self {
             max_concurrency: 6,
-            timeout_secs: 300,
+            timeout_secs: 0,
             oniux_binary: "oniux".to_string(),
             kill_grace_ms: 2_000,
             group_kill_grace_ms: 500,
@@ -284,6 +284,10 @@ impl Config {
         // starts describing the boundary the operator actually has.
         if let Some(root) = value.as_table_mut() {
             root.remove("anonymity");
+            root.remove("api_keys");
+            if let Some(gen) = root.get_mut("general").and_then(toml::Value::as_table_mut) {
+                gen.remove("timeout_secs");
+            }
             if let Some(exec) = root
                 .get_mut("execution")
                 .and_then(toml::Value::as_table_mut)
@@ -333,11 +337,7 @@ impl Config {
                 "execution.max_concurrency above 64 will exhaust process and socket limits on most hosts",
             ));
         }
-        if self.execution.timeout_secs == 0 {
-            return Err(TsecError::config(
-                "execution.timeout_secs must be at least 1",
-            ));
-        }
+        // timeout_secs == 0 means timeout is disabled (unlimited / run to completion)
         if self.execution.oniux_binary.trim().is_empty() {
             return Err(TsecError::config(
                 "execution.oniux_binary must name the oniux binary that provides the network \
@@ -381,9 +381,7 @@ impl Config {
 
     /// Effective timeout for a task, allowing a per-task override.
     pub fn timeout_for(&self, override_secs: Option<u64>) -> u64 {
-        override_secs
-            .filter(|v| *v > 0)
-            .unwrap_or(self.execution.timeout_secs)
+        override_secs.unwrap_or(self.execution.timeout_secs)
     }
 }
 
