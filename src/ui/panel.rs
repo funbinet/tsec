@@ -1,13 +1,20 @@
-//! Panel geometry: full-terminal-width boxes, layout semantics, one frame per redraw.
+//! Panel geometry: full-terminal-width boxes, layout semantics, and the
+//! stacked, scrollable frame history.
 //!
 //! Every screen is one *full-width* box whose horizontal dimension is derived
 //! from the current terminal width (`inner = cols - 2`), so the container grows
 //! and shrinks with the terminal. The [`Renderer`] owns an alternate-screen
-//! session: frames are written in place — cursor home, the frame, erase-below —
-//! so a redraw *replaces* the previous frame pixel for pixel. Nothing is ever
-//! appended, nothing scrolls, nothing is duplicated, and the operator's own
-//! terminal history (the main buffer) is never touched: entering and leaving
-//! the session restores it exactly as it was. No background thread ever writes.
+//! session and a *stack of frozen boxes*: descending into a screen freezes the
+//! box above, so the main menu stays on screen beneath a phase menu, a phase
+//! menu stays beneath a capability flow, and so on. A redraw paints the frozen
+//! history plus the one active box — the box under construction — and never
+//! duplicates a live box: regaining control after a child screen closes
+//! collapses the frames added since, so the parent repaints as the single
+//! active box. The hint line belongs to the active box alone. When the stack
+//! outgrows the terminal, `PageUp`/`PageDown` scroll through it. The
+//! operator's own terminal history (the main buffer) is never touched:
+//! entering and leaving the session restores it exactly as it was. No
+//! background thread ever writes.
 
 // Copyright (c) funbinet. All rights reserved.
 // Part of TSEC terminal cybersecurity operations platform by funbinet.
@@ -219,9 +226,10 @@ pub enum Layout {
     Menu,
     /// Input forms and closed metadata boxes: centred title, rows block-centred.
     Form,
-    /// Status, guidance, errors: left title, left rows (commands stay copyable).
+    /// Status, guidance and errors: centred title, rows block-centred — the
+    /// block sits mid-box while its entries stay aligned with each other.
     Information,
-    /// Live task and processing screens: centred title, left rows.
+    /// Live task and processing screens: centred title, rows block-centred.
     Execution,
     /// The `OUTPUT` document: centred title, left rows.
     Output,
@@ -233,11 +241,14 @@ pub enum Layout {
 
 impl Layout {
     pub fn title_centred(self) -> bool {
-        !matches!(self, Layout::Information | Layout::Input)
+        !matches!(self, Layout::Input)
     }
 
     pub fn rows_centred(self) -> bool {
-        matches!(self, Layout::Menu | Layout::Form)
+        matches!(
+            self,
+            Layout::Menu | Layout::Form | Layout::Information | Layout::Execution
+        )
     }
 
     /// Menu boxes carry breathing room around their entries; form boxes stay
@@ -388,6 +399,41 @@ pub fn plain_frame(theme: &Theme, rows: &[(String, Role)]) -> Frame {
     frame
 }
 
+/// Split a frame's text into its lines, dropping the trailing empty segment
+/// left by the final `CRLF`. Box frames never end in a blank line.
+fn frame_lines(frame: &Frame) -> Vec<&str> {
+    let text = frame.text.trim_end_matches("\r\n");
+    if text.is_empty() {
+        Vec::new()
+    } else {
+        text.split("\r\n").collect()
+    }
+}
+
+/// Total bytes across the frozen history, for sizing the write buffer.
+fn history_bytes(history: &[Frame]) -> usize {
+    history.iter().map(|frame| frame.text.len()).sum()
+}
+
+/// The visible window over the frozen history plus the active frame:
+/// bottom-anchored, shifted up by `scroll` lines, at most `rows` lines long.
+fn window_lines<'a>(
+    history: &'a [Frame],
+    active: &'a Frame,
+    rows: usize,
+    scroll: usize,
+) -> Vec<&'a str> {
+    let rows = rows.max(1);
+    let mut lines: Vec<&str> = history.iter().flat_map(frame_lines).collect();
+    lines.extend(frame_lines(active));
+    if lines.len() <= rows {
+        return lines;
+    }
+    let end = lines.len() - scroll.min(lines.len() - rows);
+    let start = end - rows;
+    lines[start..end].to_vec()
+}
+
 /// The one-line key hint drawn under a box, centred and unboxed.
 pub fn hint_frame(theme: &Theme, text: &str) -> Frame {
     let g = Geometry::detect();
@@ -407,6 +453,12 @@ pub fn hint_frame(theme: &Theme, text: &str) -> Frame {
 #[derive(Debug)]
 pub struct Renderer {
     active: bool,
+    /// Boxes already left behind, in the order they were left. A frozen box is
+    /// dead history: it is painted above the active box and can be scrolled
+    /// through, but it can never receive input again.
+    history: Vec<Frame>,
+    /// Lines scrolled up from the bottom of the combined view.
+    scroll: usize,
 }
 
 impl Renderer {
@@ -415,19 +467,75 @@ impl Renderer {
         terminal::enable_raw_mode()?;
         let mut out = io::stdout();
         execute!(out, EnterAlternateScreen, cursor::Hide, ResetColor)?;
-        Ok(Self { active: true })
+        Ok(Self {
+            active: true,
+            history: Vec::new(),
+            scroll: 0,
+        })
     }
 
-    /// Overwrite the screen with `frame`, in place, in one write.
+    /// Freeze `frame` into the history: the box stays on screen above
+    /// whatever comes next and becomes scrollable dead history.
+    pub fn freeze(&mut self, frame: &Frame) {
+        self.history.push(frame.clone());
+        self.scroll = 0;
+    }
+
+    /// How many boxes are frozen.
+    pub fn history_len(&self) -> usize {
+        self.history.len()
+    }
+
+    /// Collapse every box frozen since `base`, including the caller's own
+    /// frozen copy: a menu regaining control after its child screens close
+    /// repaints itself as the one active box, never a duplicate.
+    pub fn collapse_to(&mut self, base: usize) {
+        self.history.truncate(base);
+        self.scroll = 0;
+    }
+
+    /// Reset the scroll window to the bottom (the active box).
+    pub fn reset_scroll(&mut self) {
+        self.scroll = 0;
+    }
+
+    /// Apply `PageUp`/`PageDown` to the history scroll. Returns true when the
+    /// key was consumed, so the caller redraws and skips its other bindings.
+    /// `PageUp` looks further up the stack; `PageDown` comes back down.
+    pub fn handle_scroll_key(&mut self, key: &KeyEvent) -> bool {
+        match key.code {
+            KeyCode::PageUp => {
+                let rows = Geometry::detect().rows as usize;
+                self.scroll = self.scroll.saturating_add(rows);
+                true
+            }
+            KeyCode::PageDown => {
+                let rows = Geometry::detect().rows as usize;
+                self.scroll = self.scroll.saturating_sub(rows);
+                true
+            }
+            _ => false,
+        }
+    }
+
+    /// Paint the frozen history plus `frame` (the active box), in one write.
+    ///
+    /// The combined text is bottom-anchored: when it outgrows the terminal,
+    /// the window shows the bottom of the stack — the active box — and
+    /// `PageUp`/`PageDown` move the window through the history.
     pub fn present(&mut self, out: &mut io::Stdout, frame: &Frame) -> io::Result<()> {
         if !self.active {
             return Ok(());
         }
-        let mut buf: Vec<u8> = Vec::with_capacity(frame.text.len() + 16);
-        // Cursor to the top-left, the frame, then erase below: a shorter
-        // frame leaves no residue of the longer one it replaces.
+        let rows = Geometry::detect().rows as usize;
+        let lines = window_lines(&self.history, frame, rows, self.scroll);
+        let mut buf: Vec<u8> = Vec::with_capacity(frame.text.len() + history_bytes(&self.history) + 16);
+        // Cursor to the top-left, the visible window, then erase below.
         buf.extend_from_slice(b"\x1b[H");
-        buf.extend_from_slice(frame.text.as_bytes());
+        for line in &lines {
+            buf.extend_from_slice(line.as_bytes());
+            buf.extend_from_slice(b"\r\n");
+        }
         buf.extend_from_slice(b"\x1b[J");
         out.write_all(&buf)?;
         out.flush()
@@ -508,14 +616,19 @@ pub fn poll_input(timeout: Duration) -> io::Result<Option<Input>> {
     })
 }
 
-/// Block until the operator closes the screen with Enter, J or Esc. Resizes
-/// are swallowed; Ctrl+C is reported through the same channel the other
-/// screens use, so this helper only exists for still boxes.
-pub fn wait_close() -> io::Result<()> {
+/// Block until the operator closes the screen with Enter, J or Esc, or pages
+/// through the frozen history with PageUp/PageDown (repainting `frame`).
+/// Resizes are swallowed; Ctrl+C is reported through the same channel the
+/// other screens use, so this helper only exists for still boxes.
+pub fn wait_close(out: &mut io::Stdout, renderer: &mut Renderer, frame: &Frame) -> io::Result<()> {
     loop {
         match next_input()? {
             Input::Resize => {}
             Input::Key(key) => {
+                if renderer.handle_scroll_key(&key) {
+                    renderer.present(out, frame)?;
+                    continue;
+                }
                 if is_interrupt(&key) {
                     return Ok(());
                 }
@@ -678,9 +791,78 @@ mod tests {
     fn layouts_pick_the_right_alignment() {
         assert!(Layout::Menu.title_centred() && Layout::Menu.rows_centred());
         assert!(Layout::Form.title_centred() && Layout::Form.rows_centred());
-        assert!(!Layout::Information.title_centred() && !Layout::Information.rows_centred());
-        assert!(Layout::Execution.title_centred() && !Layout::Execution.rows_centred());
+        assert!(Layout::Information.title_centred() && Layout::Information.rows_centred());
+        assert!(Layout::Execution.title_centred() && Layout::Execution.rows_centred());
         assert!(Layout::Output.title_centred() && !Layout::Output.rows_centred());
-        assert!(Layout::Viewer.title_centred());
+        assert!(Layout::Viewer.title_centred() && !Layout::Viewer.rows_centred());
+    }
+
+    #[test]
+    fn the_window_is_bottom_anchored_and_scrollable() {
+        let mut filler = Frame::default();
+        for i in 0..30 {
+            filler.line(format!("FROZEN {i}"));
+        }
+        let history = vec![filler];
+        let mut active = Frame::default();
+        active.line("ACTIVE");
+
+        // Everything fits: nothing is dropped.
+        let all = window_lines(&history, &active, 40, 0);
+        assert_eq!(all.len(), 31);
+        assert_eq!(all[0], "FROZEN 0");
+        assert_eq!(all[30], "ACTIVE");
+
+        // A 10-row terminal shows the bottom: the active box and the last
+        // frozen lines above it.
+        let bottom = window_lines(&history, &active, 10, 0);
+        assert_eq!(bottom.len(), 10);
+        assert_eq!(bottom[9], "ACTIVE");
+        assert_eq!(bottom[0], "FROZEN 21");
+
+        // Scrolling up moves the window through the history.
+        let up = window_lines(&history, &active, 10, 10);
+        assert_eq!(up[0], "FROZEN 11");
+        assert_eq!(up[9], "FROZEN 20");
+
+        // The scroll never runs past the top of the stack.
+        let top = window_lines(&history, &active, 10, 100);
+        assert_eq!(top[0], "FROZEN 0");
+        assert_eq!(top[9], "FROZEN 9");
+    }
+
+    #[test]
+    fn freeze_and_collapse_keep_the_stack_well_formed() {
+        let mut renderer = Renderer {
+            active: true,
+            history: Vec::new(),
+            scroll: 0,
+        };
+        let g = Geometry::for_size(40, 24);
+        let menu = box_frame_in(&g, &theme(), Layout::Menu, "MAIN", &[]);
+        renderer.freeze(&menu);
+        let base = renderer.history_len();
+        let child = box_frame_in(&g, &theme(), Layout::Form, "CHILD", &[]);
+        renderer.freeze(&child);
+        assert_eq!(renderer.history_len(), 2);
+        renderer.collapse_to(base);
+        assert_eq!(renderer.history_len(), 1, "the parent copy stays frozen");
+        renderer.collapse_to(0);
+        assert!(renderer.history.is_empty());
+    }
+
+    #[test]
+    fn a_frozen_box_reappears_above_the_active_box() {
+        let g = Geometry::for_size(40, 24);
+        let frozen = box_frame_in(&g, &theme(), Layout::Menu, "MAIN", &[]);
+        let history = vec![frozen];
+        let active = box_frame_in(&g, &theme(), Layout::Form, "CHILD", &[]);
+        let lines = window_lines(&history, &active, 40, 0);
+        let combined: Vec<&str> = lines.to_vec();
+        assert!(combined.iter().any(|l| l.contains("MAIN")));
+        assert!(combined.iter().any(|l| l.contains("CHILD")));
+        let main_pos = combined.iter().position(|l| l.contains("MAIN")).unwrap();
+        let child_pos = combined.iter().position(|l| l.contains("CHILD")).unwrap();
+        assert!(main_pos < child_pos, "frozen boxes paint above the active box");
     }
 }

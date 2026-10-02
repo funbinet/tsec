@@ -135,6 +135,7 @@ pub fn main_menu(cfg: &Config, catalog: &Catalog, registry: &Registry) -> Result
         )?;
         match root.decision {
             Decision::Chosen(index) if index < PHASES.len() => {
+                renderer.freeze(&root.panel);
                 let flow = phase_menu(
                     &theme,
                     &mut renderer,
@@ -143,7 +144,7 @@ pub fn main_menu(cfg: &Config, catalog: &Catalog, registry: &Registry) -> Result
                     catalog,
                     registry,
                     PHASES[index],
-                    std::slice::from_ref(&root.panel),
+                    &[],
                 )?;
                 if flow == Flow::Exit {
                     exit_requested = true;
@@ -234,12 +235,11 @@ fn phase_menu(
         match phase_panel.decision {
             Decision::Chosen(index) => {
                 let cap = caps[index];
-                let mut child_stack = stack.to_vec();
-                child_stack.push(phase_panel.panel.clone());
+                renderer.freeze(&phase_panel.panel);
                 if capability_is_unavailable(cap, registry) {
-                    provider_guidance(theme, renderer, out, cfg, cap, registry, &child_stack)?;
+                    provider_guidance(theme, renderer, out, cfg, cap, registry, &[])?;
                 } else {
-                    run_capability(theme, renderer, out, cfg, registry, cap, &child_stack)?;
+                    run_capability(theme, renderer, out, cfg, registry, cap, &[])?;
                 }
             }
             Decision::Back => return Ok(Flow::Continue),
@@ -436,7 +436,7 @@ fn provider_guidance(
     renderer
         .present(out, &frame)
         .map_err(|e| TsecError::io("drawing the guidance box", &e))?;
-    wait_close().map_err(|e| TsecError::io("reading a key", &e))?;
+    wait_close(out, renderer, &frame).map_err(|e| TsecError::io("reading a key", &e))?;
     Ok(())
 }
 
@@ -470,7 +470,6 @@ fn collect_inputs(
         loop {
             let label = format!("{} [{}]", spec.label.to_uppercase(), spec.ty.label());
             let prompt = Prompt {
-                capability: &cap.label,
                 label: &label,
                 help: spec.help.as_deref(),
                 default: spec.default.as_deref(),
@@ -478,7 +477,7 @@ fn collect_inputs(
                 error: error.as_deref(),
             };
 
-            match input::ask(out, renderer, theme, Some(&header), &prompt)
+            match input::ask(out, renderer, theme, &cap.label, &prompt)
                 .map_err(|e| TsecError::io("drawing the input box", &e))?
             {
                 Answer::Cancelled => return Ok(Answers::Cancelled),
@@ -598,7 +597,6 @@ fn run_capability(
         &cap.label,
         runner,
         cfg.execution.max_concurrency,
-        Some(run_prefix.clone()),
     )
     .map_err(|e| TsecError::io("running the execution monitor", &e))?;
 
@@ -614,7 +612,7 @@ fn run_capability(
         cancelled: outcome.cancelled,
     };
 
-    let mut processing = Processing::new(renderer, theme, Some(run_prefix.clone()));
+    let mut processing = Processing::new(renderer, theme);
     processing
         .begin(out)
         .map_err(|e| TsecError::io("drawing processing screen", &e))?;
@@ -974,7 +972,7 @@ fn show_notice(
     renderer
         .present(out, &frame)
         .map_err(|e| TsecError::io("drawing the notice", &e))?;
-    wait_close().map_err(|e| TsecError::io("reading a key", &e))?;
+    wait_close(out, renderer, &frame).map_err(|e| TsecError::io("reading a key", &e))?;
     Ok(())
 }
 

@@ -256,7 +256,7 @@ pub fn show_error(
     );
     frame.append(hint_frame(theme, "-[ENTER/J/ESC] CLOSE"));
     renderer.present(out, &frame)?;
-    panel::wait_close()
+    panel::wait_close(out, renderer, &frame)
 }
 
 #[cfg(test)]

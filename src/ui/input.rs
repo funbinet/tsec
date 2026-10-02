@@ -1,11 +1,15 @@
-//! Structured input collection: one closed box per field, always cancellable.
+//! Structured input collection: one unified three-part box, always cancellable.
 //!
-//! Each input is a closed box of two full-width rows: the title row carries
-//! the input's label (centred), the content row is where the operator types
-//! (centred). The box is rebuilt in place on every keystroke by the same
-//! renderer that draws every other screen, so typing never scrolls, never
-//! appends, never duplicates. `Enter` submits; `Esc` cancels back to the
-//! capability menu — never exiting the framework from inside a form.
+//! Every input of a capability is collected inside a single closed box with
+//! three parts: the top part carries the capability's name (centred), the
+//! middle part carries the input's name — e.g. `TARGET [target]` — under an
+//! internal separator, and the bottom part is the typing row where the value
+//! is entered around a caret glyph. Moving from one input of the same
+//! capability to the next updates the middle and bottom parts in place; the
+//! box never duplicates and never scrolls. `Enter` submits; `Esc` cancels back
+//! to the capability menu — never exiting the framework from inside a form.
+//! Help, validation errors and the key hint are drawn centred below the box:
+//! they are transient explanations, not part of the box itself.
 
 // Copyright (c) funbinet. All rights reserved.
 // Part of TSEC terminal cybersecurity operations platform by funbinet.
@@ -17,17 +21,16 @@
 use std::io;
 
 use crossterm::event::{KeyCode, KeyModifiers};
+use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 
 use crate::ui::panel;
-use crate::ui::panel::{box_frame_in, centre, wrap, Frame, Geometry, Layout, Renderer};
+use crate::ui::panel::{centre, expand_tabs, Frame, Geometry, Layout, Renderer};
 use crate::ui::theme::{Role, Theme};
 
 /// One field's worth of prompt decoration.
 #[derive(Debug)]
 pub struct Prompt<'a> {
-    /// Capability name displayed as the box title.
-    pub capability: &'a str,
-    /// e.g. `DOMAIN [domain]` — becomes the box title row.
+    /// e.g. `TARGET [target]` — the middle part of the box.
     pub label: &'a str,
     /// Optional one-line help, shown muted under the box.
     pub help: Option<&'a str>,
@@ -47,17 +50,18 @@ pub enum Answer {
     Cancelled,
 }
 
-/// Ask for one value: a closed two-row box — title row, typing row — drawn
-/// after `above` (usually the capability's own box), plus centred help, error
-/// and hint lines.
+/// Ask for one value inside the capability's own unified box, whose top part
+/// carries `title` (the capability's name). The box is rebuilt in place on
+/// every keystroke by the same renderer that draws every other screen.
 ///
 /// Returns as soon as the operator submits or withdraws; resizes and ordinary
-/// keys only trigger in-place redraws.
+/// keys only trigger in-place redraws, and `PageUp`/`PageDown` page through
+/// the frozen stack above.
 pub fn ask(
     out: &mut io::Stdout,
     renderer: &mut Renderer,
     theme: &Theme,
-    above: Option<&Frame>,
+    title: &str,
     prompt: &Prompt<'_>,
 ) -> io::Result<Answer> {
     let mut buffer: Vec<char> = prompt.default.unwrap_or_default().chars().collect();
@@ -65,11 +69,7 @@ pub fn ask(
     let mut shown_error: Option<String> = prompt.error.map(str::to_string);
 
     loop {
-        let mut frame = Frame::default();
-        if let Some(header) = above {
-            frame.append(header.clone());
-        }
-        frame.append(input_frame(theme, prompt, &shown_error, &buffer, cursor));
+        let frame = input_box(theme, title, prompt, &shown_error, &buffer, cursor);
         renderer.present(out, &frame)?;
 
         match panel::next_input()? {
@@ -78,6 +78,10 @@ pub fn ask(
                 if panel::is_interrupt(&key) {
                     return Ok(Answer::Cancelled);
                 }
+                if renderer.handle_scroll_key(&key) {
+                    continue;
+                }
+                renderer.reset_scroll();
                 match key.code {
                     KeyCode::Enter => {
                         let value: String = buffer.iter().collect();
@@ -121,39 +125,59 @@ pub fn ask(
     }
 }
 
-/// The closed input box plus its centred help, error and hint lines.
-fn input_frame(
+/// The unified three-part input box plus its centred help, error and hint
+/// lines: capability title on top, the input's name in the middle, the typing
+/// row at the bottom.
+fn input_box(
     theme: &Theme,
+    title: &str,
     prompt: &Prompt<'_>,
     error: &Option<String>,
     buffer: &[char],
     cursor: usize,
 ) -> Frame {
     let g = Geometry::detect();
-    let content = g.inner.saturating_sub(2);
+    let inner = g.inner;
+    let content = inner.saturating_sub(2);
     let mut frame = Frame::default();
 
-    frame.line(String::new());
+    // Part 1 — the capability's name, centred under the top border.
+    frame.line(theme.paint(Role::Border, &format!("╔{}╗", "═".repeat(inner))));
+    let title = title.to_uppercase();
+    frame.line(format!(
+        "{}{}{}",
+        theme.paint(Role::Border, "║ "),
+        theme.paint(Role::Primary, &centre(&title, content)),
+        theme.paint(Role::Border, " ║")
+    ));
 
-    // One closed three-part box: capability title, input label row, input row.
+    // Part 2 — the input's name, under an internal double separator.
+    frame.line(theme.paint(Role::Border, &format!("╠{}╣", "═".repeat(inner))));
+    frame.line(format!(
+        "{}{}{}",
+        theme.paint(Role::Border, "║ "),
+        theme.paint(Role::Accent, &centre(prompt.label, content)),
+        theme.paint(Role::Border, " ║")
+    ));
+
+    // Part 3 — the typing row, under an internal thin separator. The caret is
+    // a glyph so the renderer never chases the hardware cursor around the box.
+    frame.line(theme.paint(Role::Border, &format!("╟{}╢", "─".repeat(inner))));
     let value: String = buffer.iter().collect();
     let shown = if prompt.sensitive && !value.is_empty() {
         "*".repeat(buffer.len())
     } else {
         value
     };
-    let (before, after) = split_at_char(&shown, cursor);
-    let value_row = format!("{before}▌{after}");
-    frame.append(box_frame_in(
-        &g,
-        theme,
-        Layout::Form,
-        prompt.capability,
-        &[
-            (prompt.label.to_string(), Role::Primary),
-            (value_row, Role::Foreground),
-        ],
+    let value_row = visible_value(&shown, cursor, content);
+    frame.line(format!(
+        "{}{}{}",
+        theme.paint(Role::Border, "║ "),
+        theme.paint(Role::Foreground, &centre(&value_row, content)),
+        theme.paint(Role::Border, " ║")
     ));
+
+    frame.line(theme.paint(Role::Border, &format!("╚{}╝", "═".repeat(inner))));
 
     if let Some(help) = prompt.help {
         for segment in wrap(help, content) {
@@ -172,52 +196,74 @@ fn input_frame(
     frame
 }
 
-/// Split a string at character index `at`.
-fn split_at_char(text: &str, at: usize) -> (String, String) {
-    let mut before = String::new();
-    let mut after = String::new();
-    for (index, c) in text.chars().enumerate() {
-        if index < at {
-            before.push(c);
-        } else {
-            after.push(c);
+/// The typed value as it is shown: a window of at most `content - 1` display
+/// columns around the cursor, with the caret at the cursor position. A value
+/// longer than the box shows the part the operator is working on.
+fn visible_value(text: &str, cursor: usize, content: usize) -> String {
+    let budget = content.saturating_sub(1).max(1);
+    let chars: Vec<char> = text.chars().collect();
+    let cursor = cursor.min(chars.len());
+
+    // Walk backwards from the cursor, filling the budget starting with the
+    // caret itself, so the text the operator just typed always stays visible.
+    let mut width = 1usize; // the caret
+    let mut start = cursor;
+    while start > 0 {
+        let cw = UnicodeWidthChar::width(chars[start - 1]).unwrap_or(1);
+        if width + cw > budget {
+            break;
         }
+        width += cw;
+        start -= 1;
     }
-    (before, after)
+    // Then forward from the cursor with whatever budget remains.
+    let mut end = cursor;
+    while end < chars.len() {
+        let cw = UnicodeWidthChar::width(chars[end]).unwrap_or(1);
+        if width + cw > budget {
+            break;
+        }
+        width += cw;
+        end += 1;
+    }
+
+    let mut out: String = chars[start..cursor].iter().collect();
+    out.push('▌');
+    out.extend(chars[cursor..end].iter());
+    out
+}
+
+/// Wrap `text` into display lines of at most `cols` columns.
+fn wrap(text: &str, cols: usize) -> Vec<String> {
+    panel::wrap(&expand_tabs(text), cols)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ui::panel::{display_width, fit, Layout};
+    use crate::ui::panel::display_width;
+    use crate::ui::theme::strip_ansi;
 
-    #[test]
-    fn split_at_char_splits_on_character_boundaries() {
-        assert_eq!(
-            split_at_char("héllo", 2),
-            ("hé".to_string(), "llo".to_string())
-        );
-        assert_eq!(split_at_char("", 0), (String::new(), String::new()));
-        assert_eq!(split_at_char("abc", 99), ("abc".to_string(), String::new()));
+    fn theme() -> Theme {
+        Theme::plain()
     }
 
     #[test]
-    fn input_frame_is_one_closed_box_with_three_sections() {
-        let theme = Theme::plain();
+    fn the_box_has_exactly_three_parts_in_one_closed_frame() {
         let prompt = Prompt {
-            capability: "SUBDOMAIN DISCOVERY",
             label: "DOMAIN [domain]",
             help: Some("the target you are enumerating"),
             default: Some("example.com"),
             sensitive: false,
             error: Some("not a valid domain name"),
         };
-        let frame = input_frame(
-            &theme,
+        let frame = input_box(
+            &theme(),
+            "SUBDOMAIN DISCOVERY",
             &prompt,
             &prompt.error.map(str::to_string),
-            &['e'],
-            1,
+            &['e', 'x'],
+            2,
         );
 
         let lines: Vec<String> = frame
@@ -226,27 +272,94 @@ mod tests {
             .filter(|l| !l.is_empty())
             .map(str::to_string)
             .collect();
+
+        // One closed box: a single top and bottom border.
+        assert_eq!(
+            lines.iter().filter(|l| l.contains('╔')).count(),
+            1,
+            "one top border"
+        );
+        assert_eq!(
+            lines.iter().filter(|l| l.contains('╚')).count(),
+            1,
+            "one bottom border"
+        );
+        assert!(!lines.iter().any(|l| l.contains('│')), "closed box only");
+
+        // Part 1: the capability's name. Part 2: the input's name.
         assert!(lines.iter().any(|l| l.contains("SUBDOMAIN DISCOVERY")));
         assert!(lines.iter().any(|l| l.contains("DOMAIN [domain]")));
-        assert!(lines.iter().any(|l| l.contains('▌')));
+
+        // Part 3: the typing row with the caret, between two separators.
+        let caret = lines.iter().find(|l| l.contains('▌')).expect("caret row");
+        assert!(caret.contains('║'), "the caret lives inside the box");
         assert!(
-            lines
-                .iter()
-                .any(|l| l.contains("-[ENTER] ACCEPT   -[ESC] CANCEL")),
-            "the accept/cancel hint is present"
+            lines.iter().any(|l| l.contains('╟')),
+            "an internal thin separator separates the typing row"
         );
-        // The hint line is present and padded (centred): it starts with
-        // spaces rather than at column zero.
+
+        // Transient lines sit below the box, centred.
         let hint = lines
             .iter()
             .find(|l| l.contains("-[ENTER] ACCEPT"))
             .expect("hint line present");
         assert!(hint.starts_with(' '), "centred hint is padded: {hint:?}");
+        assert!(lines.iter().any(|l| l.contains("not a valid domain name")));
+
         // Box rows never exceed terminal width.
         for line in lines.iter().filter(|l| l.contains('║')) {
             assert!(display_width(line) <= 80, "overflow: {line:?}");
         }
-        assert!(!lines.iter().any(|l| l.contains('│')), "closed box only");
+    }
+
+    #[test]
+    fn the_typing_row_stays_one_line_for_long_values() {
+        let prompt = Prompt {
+            label: "PATH [path]",
+            help: None,
+            default: None,
+            sensitive: false,
+            error: None,
+        };
+        let long: Vec<char> = "a".repeat(400).chars().collect();
+        let frame = input_box(&theme(), "T", &prompt, &None, &long, 200);
+        for line in frame.text.split("\r\n").filter(|l| !l.is_empty()) {
+            assert!(
+                display_width(&strip_ansi(line)) <= 80,
+                "overflow: {line:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn sensitive_values_are_masked_with_a_visible_caret() {
+        let prompt = Prompt {
+            label: "PASSWORD [password]",
+            help: None,
+            default: None,
+            sensitive: true,
+            error: None,
+        };
+        let buffer: Vec<char> = "hunter2".chars().collect();
+        let frame = input_box(&theme(), "T", &prompt, &None, &buffer, 7);
+        let lines: Vec<&str> = frame.text.split("\r\n").filter(|l| !l.is_empty()).collect();
+        let value_row = lines.iter().find(|l| l.contains('▌')).unwrap();
+        let plain = strip_ansi(value_row);
+        assert!(plain.contains("*******▌"), "{plain:?}");
+        assert!(!plain.contains("hunter2"), "secrets are never echoed");
+    }
+
+    #[test]
+    fn visible_value_windows_around_the_cursor() {
+        // Everything fits: prefix, caret, suffix.
+        assert_eq!(visible_value("hello", 5, 20), "hello▌");
+        assert_eq!(visible_value("hello", 0, 20), "▌hello");
+        // A narrow box keeps the text before the cursor visible.
+        let shown = visible_value("abcdefghij", 10, 6);
+        assert_eq!(shown, "ghij▌");
+        assert!(display_width(&shown) <= 6, "{shown:?}");
+        // Mid-string cursors keep both sides around the caret.
+        assert_eq!(visible_value("abcdef", 3, 20), "abc▌def");
     }
 
     #[test]
@@ -259,6 +372,6 @@ mod tests {
     fn fit_and_centre_agree_on_painted_text() {
         let painted = "\x1b[31mred\x1b[0m";
         assert_eq!(display_width(&centre(painted, 7)), 7);
-        assert_eq!(display_width(&fit(painted, 5)), 5);
+        assert_eq!(UnicodeWidthStr::width(strip_ansi(painted).as_str()), 3);
     }
 }

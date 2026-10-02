@@ -1,18 +1,25 @@
-//! The execution monitor and the processing-stage visualization.
+//! The execution monitor, the processing-stage visualization and the
+//! execution-failure screen.
 //!
-//! Two rules shape this module:
+//! Three rules shape this module:
 //!
 //! * **One render owner.** Worker tasks never touch the terminal; they send
 //!   [`Event`]s over a channel. This monitor is the only writer, and it draws
 //!   one complete frame per tick (≈12 fps) through the shared renderer. The
-//!   renderer overwrites the screen in place, so the box never duplicates and
-//!   never scrolls.
+//!   renderer paints the frozen stack plus the active box, so the execution
+//!   box appears beneath the boxes that led to it and never duplicates.
 //! * **Every state is real.** A spinner glyph appears only while a child
 //!   process is genuinely running; the instant it exits its tick, cross,
 //!   timeout or cancelled marker takes its place. `Esc` or `Ctrl+C` asks
 //!   `Stop ongoing operations? [y/N]` — default `N` means the run continues
 //!   completely untouched — and only a confirmed `Y` cancels tasks, with
 //!   evidence preserved and a partial manifest still written.
+//! * **A failed run says so.** When not a single task completes, the
+//!   [`failure_screen`] replaces the processing/output flow: a dedicated,
+//!   centred `EXECUTION FAILED` box that names every failed task, its reason
+//!   and what to do next — a failed run never masquerades as "no findings".
+//!   When the run does finish, its box is frozen into the stack before the
+//!   processing box takes over, so nothing the operator watched is cleared.
 
 // Copyright (c) funbinet. All rights reserved.
 // Part of TSEC terminal cybersecurity operations platform by funbinet.
@@ -33,8 +40,10 @@ use crate::domain::command::Command;
 use crate::domain::execution::{ExecutionRecord, TaskStatus};
 use crate::exec::{Cancellation, Runner, TaskSpec};
 use crate::store::HarvestStage;
-use crate::ui::panel::{box_frame, fit, hint_frame, is_interrupt, poll_input, Input, Renderer};
-use crate::ui::panel::{Geometry, Layout};
+use crate::ui::panel::{
+    box_frame, fit, hint_frame, is_interrupt, poll_input, wait_close, Frame, Geometry, Input, Layout,
+    Renderer,
+};
 use crate::ui::spinner;
 use crate::ui::theme::{Role, Theme};
 
@@ -98,7 +107,10 @@ impl TaskRow {
 ///
 /// This owns the whole execution screen: it spawns the worker thread (which
 /// owns the tokio runtime), renders per-operation status while the run goes,
-/// handles the stop confirmation, and returns the finished records.
+/// handles the stop confirmation, and returns the finished records. The box
+/// is drawn beneath whatever the renderer already has frozen — the menus and
+/// the capability's form that led here — and is frozen itself when the run
+/// finishes, so the processing screen appears below it, never instead of it.
 #[allow(clippy::too_many_arguments)]
 pub fn execute(
     theme: &Theme,
@@ -109,7 +121,6 @@ pub fn execute(
     capability: &str,
     runner: Runner,
     max_concurrency: usize,
-    prefix: Option<crate::ui::panel::Frame>,
 ) -> io::Result<RunOutcome> {
     let rows: Vec<TaskRow> = jobs.iter().map(TaskRow::new).collect();
     let total = rows.len();
@@ -154,11 +165,11 @@ pub fn execute(
         top: 0,
         confirm: false,
         cancelled: false,
+        frozen: false,
         total,
         started: Instant::now(),
         last_draw: Instant::now(),
         tick: 0,
-        prefix,
     };
     let outcome = monitor.run()?;
 
@@ -179,11 +190,12 @@ struct Monitor<'a> {
     top: usize,
     confirm: bool,
     cancelled: bool,
+    /// Whether the finished box has been frozen into the stack already.
+    frozen: bool,
     total: usize,
     started: Instant,
     last_draw: Instant,
     tick: usize,
-    prefix: Option<crate::ui::panel::Frame>,
 }
 
 impl Monitor<'_> {
@@ -231,7 +243,14 @@ impl Monitor<'_> {
             }
 
             if finished_run {
-                // Final picture: every task in its terminal state.
+                // Final picture: every task in its terminal state. The box is
+                // frozen first, so it stays on screen beneath the processing
+                // and output screens that follow the run.
+                if !self.frozen {
+                    let frame = self.frame_box();
+                    self.renderer.freeze(&frame);
+                    self.frozen = true;
+                }
                 self.draw()?;
                 records.sort_by_key(|(index, _)| *index);
                 return Ok(RunOutcome {
@@ -287,6 +306,14 @@ impl Monitor<'_> {
     // ── rendering ──────────────────────────────────────────────────────────
 
     fn draw(&mut self) -> io::Result<()> {
+        let mut frame = self.frame_box();
+        frame.append(hint_frame(self.theme, &self.hint()));
+        self.renderer.present(self.out, &frame)
+    }
+
+    /// The execution box on its own, without the hint line — the exact shape
+    /// frozen into the stack when the run finishes.
+    fn frame_box(&mut self) -> Frame {
         let g = Geometry::detect();
         // Chrome: four border/title rows plus the hint line under the box.
         let max_body = g.body_rows(5);
@@ -313,16 +340,7 @@ impl Monitor<'_> {
             .map(|(text, role, _)| (text.clone(), *role))
             .collect();
 
-        let mut frame = box_frame(self.theme, Layout::Execution, "EXECUTION", &window);
-        frame.append(hint_frame(self.theme, &self.hint()));
-        if let Some(prefix) = &self.prefix {
-            let mut composed = prefix.clone();
-            composed.line(String::new());
-            composed.append(frame);
-            self.renderer.present(self.out, &composed)
-        } else {
-            self.renderer.present(self.out, &frame)
-        }
+        box_frame(self.theme, Layout::Execution, "EXECUTION", &window)
     }
 
     /// Every body line, tagged with the task it belongs to (usize::MAX for
@@ -332,6 +350,16 @@ impl Monitor<'_> {
         let mut lines: Vec<(String, Role, usize)> = Vec::new();
         let none = usize::MAX;
 
+        // One shared status column, so every task's state word lines up inside
+        // the centred block the way menu entries line up in their own boxes.
+        let status_col = self
+            .rows
+            .iter()
+            .map(|r| unicode_width::UnicodeWidthStr::width(status_label(r.status)))
+            .max()
+            .unwrap_or(0)
+            + 2;
+
         for row in &self.rows {
             let marker = match row.status {
                 TaskStatus::Running => spinner::frame(self.tick).to_string(),
@@ -339,9 +367,7 @@ impl Monitor<'_> {
             };
             let status = status_label(row.status);
             let head = format!("{} {} {}", marker, row.id, row.label);
-            // Right-align the status word within the row, in the row's colour.
-            let status_w = unicode_width::UnicodeWidthStr::width(status);
-            let head = fit(&head, content.saturating_sub(status_w + 1));
+            let head = fit(&head, content.saturating_sub(status_col));
             lines.push((format!("{head}{status}"), role_for(row.status), row.index));
 
             if row.started {
@@ -395,7 +421,8 @@ impl Monitor<'_> {
     }
 }
 
-fn status_label(status: TaskStatus) -> &'static str {
+/// The operator-facing word for a task's terminal state.
+pub(crate) fn status_label(status: TaskStatus) -> &'static str {
     match status {
         TaskStatus::Pending => "QUEUED",
         TaskStatus::Running => "RUNNING",
@@ -506,21 +533,15 @@ fn run_jobs(
 pub struct Processing<'a> {
     renderer: &'a mut Renderer,
     theme: &'a Theme,
-    prefix: Option<crate::ui::panel::Frame>,
     done: usize,
     tick: usize,
 }
 
 impl<'a> Processing<'a> {
-    pub fn new(
-        renderer: &'a mut Renderer,
-        theme: &'a Theme,
-        prefix: Option<crate::ui::panel::Frame>,
-    ) -> Self {
+    pub fn new(renderer: &'a mut Renderer, theme: &'a Theme) -> Self {
         Self {
             renderer,
             theme,
-            prefix,
             done: 0,
             tick: 0,
         }
@@ -542,7 +563,22 @@ impl<'a> Processing<'a> {
         self.draw(out)
     }
 
+    /// Complete every stage and freeze the box: all six stages show their
+    /// terminal ✓ state, and the box stays on screen beneath the output
+    /// screen that follows the harvest.
+    pub fn finish(&mut self, out: &mut io::Stdout) -> io::Result<()> {
+        self.done = HarvestStage::ALL.len();
+        let frame = self.frame_box();
+        self.renderer.freeze(&frame);
+        self.draw(out)
+    }
+
     fn draw(&mut self, out: &mut io::Stdout) -> io::Result<()> {
+        let frame = self.frame_box();
+        self.renderer.present(out, &frame)
+    }
+
+    fn frame_box(&mut self) -> Frame {
         let mut rows: Vec<(String, Role)> = Vec::new();
         for (index, stage) in HarvestStage::ALL.iter().enumerate() {
             let label = stage.label();
@@ -558,16 +594,64 @@ impl<'a> Processing<'a> {
             };
             rows.push(row);
         }
-        let frame = box_frame(self.theme, Layout::Execution, "PROCESSING", &rows);
-        if let Some(prefix) = &self.prefix {
-            let mut composed = prefix.clone();
-            composed.line(String::new());
-            composed.append(frame);
-            self.renderer.present(out, &composed)
-        } else {
-            self.renderer.present(out, &frame)
-        }
+        box_frame(self.theme, Layout::Execution, "PROCESSING", &rows)
     }
+}
+
+// ── the failure screen ─────────────────────────────────────────────────────
+
+/// The `EXECUTION FAILED` screen: shown when every task of a capability run
+/// ended in a terminal failure, so a failed run never presents itself as a
+/// completed one with "no findings".
+///
+/// The title and the situation are centred; the failed tasks are listed with
+/// their real reasons, followed by what to do next. The evidence — every
+/// task's raw stdout and stderr — is already on disk under the run directory.
+pub fn failure_screen(
+    theme: &Theme,
+    renderer: &mut Renderer,
+    out: &mut io::Stdout,
+    capability: &str,
+    failures: &[(String, Role)],
+) -> io::Result<()> {
+    let mut rows: Vec<(String, Role)> = Vec::new();
+    rows.push((format!("CAPABILITY: {capability}"), Role::Primary));
+    rows.push((String::new(), Role::Muted));
+    rows.extend(failures.iter().cloned());
+    rows.push((String::new(), Role::Muted));
+    rows.push((
+        "WHAT HAPPENED: every operation of this capability failed before it".to_string(),
+        Role::Muted,
+    ));
+    rows.push((
+        "could produce usable output, so there is nothing to harvest.".to_string(),
+        Role::Muted,
+    ));
+    rows.push((
+        "WHAT TO DO: install the missing provider tools (see tools.sh and".to_string(),
+        Role::Muted,
+    ));
+    rows.push((
+        "docs/COMMANDS.md), check the oniux network boundary for network".to_string(),
+        Role::Muted,
+    ));
+    rows.push((
+        "capabilities, then run the capability again.".to_string(),
+        Role::Muted,
+    ));
+    rows.push((
+        "Each task's raw stdout and stderr is kept in the run directory".to_string(),
+        Role::Muted,
+    ));
+    rows.push((
+        "under the output folder — reopen it any time from the OUTPUTS menu.".to_string(),
+        Role::Muted,
+    ));
+
+    let mut frame = box_frame(theme, Layout::Information, "EXECUTION FAILED", &rows);
+    frame.append(hint_frame(theme, "-[ENTER/J/ESC] RETURN"));
+    renderer.present(out, &frame)?;
+    wait_close(out, renderer, &frame)
 }
 
 #[cfg(test)]
