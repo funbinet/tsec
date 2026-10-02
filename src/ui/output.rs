@@ -1,11 +1,10 @@
 //! The `OUTPUT` document screens.
 //!
 //! One file — `output.txt`, written by the store — is the single source of
-//! truth. The preview shows its first [`PREVIEW_LIMIT`] lines inside a
-//! full-width box; underneath, a small closed box names the saved file, and
-//! the hint line lists exactly three operations plus `ESC`: scroll, open the
-//! full viewer (`L`), close. There is no confirmation question — `L` opens
-//! the viewer directly. `ESC` always closes the screen.
+//! truth. The OUTPUT box is a compact summary showing the run status, finding
+//! count and output path. Three controls follow: `Y` opens the full scrollable
+//! viewer, `ENTER` starts a new cycle, `ESC` exits. The full viewer shows
+//! every line of the output file in a scrollable box.
 
 // Copyright (c) funbinet. All rights reserved.
 // Part of TSEC terminal cybersecurity operations platform by funbinet.
@@ -20,7 +19,7 @@ use std::path::Path;
 use crossterm::event::KeyCode;
 
 use crate::ui::panel;
-use crate::ui::panel::{box_frame, box_frame_in, hint_frame, Geometry, Layout, Renderer};
+use crate::ui::panel::{box_frame, hint_frame, Geometry, Layout, Renderer};
 use crate::ui::theme::{Role, Theme};
 
 /// The initial preview shows at most this many lines of the document.
@@ -39,111 +38,87 @@ fn read_lines(path: &Path) -> io::Result<Vec<String>> {
     Ok(text.lines().map(str::to_string).collect())
 }
 
-/// Show the OUTPUT screen for a finished run's document.
+/// Show the minimal OUTPUT screen for a finished run's document.
 ///
-/// Returns when the operator closes the screen; if they opened the full
-/// viewer, the preview loop resumes underneath it first.
+/// The OUTPUT box is a compact summary:
+///   - `RUN COMPLETE`
+///   - `Findings: N` (line count from the output file)
+///   - `Output: /path/to/output.txt`
+///
+/// Controls:
+///   - `Y` → open the full scrollable output viewer
+///   - `ENTER` → return (start a new cycle)
+///   - `ESC` → return (exit)
 pub fn show_output(
     theme: &Theme,
     renderer: &mut Renderer,
     out: &mut io::Stdout,
     path: &Path,
-    prefix: Option<&crate::ui::panel::Frame>,
-) -> io::Result<()> {
-    let all = match read_lines(path) {
-        Ok(lines) => lines,
-        Err(e) => {
-            return show_error(
-                renderer,
-                out,
-                theme,
-                &format!("cannot read {}: {e}", path.display()),
-            )
-        }
+    _prefix: Option<&crate::ui::panel::Frame>,
+) -> io::Result<panel::CloseAction> {
+    let line_count = match read_lines(path) {
+        Ok(lines) => lines.len(),
+        Err(_) => 0,
     };
-    let preview: Vec<&str> = all.iter().take(PREVIEW_LIMIT).map(String::as_str).collect();
-    let truncated = all.len() > preview.len();
-    let mut scroll = 0usize;
+
+    let rows: Vec<(String, Role)> = vec![
+        ("RUN COMPLETE".to_string(), Role::Success),
+        (String::new(), Role::Muted),
+        (
+            format!("Findings:        {line_count}"),
+            Role::Foreground,
+        ),
+        (
+            format!("Output:          {}", path.display()),
+            Role::Accent,
+        ),
+    ];
+
+    let panel = box_frame(theme, Layout::Form, "OUTPUT", &rows);
+    renderer.freeze(&panel);
 
     loop {
-        let g = Geometry::detect();
-        // Chrome: 4 preview-box rows + 4 file-box rows + 1 hint line.
-        let visible = g.body_rows(4 + 4 + 1).saturating_sub(1);
-
-        if scroll + visible > preview.len() {
-            scroll = preview.len().saturating_sub(visible);
-        }
-
-        let body = visible.saturating_sub(1);
-        let mut rows: Vec<(String, Role)> = preview
-            .iter()
-            .skip(scroll)
-            .take(body)
-            .map(|line| (line.to_string(), Role::Foreground))
-            .collect();
-        if truncated && scroll + rows.len() >= preview.len() {
-            rows.push((
-                format!(
-                    "… {} more lines in the full output",
-                    all.len() - preview.len()
-                ),
-                Role::Muted,
-            ));
-        } else if truncated {
-            rows.push((
-                format!("… {} of {} preview lines shown", rows.len(), preview.len()),
-                Role::Muted,
-            ));
-        }
-
-        let mut frame = box_frame(theme, Layout::Output, "OUTPUT", &rows);
-
-        // The saved file, in its own closed two-row centred box.
-        let file_box = box_frame_in(
-            &g,
+        let frame = panel::hint_frame(
             theme,
-            Layout::Form,
-            "OUTPUT FILE",
-            &[(path.display().to_string(), Role::Accent)],
+            "-[I/K] SCROLL   -[Y] OPEN FULL   -[ENTER] NEW RUN   -[ESC] EXIT",
         );
-        frame.append(file_box);
-
-        frame.append(hint_frame(
-            theme,
-            "-[I/K] SCROLL   -[L] OPEN FULL   -[J/ESC] CLOSE",
-        ));
-        if let Some(prefix) = prefix {
-            let mut composed = prefix.clone();
-            composed.line(String::new());
-            composed.append(frame);
-            renderer.present(out, &composed)?;
-        } else {
-            renderer.present(out, &frame)?;
-        }
+        renderer.present(out, &frame)?;
 
         match panel::next_input()? {
             panel::Input::Resize => continue,
+            panel::Input::ScrollUp(n) => {
+                renderer.scroll_up(n);
+                renderer.present(out, &frame)?;
+            }
+            panel::Input::ScrollDown(n) => {
+                renderer.scroll_down(n);
+                renderer.present(out, &frame)?;
+            }
             panel::Input::Key(key) => {
                 if panel::is_interrupt(&key) {
-                    return Ok(());
+                    return Ok(panel::CloseAction::Cancel);
+                }
+                if renderer.handle_scroll_key(&key) {
+                    renderer.present(out, &frame)?;
+                    continue;
                 }
                 match key.code {
-                    KeyCode::Char('l') | KeyCode::Char('L') => {
+                    KeyCode::Up | KeyCode::Char('i') | KeyCode::Char('I') => {
+                        renderer.scroll_up(2);
+                        renderer.present(out, &frame)?;
+                    }
+                    KeyCode::Down | KeyCode::Char('k') | KeyCode::Char('K') => {
+                        renderer.scroll_down(2);
+                        renderer.present(out, &frame)?;
+                    }
+                    KeyCode::Char('y') | KeyCode::Char('Y') => {
                         view_document(theme, renderer, out, "OUTPUT", path)?;
                     }
-                    KeyCode::Esc | KeyCode::Char('j') | KeyCode::Char('J') | KeyCode::Left => {
-                        return Ok(())
-                    }
-                    KeyCode::Char('i') | KeyCode::Char('I') | KeyCode::Up => {
-                        scroll = scroll.saturating_sub(1)
-                    }
-                    KeyCode::Char('k') | KeyCode::Char('K') | KeyCode::Down => {
-                        scroll = (scroll + 1).min(preview.len().saturating_sub(1))
-                    }
-                    KeyCode::PageUp => scroll = scroll.saturating_sub(visible),
-                    KeyCode::PageDown => {
-                        scroll = (scroll + visible).min(preview.len().saturating_sub(1))
-                    }
+                    KeyCode::Enter => return Ok(panel::CloseAction::Accept),
+                    KeyCode::Esc => return Ok(panel::CloseAction::Cancel),
+                    KeyCode::Char('j')
+                    | KeyCode::Char('J')
+                    | KeyCode::Left => return Ok(panel::CloseAction::Back),
                     _ => {}
                 }
             }
@@ -214,6 +189,12 @@ pub fn view_lines(
 
         match panel::next_input()? {
             panel::Input::Resize => continue,
+            panel::Input::ScrollUp(n) => {
+                scroll = scroll.saturating_sub(n);
+            }
+            panel::Input::ScrollDown(n) => {
+                scroll = (scroll + n).min(lines.len().saturating_sub(1));
+            }
             panel::Input::Key(key) => {
                 if panel::is_interrupt(&key) {
                     return Ok(());
@@ -256,7 +237,8 @@ pub fn show_error(
     );
     frame.append(hint_frame(theme, "-[ENTER/J/ESC] CLOSE"));
     renderer.present(out, &frame)?;
-    panel::wait_close(out, renderer, &frame)
+    let _ = panel::wait_close(out, renderer, &frame)?;
+    Ok(())
 }
 
 #[cfg(test)]

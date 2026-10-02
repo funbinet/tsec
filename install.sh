@@ -89,24 +89,52 @@ fi
 echo ""
 echo "[..] checking the oniux network boundary"
 
+# Detect stale Cargo-installed oniux that may be outdated or broken.
+detect_stale_cargo_oniux() {
+    local cargo_oniux
+    if [ -n "$SUDO_USER" ]; then
+        local user_home
+        user_home=$(getent passwd "$SUDO_USER" | cut -d: -f6)
+        cargo_oniux="$user_home/.cargo/bin/oniux"
+    else
+        cargo_oniux="$HOME/.cargo/bin/oniux"
+    fi
+    if [ -f "$cargo_oniux" ]; then
+        echo "[!] found Cargo-installed oniux at $cargo_oniux"
+        echo "    if it is outdated, remove it with: cargo uninstall oniux"
+    fi
+}
+
 install_oniux() {
+    # Try AUR helpers, but verify the package exists first.
     if command -v paru >/dev/null 2>&1; then
-        paru -S --needed oniux && return 0
+        if paru -Si oniux >/dev/null 2>&1; then
+            paru -S --needed --noconfirm oniux && return 0
+        else
+            echo "[!] oniux not found in AUR via paru"
+        fi
     elif command -v yay >/dev/null 2>&1; then
-        yay -S --needed oniux && return 0
+        if yay -Si oniux >/dev/null 2>&1; then
+            yay -S --needed --noconfirm oniux && return 0
+        else
+            echo "[!] oniux not found in AUR via yay"
+        fi
     fi
     return 1
 }
 
 if command -v oniux >/dev/null 2>&1; then
     echo "[ok] oniux found at $(command -v oniux)"
-elif install_oniux; then
-    echo "[ok] oniux installed"
 else
-    echo "[!] oniux was not installed automatically. Install it with one of:"
-    echo "      paru -S oniux"
-    echo "      cargo install --git https://gitlab.torproject.org/tpo/core/oniux --tag v0.4.0 oniux"
-    echo "    Until then, every network capability will report the boundary unavailable."
+    detect_stale_cargo_oniux
+    if install_oniux; then
+        echo "[ok] oniux installed"
+    else
+        echo "[!] oniux was not installed automatically. Install it with one of:"
+        echo "      paru -S oniux"
+        echo "      cargo install --git https://gitlab.torproject.org/tpo/core/oniux oniux"
+        echo "    Until then, every network capability will report the boundary unavailable."
+    fi
 fi
 
 # The TUN device oniux creates inside its namespace.
@@ -128,6 +156,8 @@ fi
 
 # Prove the boundary rather than assume it.
 if command -v oniux >/dev/null 2>&1; then
+    ONIUX_PATH=$(command -v oniux)
+    echo "[..] verifying oniux runtime at $ONIUX_PATH"
     if oniux /bin/true >/dev/null 2>&1; then
         echo "[ok] the boundary works: oniux /bin/true exited zero"
     else

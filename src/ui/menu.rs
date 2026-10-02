@@ -38,8 +38,8 @@ use crate::ui::execution::{self, Job, Processing};
 use crate::ui::input::{self, Answer, Prompt};
 use crate::ui::output::{show_output, view_document};
 use crate::ui::panel::{
-    box_frame, hint_frame, is_interrupt, next_input, print_plain, wait_close, Frame, Geometry,
-    Input, Layout, Renderer,
+    box_frame, hint_frame, is_interrupt, next_input, print_plain, wait_close, CloseAction, Frame,
+    Geometry, Input, Layout, Renderer,
 };
 use crate::ui::theme::{Role, Theme};
 
@@ -87,14 +87,14 @@ fn compose_stack(stack: &[Frame], panel: &Frame, hint: &str, theme: &Theme) -> F
 /// Full uppercase name for each phase.
 fn phase_display_name(slug: &str) -> &str {
     match slug {
-        "recon" => "RECONNAISSANCE",
-        "surface" => "ATTACK SURFACE",
+        "recon" => "RECON",
+        "surface" => "SURFACE",
         "vulnerability" => "VULNERABILITY",
         "payload" => "PAYLOAD",
-        "escalation" => "PRIVILEGE ESCALATION",
+        "escalation" => "ESCALATION",
         "credentials" => "CREDENTIALS",
-        "lateral" => "LATERAL MOVEMENT",
-        "persistence" => "PERSISTENCE & DEFENSE EVASION",
+        "lateral" => "LATERAL",
+        "persistence" => "PERSISTENCE",
         "objectives" => "OBJECTIVES",
         "wireless" => "WIRELESS",
         _ => slug,
@@ -183,8 +183,9 @@ pub fn main_menu(cfg: &Config, catalog: &Catalog, registry: &Registry) -> Result
 
 /// Whether a nested screen wants the session to end altogether.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum Flow {
+pub enum Flow {
     Continue,
+    NewRun,
     Exit,
 }
 
@@ -236,10 +237,17 @@ fn phase_menu(
             Decision::Chosen(index) => {
                 let cap = caps[index];
                 renderer.freeze(&phase_panel.panel);
-                if capability_is_unavailable(cap, registry) {
+                let flow = if capability_is_unavailable(cap, registry) {
                     provider_guidance(theme, renderer, out, cfg, cap, registry, &[])?;
+                    Flow::Continue
                 } else {
-                    run_capability(theme, renderer, out, cfg, registry, cap, &[])?;
+                    run_capability(theme, renderer, out, cfg, registry, cap, &[])?
+                };
+                if flow == Flow::Exit {
+                    return Ok(Flow::Exit);
+                }
+                if flow == Flow::NewRun {
+                    return Ok(Flow::NewRun);
                 }
             }
             Decision::Back => return Ok(Flow::Continue),
@@ -321,12 +329,43 @@ fn menu(
 
         match next_input().map_err(|e| TsecError::io("reading a key", &e))? {
             Input::Resize => continue,
+            Input::ScrollUp(n) => {
+                renderer.scroll_up(n);
+                renderer
+                    .present(out, &frame)
+                    .map_err(|e| TsecError::io("drawing the menu", &e))?;
+            }
+            Input::ScrollDown(n) => {
+                renderer.scroll_down(n);
+                renderer
+                    .present(out, &frame)
+                    .map_err(|e| TsecError::io("drawing the menu", &e))?;
+            }
             Input::Key(key) => {
                 if is_interrupt(&key) {
                     return Ok(MenuOutcome {
                         decision: Decision::Exit,
                         panel,
                     });
+                }
+                if key.code == KeyCode::PageUp {
+                    let rows = Geometry::detect().rows;
+                    renderer.scroll_up(rows);
+                    renderer
+                        .present(out, &frame)
+                        .map_err(|e| TsecError::io("drawing the menu", &e))?;
+                    continue;
+                }
+                if key.code == KeyCode::PageDown {
+                    let rows = Geometry::detect().rows;
+                    renderer.scroll_down(rows);
+                    renderer
+                        .present(out, &frame)
+                        .map_err(|e| TsecError::io("drawing the menu", &e))?;
+                    continue;
+                }
+                if renderer.scroll_offset() > 0 {
+                    renderer.reset_scroll();
                 }
                 match key.code {
                     KeyCode::Char('i') | KeyCode::Char('I') | KeyCode::Up => {
@@ -436,7 +475,7 @@ fn provider_guidance(
     renderer
         .present(out, &frame)
         .map_err(|e| TsecError::io("drawing the guidance box", &e))?;
-    wait_close(out, renderer, &frame).map_err(|e| TsecError::io("reading a key", &e))?;
+    let _ = wait_close(out, renderer, &frame).map_err(|e| TsecError::io("reading a key", &e))?;
     Ok(())
 }
 
@@ -451,6 +490,10 @@ enum Answers {
 /// The capability's own closed box — titled with its name — sits above one
 /// input box per field. `Esc` on any field withdraws the whole capability
 /// back to the capability menu; it never leaves the system from here.
+///
+/// Each accepted input is frozen into the renderer's history so it remains
+/// visible above the next input prompt and above the execution box that
+/// follows.
 fn collect_inputs(
     theme: &Theme,
     renderer: &mut Renderer,
@@ -458,6 +501,7 @@ fn collect_inputs(
     cap: &Capability,
     stack: &[Frame],
 ) -> Result<Answers> {
+    let base = renderer.history_len();
     let mut values = InputValues::new();
     let mut header = Frame::default();
     for frame in stack {
@@ -480,7 +524,11 @@ fn collect_inputs(
             match input::ask(out, renderer, theme, &cap.label, &prompt)
                 .map_err(|e| TsecError::io("drawing the input box", &e))?
             {
-                Answer::Cancelled => return Ok(Answers::Cancelled),
+                Answer::Cancelled => {
+                    // Undo any inputs frozen during this collection.
+                    renderer.collapse_to(base);
+                    return Ok(Answers::Cancelled);
+                }
                 Answer::Given(raw) => {
                     let raw = raw.trim();
                     if raw.is_empty() && spec.default.is_none() && !spec.required {
@@ -488,6 +536,16 @@ fn collect_inputs(
                     }
                     match spec.validate(raw) {
                         Ok(v) => {
+                            // Freeze the accepted input as a permanent box
+                            // (without ephemeral help/error/hint lines).
+                            let committed = input::committed_input_box(
+                                theme,
+                                &cap.label,
+                                &label,
+                                raw,
+                                spec.ty.is_sensitive(),
+                            );
+                            renderer.freeze(&committed);
                             values.insert(&*spec.key, v);
                             break;
                         }
@@ -505,6 +563,10 @@ fn collect_inputs(
 
 /// Execute a capability: input collection, concurrent execution, 6-stage
 /// harvest, output display and raw artifact storage.
+///
+/// The pipeline branches after execution:
+///   - **All tasks failed** → `RUN FAILURE` terminal state (no processing, no output)
+///   - **Some/all succeeded** → `PROCESSING` → harvest → `OUTPUT`
 fn run_capability(
     theme: &Theme,
     renderer: &mut Renderer,
@@ -513,21 +575,15 @@ fn run_capability(
     registry: &Registry,
     cap: &Capability,
     stack: &[Frame],
-) -> Result<()> {
+) -> Result<Flow> {
     let values = match collect_inputs(theme, renderer, out, cap, stack)? {
         Answers::Given(values) => values,
-        Answers::Cancelled => return Ok(()),
+        Answers::Cancelled => return Ok(Flow::Continue),
     };
 
     let phase_word = phase_label(&cap.phase).unwrap_or(&cap.phase);
     let run_id = RunId::for_run(phase_word, &cap.label);
     let mut store = RunStore::open(&cfg.general.output_dir, &run_id)?;
-    let mut run_prefix = Frame::default();
-    for frame in stack {
-        run_prefix.append(frame.clone());
-        run_prefix.line(String::new());
-    }
-    run_prefix.append(box_frame(theme, Layout::Form, &cap.label, &[]));
 
     let mut missing_providers: Vec<String> = Vec::new();
     let mut formats: BTreeMap<String, OutputFormat> = BTreeMap::new();
@@ -576,7 +632,8 @@ fn run_capability(
     }
 
     if jobs.is_empty() {
-        return provider_guidance(theme, renderer, out, cfg, cap, registry, stack);
+        provider_guidance(theme, renderer, out, cfg, cap, registry, stack)?;
+        return Ok(Flow::Continue);
     }
 
     let runner = Runner::new(
@@ -604,6 +661,12 @@ fn run_capability(
         store.commit(record.clone())?;
     }
 
+    // ── Branch: all tasks failed → RUN FAILURE (no processing, no output) ──
+    if all_tasks_failed(&outcome.records) {
+        return show_run_failure(theme, renderer, out, &outcome.records);
+    }
+
+    // ── Branch: some/all succeeded → Processing → Output ───────────────────
     let header = OutputHeader {
         run_name: run_id.as_str(),
         phase: phase_word,
@@ -617,7 +680,7 @@ fn run_capability(
         .begin(out)
         .map_err(|e| TsecError::io("drawing processing screen", &e))?;
 
-    let harvest = store.harvest(
+    let _harvest = store.harvest(
         &formats,
         &header,
         Some(&mut |stage: HarvestStage| {
@@ -627,56 +690,50 @@ fn run_capability(
         }),
     )?;
 
-    maybe_show_failure_panel(
-        theme,
-        renderer,
-        out,
-        &outcome.records,
-        &harvest.state,
-        stack,
-    )?;
-
-    show_output(theme, renderer, out, &store.output_txt(), Some(&run_prefix))
+    let action = show_output(theme, renderer, out, &store.output_txt(), None)
         .map_err(|e| TsecError::io("drawing output screen", &e))?;
 
-    Ok(())
+    match action {
+        CloseAction::Cancel => Ok(Flow::Exit),
+        CloseAction::Accept => Ok(Flow::NewRun),
+        CloseAction::Back => Ok(Flow::NewRun),
+    }
 }
 
-fn maybe_show_failure_panel(
+/// True when every task in the run ended in a terminal failure (Failed,
+/// TimedOut, Interrupted) — meaning the execution pipeline produced no
+/// usable data for the harvest.
+fn all_tasks_failed(records: &[(usize, crate::domain::execution::ExecutionRecord)]) -> bool {
+    use crate::domain::execution::TaskStatus;
+    if records.is_empty() {
+        return true;
+    }
+    records.iter().all(|(_, r)| {
+        matches!(
+            r.status,
+            TaskStatus::Failed | TaskStatus::TimedOut | TaskStatus::Interrupted
+        )
+    })
+}
+
+/// The `RUN FAILURE` terminal state: shown when every task of a capability run
+/// ended in failure. The cycle ends here — no processing, no output, no
+/// findings. The operator can press Enter to start a new cycle or Esc to exit.
+fn show_run_failure(
     theme: &Theme,
     renderer: &mut Renderer,
     out: &mut io::Stdout,
     records: &[(usize, crate::domain::execution::ExecutionRecord)],
-    state: &str,
-    stack: &[Frame],
-) -> Result<()> {
-    use crate::domain::execution::TaskStatus;
+) -> Result<Flow> {
     let total = records.len();
-    if total == 0 {
-        return Ok(());
-    }
-    let failed: Vec<_> = records
-        .iter()
-        .filter(|(_, r)| {
-            matches!(
-                r.status,
-                TaskStatus::Failed | TaskStatus::TimedOut | TaskStatus::Interrupted
-            )
-        })
-        .collect();
-    if failed.is_empty() || failed.len() < total {
-        return Ok(());
-    }
-
     let mut rows: Vec<(String, Role)> = vec![
-        (pair("STATE", state), Role::Error),
         (
-            pair("FAILED TASKS", &format!("{}/{}", failed.len(), total)),
+            pair("FAILED TASKS", &format!("{total}/{total}")),
             Role::Error,
         ),
         (String::new(), Role::Muted),
     ];
-    for (_, record) in failed.iter().take(6) {
+    for (_, record) in records.iter().take(6) {
         rows.push((
             format!(
                 "{} · {} · {}",
@@ -696,7 +753,20 @@ fn maybe_show_failure_panel(
             .to_string(),
         Role::Muted,
     ));
-    show_notice(theme, renderer, out, "RUN FAILURE", &rows, stack)
+
+    let panel = box_frame(theme, Layout::Information, "RUN FAILURE", &rows);
+    renderer.freeze(&panel);
+    let frame = hint_frame(theme, "-[I/K] SCROLL   -[ENTER] NEW RUN   -[ESC] EXIT");
+    renderer
+        .present(out, &frame)
+        .map_err(|e| TsecError::io("drawing the failure box", &e))?;
+    let action =
+        wait_close(out, renderer, &frame).map_err(|e| TsecError::io("reading a key", &e))?;
+    match action {
+        CloseAction::Cancel => Ok(Flow::Exit),
+        CloseAction::Accept => Ok(Flow::NewRun),
+        CloseAction::Back => Ok(Flow::NewRun),
+    }
 }
 
 /// Locate a provider binary, preferring the resolved registry entry.
@@ -972,7 +1042,7 @@ fn show_notice(
     renderer
         .present(out, &frame)
         .map_err(|e| TsecError::io("drawing the notice", &e))?;
-    wait_close(out, renderer, &frame).map_err(|e| TsecError::io("reading a key", &e))?;
+    let _ = wait_close(out, renderer, &frame).map_err(|e| TsecError::io("reading a key", &e))?;
     Ok(())
 }
 
@@ -1019,12 +1089,12 @@ mod tests {
     }
 
     #[test]
-    fn phase_names_are_full_uppercase_words() {
-        assert_eq!(phase_display_name("recon"), "RECONNAISSANCE");
-        assert_eq!(
-            phase_display_name("persistence"),
-            "PERSISTENCE & DEFENSE EVASION"
-        );
+    fn phase_names_are_single_uppercase_words() {
+        assert_eq!(phase_display_name("recon"), "RECON");
+        assert_eq!(phase_display_name("persistence"), "PERSISTENCE");
+        assert_eq!(phase_display_name("lateral"), "LATERAL");
+        assert_eq!(phase_display_name("surface"), "SURFACE");
+        assert_eq!(phase_display_name("escalation"), "ESCALATION");
         assert_eq!(phase_display_name("unknown"), "unknown");
     }
 

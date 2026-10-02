@@ -26,7 +26,10 @@
 use std::io::{self, Write};
 use std::time::Duration;
 
-use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
+use crossterm::event::{
+    self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyEvent, KeyEventKind,
+    KeyModifiers, MouseEventKind,
+};
 use crossterm::style::ResetColor;
 use crossterm::terminal::{self, EnterAlternateScreen, LeaveAlternateScreen};
 use crossterm::{cursor, execute};
@@ -462,11 +465,17 @@ pub struct Renderer {
 }
 
 impl Renderer {
-    /// Begin the session: raw mode, alternate screen, hidden cursor.
+    /// Begin the session: raw mode, alternate screen, mouse capture, hidden cursor.
     pub fn enter() -> io::Result<Self> {
         terminal::enable_raw_mode()?;
         let mut out = io::stdout();
-        execute!(out, EnterAlternateScreen, cursor::Hide, ResetColor)?;
+        execute!(
+            out,
+            EnterAlternateScreen,
+            EnableMouseCapture,
+            cursor::Hide,
+            ResetColor
+        )?;
         Ok(Self {
             active: true,
             history: Vec::new(),
@@ -499,19 +508,34 @@ impl Renderer {
         self.scroll = 0;
     }
 
+    /// Scroll up by a number of lines (revealing earlier history).
+    pub fn scroll_up(&mut self, lines: usize) {
+        self.scroll = self.scroll.saturating_add(lines);
+    }
+
+    /// Scroll down by a number of lines (revealing newer content).
+    pub fn scroll_down(&mut self, lines: usize) {
+        self.scroll = self.scroll.saturating_sub(lines);
+    }
+
+    /// Current scroll offset from the bottom.
+    pub fn scroll_offset(&self) -> usize {
+        self.scroll
+    }
+
     /// Apply `PageUp`/`PageDown` to the history scroll. Returns true when the
     /// key was consumed, so the caller redraws and skips its other bindings.
     /// `PageUp` looks further up the stack; `PageDown` comes back down.
     pub fn handle_scroll_key(&mut self, key: &KeyEvent) -> bool {
         match key.code {
             KeyCode::PageUp => {
-                let rows = Geometry::detect().rows as usize;
-                self.scroll = self.scroll.saturating_add(rows);
+                let rows = Geometry::detect().rows;
+                self.scroll_up(rows);
                 true
             }
             KeyCode::PageDown => {
-                let rows = Geometry::detect().rows as usize;
-                self.scroll = self.scroll.saturating_sub(rows);
+                let rows = Geometry::detect().rows;
+                self.scroll_down(rows);
                 true
             }
             _ => false,
@@ -527,16 +551,29 @@ impl Renderer {
         if !self.active {
             return Ok(());
         }
-        let rows = Geometry::detect().rows as usize;
+        let rows = Geometry::detect().rows;
         let lines = window_lines(&self.history, frame, rows, self.scroll);
-        let mut buf: Vec<u8> = Vec::with_capacity(frame.text.len() + history_bytes(&self.history) + 16);
-        // Cursor to the top-left, the visible window, then erase below.
+        let mut buf: Vec<u8> =
+            Vec::with_capacity(frame.text.len() + history_bytes(&self.history) + 64);
+        // Begin synchronized update to eliminate visual tearing and flickering.
+        buf.extend_from_slice(b"\x1b[?2026h");
+        // Cursor to the top-left (1, 1).
         buf.extend_from_slice(b"\x1b[H");
-        for line in &lines {
+        for (i, line) in lines.iter().enumerate() {
+            if i > 0 {
+                buf.extend_from_slice(b"\r\n");
+            }
             buf.extend_from_slice(line.as_bytes());
-            buf.extend_from_slice(b"\r\n");
+            // Clear to end of line so changed text length leaves no artifacts.
+            buf.extend_from_slice(b"\x1b[K");
         }
-        buf.extend_from_slice(b"\x1b[J");
+        // Only erase below if the drawn lines do not fill the entire terminal window.
+        // Emitting \r\n on the bottom-most row causes the terminal to scroll up by one row.
+        if lines.len() < rows {
+            buf.extend_from_slice(b"\r\n\x1b[J");
+        }
+        // End synchronized update (atomic frame flip).
+        buf.extend_from_slice(b"\x1b[?2026l");
         out.write_all(&buf)?;
         out.flush()
     }
@@ -553,8 +590,19 @@ impl Renderer {
         }
         self.active = false;
         let mut out = io::stdout();
-        let _ = execute!(out, LeaveAlternateScreen, cursor::Show, ResetColor);
+        let _ = execute!(
+            out,
+            DisableMouseCapture,
+            LeaveAlternateScreen,
+            cursor::Show,
+            ResetColor
+        );
         let _ = terminal::disable_raw_mode();
+        // Preserve all completed boxes from the session in the main terminal scrollback.
+        for frame in &self.history {
+            let _ = print_plain(&mut out, frame);
+            let _ = out.write_all(b"\r\n");
+        }
         out.flush()
     }
 }
@@ -572,11 +620,21 @@ pub fn print_plain(out: &mut io::Stdout, frame: &Frame) -> io::Result<()> {
     out.flush()
 }
 
-/// What the terminal reported while we were waiting for a key.
-#[derive(Debug, Clone, Copy)]
+/// What the terminal reported while we were waiting for an action.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Input {
     Key(KeyEvent),
     Resize,
+    ScrollUp(usize),
+    ScrollDown(usize),
+}
+
+/// The operator's decision when closing a still screen.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CloseAction {
+    Accept,
+    Cancel,
+    Back,
 }
 
 /// True for Ctrl+C, the context-sensitive interrupt key.
@@ -589,55 +647,80 @@ fn is_press(key: &KeyEvent) -> bool {
     matches!(key.kind, KeyEventKind::Press | KeyEventKind::Repeat)
 }
 
-/// Block until a key press or a resize arrives.
-///
-/// Blocking rather than polling is deliberate: a lone `Esc` is only
-/// distinguishable from the start of an escape sequence once the terminal has
-/// gone quiet, and a poll loop that never lets the read time out never sees it.
+/// Block until a key press, mouse scroll, or a resize arrives.
 pub fn next_input() -> io::Result<Input> {
     loop {
         match event::read()? {
             Event::Key(key) if is_press(&key) => return Ok(Input::Key(key)),
+            Event::Mouse(mouse) => match mouse.kind {
+                MouseEventKind::ScrollUp => return Ok(Input::ScrollUp(3)),
+                MouseEventKind::ScrollDown => return Ok(Input::ScrollDown(3)),
+                _ => {}
+            },
             Event::Resize(..) => return Ok(Input::Resize),
             _ => {}
         }
     }
 }
 
-/// Report a key or resize only if one is already waiting, so a caller can poll.
+/// Report a key, mouse scroll, or resize only if one is already waiting, so a caller can poll.
 pub fn poll_input(timeout: Duration) -> io::Result<Option<Input>> {
     if !event::poll(timeout)? {
         return Ok(None);
     }
     Ok(match event::read()? {
         Event::Key(key) if is_press(&key) => Some(Input::Key(key)),
+        Event::Mouse(mouse) => match mouse.kind {
+            MouseEventKind::ScrollUp => Some(Input::ScrollUp(3)),
+            MouseEventKind::ScrollDown => Some(Input::ScrollDown(3)),
+            _ => None,
+        },
         Event::Resize(..) => Some(Input::Resize),
         _ => None,
     })
 }
 
-/// Block until the operator closes the screen with Enter, J or Esc, or pages
-/// through the frozen history with PageUp/PageDown (repainting `frame`).
-/// Resizes are swallowed; Ctrl+C is reported through the same channel the
-/// other screens use, so this helper only exists for still boxes.
-pub fn wait_close(out: &mut io::Stdout, renderer: &mut Renderer, frame: &Frame) -> io::Result<()> {
+/// Block until the operator closes the screen with Enter, J or Esc, or scrolls
+/// through the frozen history with PageUp/PageDown/Up/Down/I/K/mouse wheel.
+/// Resizes are swallowed; Ctrl+C is reported through Cancel.
+pub fn wait_close(
+    out: &mut io::Stdout,
+    renderer: &mut Renderer,
+    frame: &Frame,
+) -> io::Result<CloseAction> {
     loop {
         match next_input()? {
             Input::Resize => {}
+            Input::ScrollUp(n) => {
+                renderer.scroll_up(n);
+                renderer.present(out, frame)?;
+            }
+            Input::ScrollDown(n) => {
+                renderer.scroll_down(n);
+                renderer.present(out, frame)?;
+            }
             Input::Key(key) => {
                 if renderer.handle_scroll_key(&key) {
                     renderer.present(out, frame)?;
                     continue;
                 }
                 if is_interrupt(&key) {
-                    return Ok(());
+                    return Ok(CloseAction::Cancel);
                 }
                 match key.code {
-                    KeyCode::Enter
-                    | KeyCode::Esc
-                    | KeyCode::Char('j')
-                    | KeyCode::Char('J')
-                    | KeyCode::Left => return Ok(()),
+                    KeyCode::Up | KeyCode::Char('i') | KeyCode::Char('I') => {
+                        renderer.scroll_up(2);
+                        renderer.present(out, frame)?;
+                    }
+                    KeyCode::Down | KeyCode::Char('k') | KeyCode::Char('K') => {
+                        renderer.scroll_down(2);
+                        renderer.present(out, frame)?;
+                    }
+                    KeyCode::Enter => return Ok(CloseAction::Accept),
+                    KeyCode::Esc => return Ok(CloseAction::Cancel),
+                    KeyCode::Char('j') | KeyCode::Char('J') | KeyCode::Left => {
+                        return Ok(CloseAction::Back);
+                    }
                     _ => {}
                 }
             }
@@ -864,5 +947,32 @@ mod tests {
         let main_pos = combined.iter().position(|l| l.contains("MAIN")).unwrap();
         let child_pos = combined.iter().position(|l| l.contains("CHILD")).unwrap();
         assert!(main_pos < child_pos, "frozen boxes paint above the active box");
+    }
+
+    #[test]
+    fn scroll_up_and_down_adjusts_offset() {
+        let mut renderer = Renderer {
+            active: true,
+            history: Vec::new(),
+            scroll: 0,
+        };
+        renderer.scroll_up(5);
+        assert_eq!(renderer.scroll_offset(), 5);
+        renderer.scroll_up(10);
+        assert_eq!(renderer.scroll_offset(), 15);
+        renderer.scroll_down(7);
+        assert_eq!(renderer.scroll_offset(), 8);
+        renderer.scroll_down(20);
+        assert_eq!(renderer.scroll_offset(), 0);
+        renderer.scroll_up(12);
+        renderer.reset_scroll();
+        assert_eq!(renderer.scroll_offset(), 0);
+    }
+
+    #[test]
+    fn close_action_variants_are_distinct() {
+        assert_ne!(CloseAction::Accept, CloseAction::Cancel);
+        assert_ne!(CloseAction::Cancel, CloseAction::Back);
+        assert_ne!(CloseAction::Accept, CloseAction::Back);
     }
 }

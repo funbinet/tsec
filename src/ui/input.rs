@@ -21,10 +21,10 @@
 use std::io;
 
 use crossterm::event::{KeyCode, KeyModifiers};
-use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
+use unicode_width::UnicodeWidthChar;
 
 use crate::ui::panel;
-use crate::ui::panel::{centre, expand_tabs, Frame, Geometry, Layout, Renderer};
+use crate::ui::panel::{centre, expand_tabs, Frame, Geometry, Renderer};
 use crate::ui::theme::{Role, Theme};
 
 /// One field's worth of prompt decoration.
@@ -74,14 +74,27 @@ pub fn ask(
 
         match panel::next_input()? {
             panel::Input::Resize => continue,
+            panel::Input::ScrollUp(n) => {
+                renderer.scroll_up(n);
+                renderer.present(out, &frame)?;
+                continue;
+            }
+            panel::Input::ScrollDown(n) => {
+                renderer.scroll_down(n);
+                renderer.present(out, &frame)?;
+                continue;
+            }
             panel::Input::Key(key) => {
                 if panel::is_interrupt(&key) {
                     return Ok(Answer::Cancelled);
                 }
                 if renderer.handle_scroll_key(&key) {
+                    renderer.present(out, &frame)?;
                     continue;
                 }
-                renderer.reset_scroll();
+                if renderer.scroll_offset() > 0 {
+                    renderer.reset_scroll();
+                }
                 match key.code {
                     KeyCode::Enter => {
                         let value: String = buffer.iter().collect();
@@ -196,6 +209,56 @@ fn input_box(
     frame
 }
 
+/// A committed input box: the same three-part structure as `input_box`, but
+/// with the final accepted value and **without** the ephemeral help, error and
+/// hint lines. This is what gets frozen into the session stack after the
+/// operator accepts a value.
+pub fn committed_input_box(
+    theme: &Theme,
+    title: &str,
+    label: &str,
+    value: &str,
+    sensitive: bool,
+) -> Frame {
+    let g = Geometry::detect();
+    let inner = g.inner;
+    let content = inner.saturating_sub(2);
+    let mut frame = Frame::default();
+
+    frame.line(theme.paint(Role::Border, &format!("╔{}╗", "═".repeat(inner))));
+    let title = title.to_uppercase();
+    frame.line(format!(
+        "{}{}{}",
+        theme.paint(Role::Border, "║ "),
+        theme.paint(Role::Primary, &centre(&title, content)),
+        theme.paint(Role::Border, " ║")
+    ));
+
+    frame.line(theme.paint(Role::Border, &format!("╠{}╣", "═".repeat(inner))));
+    frame.line(format!(
+        "{}{}{}",
+        theme.paint(Role::Border, "║ "),
+        theme.paint(Role::Accent, &centre(label, content)),
+        theme.paint(Role::Border, " ║")
+    ));
+
+    frame.line(theme.paint(Role::Border, &format!("╟{}╢", "─".repeat(inner))));
+    let shown = if sensitive && !value.is_empty() {
+        "*".repeat(value.len())
+    } else {
+        value.to_string()
+    };
+    frame.line(format!(
+        "{}{}{}",
+        theme.paint(Role::Border, "║ "),
+        theme.paint(Role::Foreground, &centre(&shown, content)),
+        theme.paint(Role::Border, " ║")
+    ));
+
+    frame.line(theme.paint(Role::Border, &format!("╚{}╝", "═".repeat(inner))));
+    frame
+}
+
 /// The typed value as it is shown: a window of at most `content - 1` display
 /// columns around the cursor, with the caret at the cursor position. A value
 /// longer than the box shows the part the operator is working on.
@@ -241,8 +304,9 @@ fn wrap(text: &str, cols: usize) -> Vec<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ui::panel::display_width;
+    use crate::ui::panel::{display_width, Layout};
     use crate::ui::theme::strip_ansi;
+    use unicode_width::UnicodeWidthStr;
 
     fn theme() -> Theme {
         Theme::plain()

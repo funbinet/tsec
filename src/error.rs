@@ -240,8 +240,8 @@ impl TsecError {
                 format!("`{tool}` exceeded its {seconds}s timeout and was terminated")
             }
             ExecutionErrorKind::Interrupted { tool } => format!("`{tool}` was interrupted"),
-            ExecutionErrorKind::OniuxUnavailable { tool, reason } => {
-                format!("Oniux network boundary required for `{tool}` is unavailable: {reason}")
+            ExecutionErrorKind::OniuxUnavailable { reason, .. } => {
+                format!("Oniux network boundary unavailable: {reason}")
             }
             ExecutionErrorKind::Network { tool, reason } => {
                 format!("`{tool}` could not reach the target: {reason}")
@@ -366,6 +366,7 @@ mod tests {
         let s = e.to_string();
         assert!(s.starts_with("["));
         assert!(s.contains("ONIUX"));
+        assert!(s.contains("Oniux network boundary unavailable"));
         assert!(s.contains("install oniux"));
     }
 }

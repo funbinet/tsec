@@ -239,7 +239,8 @@ impl Monitor<'_> {
             if dirty || self.last_draw.elapsed() >= spinner::TICK {
                 self.draw()?;
                 self.last_draw = Instant::now();
-                self.tick = self.tick.wrapping_add(1);
+                self.tick =
+                    (self.started.elapsed().as_millis() / spinner::TICK.as_millis()) as usize;
             }
 
             if finished_run {
@@ -265,6 +266,16 @@ impl Monitor<'_> {
                 .max(std::time::Duration::from_millis(10));
             match poll_input(wait)? {
                 Some(Input::Resize) => {
+                    self.draw()?;
+                    self.last_draw = Instant::now();
+                }
+                Some(Input::ScrollUp(n)) => {
+                    self.renderer.scroll_up(n);
+                    self.draw()?;
+                    self.last_draw = Instant::now();
+                }
+                Some(Input::ScrollDown(n)) => {
+                    self.renderer.scroll_down(n);
                     self.draw()?;
                     self.last_draw = Instant::now();
                 }
@@ -650,8 +661,8 @@ pub fn failure_screen(
 
     let mut frame = box_frame(theme, Layout::Information, "EXECUTION FAILED", &rows);
     frame.append(hint_frame(theme, "-[ENTER/J/ESC] RETURN"));
-    renderer.present(out, &frame)?;
-    wait_close(out, renderer, &frame)
+    let _ = wait_close(out, renderer, &frame)?;
+    Ok(())
 }
 
 #[cfg(test)]
