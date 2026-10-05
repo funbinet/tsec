@@ -1,0 +1,125 @@
+# TSEC wordlist manifest
+#
+# One row per wordlist, tab separated:
+#
+#   <path>  <tier>  <sha256|->  <url>  <note>
+#
+# tier  ship   The file is committed. A fresh clone has it, so every capability
+#               that needs it runs with no setup and no operator input.
+# tier  fetch  The file is too large for a git repository: GitHub and Codeberg
+#               both refuse blobs over 100 MB. Run ./fetch-wordlists.sh once.
+#               These rows always carry a pinned SHA-256.
+#
+# The path is relative to wordlists/, which is also the root the capability
+# catalog resolves `{wl:...}` references against. A reference names a path
+# inside this directory, so `{wl:passwords/rockyou.txt}` and
+# `{wl:ssh/passwords.txt}` are both valid and mean different things: the first
+# is the general password corpus, the second the SSH-flavoured one. There is no
+# single list standing in for every attack.
+#
+# `<sha256>` is `-` for ship rows; their digests are recorded in
+# MANIFEST.sha256 by tools.sh and checked by ./verify-wordlists.sh.
+
+# ── passwords ─────────────────────────────────────────────────────────────────
+wordlists/passwords/common-10k.txt	ship	-	https://raw.githubusercontent.com/danielmiessler/SecLists/master/Passwords/Common-Credentials/10k-most-common.txt	SecLists: 10k most common passwords, ordered by frequency
+wordlists/passwords/top-100k.txt	ship	-	https://raw.githubusercontent.com/danielmiessler/SecLists/master/Passwords/Common-Credentials/Pwdb_top-100000.txt	SecLists: Pwdb top 100k passwords
+wordlists/passwords/top-1m.txt	ship	-	https://raw.githubusercontent.com/danielmiessler/SecLists/master/Passwords/Common-Credentials/Pwdb_top-1000000.txt	SecLists: Pwdb top 1M passwords. The default for offline hash cracking
+wordlists/passwords/rockyou-75.txt	ship	-	https://raw.githubusercontent.com/danielmiessler/SecLists/master/Passwords/Leaked-Databases/rockyou-75.txt	Shippable slice of rockyou: the top 75 percent by frequency
+wordlists/passwords/rockyou.txt	fetch	6dfa76aa0e02303994fd1062d0ac983f0b69ece5474d85a5bba36362e19c1076	https://github.com/brannondorsey/naive-hashcat/releases/download/data/rockyou.txt	Canonical rockyou, 139,921,497 bytes / 14.3M entries
+wordlists/passwords/default-credentials.txt	ship	-	https://raw.githubusercontent.com/danielmiessler/SecLists/master/Passwords/Default-Credentials/default-passwords.txt	Vendor and product default passwords
+wordlists/passwords/corporate.txt	ship	-	https://raw.githubusercontent.com/danielmiessler/SecLists/master/Passwords/corporate_passwords.txt	Corporate and enterprise password patterns
+wordlists/passwords/jwt-secrets.txt	ship	-	https://raw.githubusercontent.com/danielmiessler/SecLists/master/Passwords/scraped-JWT-secrets.txt	Known JWT signing secrets, for HS256 forgery testing
+wordlists/passwords/windows-common.txt	ship	-	https://raw.githubusercontent.com/danielmiessler/SecLists/master/Passwords/Common-Credentials/common-passwords-win.txt	Common Windows account passwords
+wordlists/passwords/ssh-top20.txt	ship	-	https://raw.githubusercontent.com/danielmiessler/SecLists/master/Passwords/Common-Credentials/top-20-common-SSH-passwords.txt	Highest-frequency SSH passwords only
+wordlists/passwords/mssql.txt	ship	-	https://raw.githubusercontent.com/danielmiessler/SecLists/master/Passwords/mssql-passwords-nansh0u-guardicore.txt	MSSQL-focused weak password corpus
+wordlists/passwords/openwall.txt	fetch	0d54baabd3fd7d8cbad6e7181c3a7d3482f5b1cb8139b8dc39ffc0bee0e8f725	https://raw.githubusercontent.com/danielmiessler/SecLists/master/Passwords/openwall.net-all.txt	openwall weak-password corpus
+
+# ── users ─────────────────────────────────────────────────────────────────────
+wordlists/users/common.txt	ship	-	https://raw.githubusercontent.com/danielmiessler/SecLists/master/Usernames/top-usernames-shortlist.txt	Shortlist of the most common account names
+wordlists/users/defaults.txt	ship	-	https://raw.githubusercontent.com/danielmiessler/SecLists/master/Usernames/cirt-default-usernames.txt	CIRT default and administrative account names
+wordlists/users/names.txt	ship	-	https://raw.githubusercontent.com/danielmiessler/SecLists/master/Usernames/Names/names.txt	Given and family names for account-name guessing
+wordlists/users/top-1m.txt	fetch	19b5af05756996c82c1e77f17406e85a6dccb08be55d5ea31d09c050dcbb1da5	https://raw.githubusercontent.com/danielmiessler/SecLists/master/Usernames/xato-net-10-million-usernames.txt	xato 10M username corpus
+
+# ── ssh ───────────────────────────────────────────────────────────────────────
+wordlists/ssh/users.txt	ship	-	CIRT default accounts plus the Unix service account names an SSH target actually runs under	Account names for SSH password attacks
+wordlists/ssh/passwords.txt	ship	-	SSH top 20, vendor defaults, and the frequency head of common-10k, top-100k and corporate	Passwords for SSH password attacks
+wordlists/ssh/passphrases.txt	ship	-	Corporate patterns plus top-100k	Passphrases for SSH key passphrases
+
+# ── smb ───────────────────────────────────────────────────────────────────────
+wordlists/smb/users.txt	ship	-	CIRT defaults, the 4000 commonest given names, and Windows service account names	Account names for SMB and Windows authentication attacks
+wordlists/smb/passwords.txt	ship	-	Windows common passwords, vendor defaults, and the frequency head of common-10k and top-100k	Passwords for SMB and Windows authentication attacks
+
+# ── ftp ───────────────────────────────────────────────────────────────────────
+wordlists/ftp/users.txt	ship	-	CIRT defaults plus anonymous, ftp and www accounts	Account names for FTP attacks
+wordlists/ftp/passwords.txt	ship	-	Vendor defaults plus the frequency head of common-10k and top-100k	Passwords for FTP attacks
+
+# ── mail ──────────────────────────────────────────────────────────────────────
+wordlists/mail/users.txt	ship	-	CIRT defaults, 4000 commonest given names, and postmaster/webmaster/abuse roles	Account names for SMTP, IMAP and POP attacks
+wordlists/mail/passwords.txt	ship	-	Vendor defaults plus the frequency head of common-10k and top-100k	Passwords for SMTP, IMAP and POP attacks
+
+# ── database ──────────────────────────────────────────────────────────────────
+wordlists/db/users.txt	ship	-	Database and observability service account names, including vendor defaults	Account names for database authentication attacks
+wordlists/db/passwords.txt	ship	-	Vendor defaults, common-10k and top-100k heads, corporate patterns	Passwords for database authentication attacks
+
+# ── ad ────────────────────────────────────────────────────────────────────────
+wordlists/ad/users.txt	ship	-	CIRT defaults, 10000 commonest given names, and the usual single-character accounts	Account names for Active Directory
+wordlists/ad/privileged.txt	ship	-	Privileged groups, service accounts and operator consoles in an Active Directory	Privileged account names for Active Directory
+wordlists/ad/passwords.txt	ship	-	Windows common passwords, vendor defaults, and the frequency head of common-10k and top-100k	Passwords for Active Directory
+wordlists/ad/attributes.txt	ship	-	https://raw.githubusercontent.com/danielmiessler/SecLists/master/Fuzzing/LDAP-active-directory-attributes.txt	LDAP attribute names for directory enumeration
+
+# ── web ───────────────────────────────────────────────────────────────────────
+wordlists/web/common.txt	ship	-	https://raw.githubusercontent.com/danielmiessler/SecLists/master/Discovery/Web-Content/common.txt	Small high-signal web path list
+wordlists/web/big.txt	ship	-	https://raw.githubusercontent.com/danielmiessler/SecLists/master/Discovery/Web-Content/big.txt	Medium web path list
+wordlists/web/raft-medium.txt	ship	-	https://raw.githubusercontent.com/danielmiessler/SecLists/master/Discovery/Web-Content/raft-medium-directories.txt	RAFT medium directories
+wordlists/web/logins.txt	ship	-	https://raw.githubusercontent.com/danielmiessler/SecLists/master/Discovery/Web-Content/Logins.fuzz.txt	Login and authentication endpoints
+wordlists/web/api-endpoints.txt	ship	-	https://raw.githubusercontent.com/danielmiessler/SecLists/master/Discovery/Web-Content/api/api-endpoints.txt	REST API endpoint paths
+wordlists/web/burp-parameter-names.txt	ship	-	https://raw.githubusercontent.com/danielmiessler/SecLists/master/Discovery/Web-Content/burp-parameter-names.txt	Request parameter names for parameter fuzzing
+wordlists/web/wp-plugins.txt	ship	-	https://raw.githubusercontent.com/danielmiessler/SecLists/master/Discovery/Web-Content/CMS/wp-plugins.fuzz.txt	WordPress plugin slugs
+wordlists/web/cms-backups.txt	ship	-	https://raw.githubusercontent.com/danielmiessler/SecLists/master/Discovery/Web-Content/Common-DB-Backups.txt	Exposed database backup files
+wordlists/web/spring-boot.txt	ship	-	Spring Boot actuator, h2-console, swagger and management endpoint paths	Framework-specific endpoint paths
+wordlists/web/dirbuster-medium.txt	ship	-	https://raw.githubusercontent.com/danielmiessler/SecLists/master/Discovery/Web-Content/DirBuster-2007_directory-list-2.3-medium.txt	DirBuster medium directory list
+wordlists/web/dirbuster-big.txt	fetch	236f19b14dc26cd78d15f883bbcf43a5c3d5fd14f0736eae5afeafbdfec61b34	https://raw.githubusercontent.com/danielmiessler/SecLists/master/Discovery/Web-Content/DirBuster-2007_directory-list-2.3-big.txt	DirBuster big directory list
+
+# ── dns ───────────────────────────────────────────────────────────────────────
+wordlists/dns/subdomains-5000.txt	ship	-	https://raw.githubusercontent.com/danielmiessler/SecLists/master/Discovery/DNS/subdomains-top1million-5000.txt	Most common 5000 subdomain labels
+wordlists/dns/subdomains-20000.txt	ship	-	https://raw.githubusercontent.com/danielmiessler/SecLists/master/Discovery/DNS/subdomains-top1million-20000.txt	Most common 20000 subdomain labels
+wordlists/dns/deepmagic-50000.txt	ship	-	https://raw.githubusercontent.com/danielmiessler/SecLists/master/Discovery/DNS/deepmagic.com-prefixes-top50000.txt	Deepmagic subdomain prefix corpus
+wordlists/dns/tlds.txt	ship	-	https://raw.githubusercontent.com/danielmiessler/SecLists/master/Discovery/DNS/tlds.txt	Top-level domains
+wordlists/dns/hostnames.txt	ship	-	https://raw.githubusercontent.com/danielmiessler/SecLists/master/Discovery/DNS/fierce-hostlist.txt	Common hostnames for zone transfer and virtual host work
+wordlists/dns/services.txt	ship	-	https://raw.githubusercontent.com/danielmiessler/SecLists/master/Discovery/DNS/services-names.txt	Standard DNS service record names
+
+# ── fuzz ──────────────────────────────────────────────────────────────────────
+wordlists/fuzz/lfi.txt	ship	-	https://raw.githubusercontent.com/danielmiessler/SecLists/master/Fuzzing/LFI/LFI-Jhaddix.txt	Local and remote file inclusion payloads
+wordlists/fuzz/lfi-paths.txt	ship	-	https://raw.githubusercontent.com/danielmiessler/SecLists/master/Fuzzing/LFI/LFI-linux-and-windows_by-1N3@CrowdShield.txt	Cross-platform file inclusion paths
+wordlists/fuzz/ssrf.txt	ship	-	Loopback, cloud metadata, file and protocol-handler payloads	Server-side request forgery payloads
+wordlists/fuzz/ssti.txt	ship	-	Jinja, Twig, Freemarker, Velocity, OGNL and EL expressions	Server-side template injection expressions
+wordlists/fuzz/ids.txt	ship	-	Numeric, null, traversal and prototype-chain identifiers	Insecure direct object reference identifiers
+wordlists/fuzz/injections.txt	ship	-	https://raw.githubusercontent.com/danielmiessler/SecLists/master/Fuzzing/HTML5sec-Injections-Jhaddix.txt	HTML5 and general injection payloads
+wordlists/fuzz/xss.txt	ship	-	Script, event handler and URL scheme payloads	Cross-site scripting payloads
+wordlists/fuzz/xxe.txt	ship	-	https://raw.githubusercontent.com/danielmiessler/SecLists/master/Fuzzing/XXE-Fuzzing.txt	XML external entity payloads
+wordlists/fuzz/ssi.txt	ship	-	https://raw.githubusercontent.com/danielmiessler/SecLists/master/Fuzzing/SSI-Injection-Jhaddix.txt	Server-side include payloads
+wordlists/fuzz/format-string.txt	ship	-	https://raw.githubusercontent.com/danielmiessler/SecLists/master/Fuzzing/FormatString-Jhaddix.txt	Format string payloads
+wordlists/fuzz/numbers.txt	ship	-	https://raw.githubusercontent.com/danielmiessler/SecLists/master/Fuzzing/3-digits-000-999.txt	Numeric identifier fuzzing corpus
+wordlists/fuzz/unicode.txt	ship	-	https://raw.githubusercontent.com/danielmiessler/SecLists/master/Fuzzing/Unicode.txt	Unicode codepoint corpus
+wordlists/fuzz/ldap.txt	ship	-	https://raw.githubusercontent.com/danielmiessler/SecLists/master/Fuzzing/LDAP.Fuzzing.txt	LDAP injection payloads
+wordlists/fuzz/naughty-strings.txt	ship	-	https://raw.githubusercontent.com/danielmiessler/SecLists/master/Fuzzing/big-list-of-naughty-strings.txt	Payloads that break naive parsers
+
+# ── wifi ──────────────────────────────────────────────────────────────────────
+wordlists/wifi/psk-defaults.txt	ship	-	Vendor defaults plus factory WPA/WPA2 PSKs and PIN-derived keys	WPA-PSK default keys and factory passphrases
+wordlists/wifi/ssid-names.txt	ship	-	Vendor, carrier and household default SSID names	Default and common SSID names
+wordlists/wifi/passphrases.txt	ship	-	Corporate patterns plus the frequency head of common-10k and top-100k	Passphrase corpus for PSK and PMKID attacks
+wordlists/wifi/wpa-pairs.txt	ship	-	The frequency head of common-10k and top-100k	Candidate pairs for WPA key derivation attacks
+wordlists/wifi/psk-8-digit.txt	ship	-	https://raw.githubusercontent.com/danielmiessler/SecLists/master/Passwords/Common-Credentials/four-digit-pin-codes-sorted-by-frequency-withcount.csv	WPS pin and short numeric key corpus
+
+# ── osint ─────────────────────────────────────────────────────────────────────
+wordlists/osint/buckets.txt	ship	-	Environment, team and service naming conventions used in public bucket names	Cloud bucket and object store naming hints
+
+# ── network ───────────────────────────────────────────────────────────────────
+wordlists/network/ports-top-100.txt	ship	-	The hundred most scanned TCP ports	Port list
+wordlists/network/ports-all.txt	ship	-	Every port of note across 1-1024 plus the well-known high ports	Port list
+wordlists/network/protocols.txt	ship	-	Transport protocol names	Protocol list
+
+# ── rules ─────────────────────────────────────────────────────────────────────
+wordlists/rules/best66.rule	ship	-	https://raw.githubusercontent.com/hashcat/hashcat/master/rules/best66.rule	hashcat best66 mutation rules
+wordlists/rules/dive.rule	ship	-	https://raw.githubusercontent.com/hashcat/hashcat/master/rules/dive.rule	hashcat dive mutation rules
+wordlists/rules/rockyou-30000.rule	ship	-	https://raw.githubusercontent.com/hashcat/hashcat/master/rules/rockyou-30000.rule	hashcat rockyou mutation rules

@@ -18,3 +18,14 @@
 
 # Secrets
 .env
+
+# Wordlists too large for a git repository. Both GitHub and Codeberg refuse
+# blobs over 100 MB, and rockyou alone is 140 MB. Run
+# wordlists/fetch-wordlists.sh to obtain them; the pinned SHA-256 for each is
+# in wordlists/MANIFEST.tsv and ./verify-wordlists.sh checks it.
+# Everything else under wordlists/ is committed.
+/wordlists/passwords/rockyou.txt
+/wordlists/passwords/openwall.txt
+/wordlists/users/top-1m.txt
+/wordlists/web/dirbuster-big.txt
+/wordlists/**/*.part

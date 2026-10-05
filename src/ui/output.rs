@@ -64,14 +64,8 @@ pub fn show_output(
     let rows: Vec<(String, Role)> = vec![
         ("RUN COMPLETE".to_string(), Role::Success),
         (String::new(), Role::Muted),
-        (
-            format!("Findings:        {line_count}"),
-            Role::Foreground,
-        ),
-        (
-            format!("Output:          {}", path.display()),
-            Role::Accent,
-        ),
+        (format!("Findings:        {line_count}"), Role::Foreground),
+        (format!("Output:          {}", path.display()), Role::Accent),
     ];
 
     let panel = box_frame(theme, Layout::Form, "OUTPUT", &rows);
@@ -116,9 +110,9 @@ pub fn show_output(
                     }
                     KeyCode::Enter => return Ok(panel::CloseAction::Accept),
                     KeyCode::Esc => return Ok(panel::CloseAction::Cancel),
-                    KeyCode::Char('j')
-                    | KeyCode::Char('J')
-                    | KeyCode::Left => return Ok(panel::CloseAction::Back),
+                    KeyCode::Char('j') | KeyCode::Char('J') | KeyCode::Left => {
+                        return Ok(panel::CloseAction::Back)
+                    }
                     _ => {}
                 }
             }

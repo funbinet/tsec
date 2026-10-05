@@ -96,7 +96,6 @@ readelf               binutils            ELF inspection
 strings               binutils            embedded string extraction
 ncat                  nmap                network listeners
 socat                 socat               advanced listeners and relays
-pwncat-cs             pwncat-cs           session handling
 
 # ── Privilege escalation / persistence ───────────────────────────────────────
 linpeas               peass-ng            local privilege escalation enumeration
@@ -114,26 +113,68 @@ gitleaks              gitleaks            secrets in git history
 
 # ── Lateral movement / credentials ───────────────────────────────────────────
 nxc                   netexec             SMB, LDAP, RDP, SSH, WinRM, FTP
-bloodhound-python     bloodhound-python   Active Directory relationship mapping
-responder             responder           LLMNR, NBT-NS and MDNS poisoning
 proxychains-ng        proxychains-ng      proxy-aware command wrapping
+proxychains4          proxychains-ng      same, under the name the catalog uses
+nxc                   netexec             same, the maintained name of crackmapexec
+bloodhound-python     bloodhound-python   Active Directory relationship mapping
+bloodhound            bloodhound-python   same, under the shorter name
+sharphound            bloodhound-python   same, community edition
+crackmapexec          crackmapexec        the previous name of nxc
+responder             responder           LLMNR, NBT-NS and MDNS poisoning
+mitm6                 impacket            DHCPv6 poisoning and rogue RA
+ntlmrelayx            impacket            the relay tool, under its catalog name
 chisel                chisel              tunnelling over HTTP
 sshuttle              sshuttle            transparent VPN over SSH
-rclone                rclone              universal cloud storage sync
-sqlcmd                mssql-tools         Microsoft SQL Server client
 
-# ── Objectives ───────────────────────────────────────────────────────────────
+# ── Exploitation ────────────────────────────────────────────────────────────
+metasploit            metasploit          msfconsole, msfvenom, auxiliary and exploit modules
+ysoserial             ysoserial           Java deserialization gadget chains
+ysoserial.net         dotnet              .NET deserialization gadget chains
+cobaltstrike          cobaltstrike        C2 and post-exploitation (commercial)
+sliver                sliver              C2 and post-exploitation
+javassist             javassist           bytecode manipulation for gadget construction
+marshalsec            marshalsec          Java unmarshalling and gadget research
+phpggc                phpggc              PHP deserialization gadget chains
+termux                termux              Android and ARM exploitation
+combo                 combo               combined kernel exploit collections
+
+# ── Local utilities ──────────────────────────────────────────────────────────
+# Present on most hosts already. Listed because the catalog names them directly
+# for collection work, not because anything here needs installing.
 ripgrep               ripgrep             fast recursive search and pattern matching
+rg                    ripgrep             same binary, invoked as rg
+grep                  grep                pattern matching baseline
+find                  findutils            file discovery
 fd                    fd                  file discovery
+awk                   gawk                field extraction
+sed                   sed                 stream editing
+sort                  coreutils           deduplication
 jq                    jq                  JSON inspection and extraction
 sqlite3               sqlite              local database extraction
 tar                   tar                 archive creation with metadata
+gzip                  gzip                archive compression
+unzip                 unzip               archive extraction
 openssl               openssl             encryption, hashing and certificate work
 gpg                   gnupg               signing and encryption
 pandoc                pandoc              report rendering
-rclone                rclone              bucket harvesting
+git                   git                 repository inspection
+curl                  curl                HTTP client used directly by many capabilities
+wget                  wget                HTTP client
+python3               python              scripting and several provider tools
+java                  jre-headless        ysoserial and other Java tooling
+go                    go                  building Go-based providers
+gcc                   gcc                 compiling source-based providers
+base64                coreutils           encoding for payload preparation
+nc                    netcat              raw connections and listeners
 tcpdump               tcpdump             packet capture
 tshark                wireshark-cli       capture analysis and conversion
+editcap               wireshark-common    capture truncation and conversion
+mergecap              wireshark-common    capture merging
+capsh                 libcap2-bin         local capability inspection
+getcap                libcap2-bin         file capability inventory
+getpcaps              libcap2-bin         process capability inspection
+chkconfig             debutils            service enablement inspection
+update-rc.d           init-system-helpers  service enablement on Debian-family hosts
 
 # ── Wireless ─────────────────────────────────────────────────────────────────
 aircrack-ng           aircrack-ng         802.11 auditing and cracking
@@ -159,14 +200,30 @@ kismet                kismet              headless RF logging
 gpsd                  gpsd                GPS coordinates during a survey
 wavemon               wavemon             wireless signal monitoring
 
+# ── Wordlists ────────────────────────────────────────────────────────────────
+#
+# Not listed above because they are not installed: they ship with the framework,
+# in wordlists/, and the catalog resolves them itself. One list per attack class
+# rather than one list for everything, so an SSH spray is not run against
+# rockyou.txt. The operator supplies a target and is never asked for a corpus.
+#
+#   ./wordlists/fetch-wordlists.sh    the four lists too large to commit
+#   ./wordlists/verify-wordlists.sh   presence and checksums for the whole corpus
+#
+# Set TSEC_WORDLIST_ROOT to use a shared corpus instead of a per-install copy.
+
 # ── Notes ────────────────────────────────────────────────────────────────────
-# * `tsec --status` prints per-phase availability and the boundary status; it is
-#   the fastest way to see which of the above this host is missing.
+# * `tsec --status` prints per-phase availability, the boundary status, which
+#   wordlists resolve and which do not, and any catalog notes. It is the fastest
+#   way to see what this host is missing.
 # * Installing every provider is not required and not expected. Start with the
 #   phase you are working in.
 # * A tool installed somewhere unusual can be found by adding its directory to
 #   `tools.search_paths` in config.toml; those directories are searched before
 #   PATH, in order.
+# * This file is a curated shortlist, not an exhaustive inventory: the catalog
+#   names 357 distinct binaries. `./tools.sh -all -c` reports the real set for
+#   this host, per phase, straight from the catalog.
 
 # TSEC 3.0 — terminal cybersecurity operations platform, built by funbinet.
 # © funbinet. All rights reserved.

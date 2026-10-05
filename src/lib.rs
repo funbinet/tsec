@@ -53,7 +53,9 @@ pub mod provider;
 pub mod store;
 pub mod ui;
 
-pub use catalog::{Capability, Catalog, Operation, PHASES};
+pub use catalog::{
+    phase_label, resolve_wordlist, wordlist_root, Capability, Catalog, Operation, PHASES,
+};
 pub use config::Config;
 pub use error::{Result, TsecError};
 pub use provider::Registry;

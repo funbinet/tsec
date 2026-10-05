@@ -388,10 +388,7 @@ mod tests {
         let long: Vec<char> = "a".repeat(400).chars().collect();
         let frame = input_box(&theme(), "T", &prompt, &None, &long, 200);
         for line in frame.text.split("\r\n").filter(|l| !l.is_empty()) {
-            assert!(
-                display_width(&strip_ansi(line)) <= 80,
-                "overflow: {line:?}"
-            );
+            assert!(display_width(&strip_ansi(line)) <= 80, "overflow: {line:?}");
         }
     }
 

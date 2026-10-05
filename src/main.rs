@@ -4,7 +4,7 @@
 use std::path::PathBuf;
 use std::process::ExitCode;
 
-use tsec::catalog::Catalog;
+use tsec::catalog::{wordlist_root, Catalog};
 use tsec::config::Config;
 use tsec::error::{Result, Stage};
 use tsec::exec::OniuxBackend;
@@ -51,6 +51,49 @@ fn run() -> Result<()> {
                 match backend.resolve() {
                     Ok(path) => println!("{:<14} {}", "BOUNDARY", path.display()),
                     Err(e) => println!("{:<14} UNAVAILABLE · {}", "BOUNDARY", e.reason()),
+                }
+
+                // A wordlist gap has one fix, so it is reported on its own line
+                // rather than buried in a per-capability list.
+                let missing = catalog.missing_wordlists();
+                if !missing.is_empty() {
+                    println!("{:<14} {} missing", "WORDLISTS", missing.len());
+                    for name in &missing {
+                        println!("               - {name}");
+                    }
+                    println!(
+                        "               run wordlists/fetch-wordlists.sh, or set \
+                         TSEC_WORDLIST_ROOT to a directory that has them"
+                    );
+                } else {
+                    println!(
+                        "{:<14} {}",
+                        "WORDLISTS",
+                        wordlist_root(catalog.source()).display()
+                    );
+                }
+
+                // Everything else the loader noticed but did not refuse to start
+                // over. An argument carrying shell syntax reaches the tool
+                // verbatim, so it produces a run that looks clean and is not.
+                let other: Vec<&String> = catalog
+                    .advisories()
+                    .iter()
+                    .filter(|a| !a.contains("wordlist `"))
+                    .collect();
+                if !other.is_empty() {
+                    println!();
+                    println!(
+                        "{:<14} {} (an argument that is a shell operator means an unsplit command line)",
+                        "CATALOG NOTES",
+                        other.len()
+                    );
+                    for note in other.iter().take(20) {
+                        println!("               - {note}");
+                    }
+                    if other.len() > 20 {
+                        println!("               ... and {} more", other.len() - 20);
+                    }
                 }
                 return Ok(());
             }

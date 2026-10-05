@@ -8,6 +8,11 @@
 # (the same catalog the TUI executes), so this script can never drift from
 # what the framework actually runs.
 #
+# Wordlists are not handled here: they ship with the framework under
+# wordlists/, and the catalog resolves them itself. Run
+# wordlists/fetch-wordlists.sh for the four too large to commit, or
+# wordlists/verify-wordlists.sh to check the corpus.
+#
 # Usage:
 #   ./tools.sh -recon            # resolve & install tools for RECONNAISSANCE
 #   ./tools.sh -surface          # ... ATTACK SURFACE
@@ -17,7 +22,7 @@
 #   ./tools.sh -credentials      # ... CREDENTIALS
 #   ./tools.sh -lateral          # ... LATERAL MOVEMENT
 #   ./tools.sh -persistence      # ... PERSISTENCE & DEFENSE EVASION
-#   ./tools.sh -objectives       # ... OBJECTIVES
+#   ./tools.sh -exploitation     # ... EXPLOITATION
 #   ./tools.sh -wireless         # ... WIRELESS
 #   ./tools.sh -all              # every phase
 #   ./tools.sh -recon -c         # check only; never install
@@ -211,7 +216,7 @@ PY
 
 resolve_phase() {
     local phase="$1"
-    local phase_names="recon surface vulnerability payload escalation credentials lateral persistence objectives wireless"
+    local phase_names="recon surface vulnerability payload escalation credentials lateral persistence exploitation wireless"
 
     if [ ! -f "$CATALOG" ]; then
         # Allow running from anywhere: fall back to the script's directory.
@@ -313,7 +318,7 @@ usage() {
     echo "  -credentials     Credentials"
     echo "  -lateral         Lateral Movement"
     echo "  -persistence     Persistence & Defense Evasion"
-    echo "  -objectives      Objectives"
+    echo "  -exploitation    Exploitation"
     echo "  -wireless        Wireless"
     echo "  -all             Every phase"
     echo ""

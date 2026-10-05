@@ -468,12 +468,7 @@ impl Renderer {
     pub fn enter() -> io::Result<Self> {
         terminal::enable_raw_mode()?;
         let mut out = io::stdout();
-        execute!(
-            out,
-            EnterAlternateScreen,
-            cursor::Hide,
-            ResetColor
-        )?;
+        execute!(out, EnterAlternateScreen, cursor::Hide, ResetColor)?;
         Ok(Self {
             active: true,
             history: Vec::new(),
@@ -594,12 +589,7 @@ impl Renderer {
         }
         self.active = false;
         let mut out = io::stdout();
-        let _ = execute!(
-            out,
-            LeaveAlternateScreen,
-            cursor::Show,
-            ResetColor
-        );
+        let _ = execute!(out, LeaveAlternateScreen, cursor::Show, ResetColor);
         let _ = terminal::disable_raw_mode();
         // Preserve all completed boxes from the session in the main terminal scrollback.
         for frame in &self.history {
@@ -949,7 +939,10 @@ mod tests {
         assert!(combined.iter().any(|l| l.contains("CHILD")));
         let main_pos = combined.iter().position(|l| l.contains("MAIN")).unwrap();
         let child_pos = combined.iter().position(|l| l.contains("CHILD")).unwrap();
-        assert!(main_pos < child_pos, "frozen boxes paint above the active box");
+        assert!(
+            main_pos < child_pos,
+            "frozen boxes paint above the active box"
+        );
     }
 
     #[test]

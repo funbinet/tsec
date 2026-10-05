@@ -139,7 +139,8 @@ wc -c /opt/tsec/output/<run-id>/raw/<stem>.out
 ```
 
 An empty file with `exit_code = 0` means the flags produced no output — usually a
-missing wordlist or a target that resolved to nothing.
+target that resolved to nothing, or an argument vector that still contains an
+unsplit shell operator (see `CATALOG NOTES` above).
 
 ### `PARSER_FAILURE`
 
@@ -180,17 +181,67 @@ configure. `version` is bumped to `3` and everything else is preserved.
 
 ### `CATALOG_ERROR`
 
-`catalog/capabilities.toml` is malformed. The message names the capability and
-the reason. The rejections are:
+`catalog/capabilities.toml` is malformed, or the file is not valid TOML at all.
+The message names the capability and the reason.
+
+**Structural rejections** — these stop startup:
 
 - a phase that is not one of the ten, or a phase with no capabilities;
-- a label that is not exactly two uppercase words;
+- a capability id declared twice, or not namespaced under its own phase;
+- a label that is not one to three uppercase words;
 - an input declared twice, or required *and* carrying a default;
 - a placeholder with no matching input;
-- an argument containing shell syntax (`|`, `&`, `;`, `<`, `>`, `` ` ``, `$`,
-  `(`, `)`);
-- a capability with no providers, or a provider with no operations, or an
-  operation with no arguments.
+- a `{wl:...}` reference that tries to escape the corpus;
+- a capability with no providers, or a provider block with no operations.
+
+**Notes, not rejections** — these load and are reported by `tsec --status`:
+
+- a wordlist reference naming a list that is not on disk;
+- an argument that *is* a shell operator (`|`, `&&`, `2>/dev/null`, …) as a
+  whole argv entry.
+
+A common TOML failure: a shell single-quote escape (`'"'"'`) or a bare `\'`
+inside a `'…'` string. TOML literal strings cannot contain a single quote at
+all. Use a double-quoted `"…"` string for a value that needs one.
+
+## Wordlists
+
+### `WORDLISTS` in `--status` lists missing files
+
+The catalog references a corpus that is not installed. Every list except four
+ships in the repository, so this means a partial install or a relocated corpus.
+
+```sh
+./wordlists/fetch-wordlists.sh     # the four that are too large to commit
+./wordlists/verify-wordlists.sh    # what is present, and whether it is intact
+```
+
+If the corpus lives somewhere else entirely:
+
+```sh
+TSEC_WORDLIST_ROOT=/srv/tsec-wordlists tsec --status
+```
+
+The rest of the capability still runs; only the operations that need the absent
+list are withheld, and the capability is reported unavailable by name rather than
+being pointed at a different corpus.
+
+### A capability is unavailable and the reason names a wordlist
+
+Working as intended. Run the fetcher, or set `TSEC_WORDLIST_ROOT`.
+
+### A tool ran and returned nothing
+
+Check whether its `args` still contains a shell operator split across array
+elements. `['--list', 'formats', '|', 'grep', 'vba']` hands the tool three
+filenames and finds nothing while exiting cleanly. `tsec --status` lists every
+operation where this happens under `CATALOG NOTES`.
+
+Shell metacharacters *inside* a larger argument are fine and often required: a
+URL query string, an LDAP filter, an XML entity, a SQL statement. The only place
+a shell is correct is a remote command — `ssh user@host 'mkdir -p ~/.ssh && cat
+>> ~/.ssh/authorized_keys'` is a single argument, because the remote end
+interprets it.
 
 ## The interface
 

@@ -241,7 +241,18 @@ fn phase_menu(
                     provider_guidance(theme, renderer, out, cfg, cap, registry, &[])?;
                     Flow::Continue
                 } else {
-                    run_capability(theme, renderer, out, cfg, registry, cap, &[])?
+                    run_capability(
+                        theme,
+                        renderer,
+                        out,
+                        &Runtime {
+                            cfg,
+                            registry,
+                            catalog_source: catalog.source(),
+                        },
+                        cap,
+                        &[],
+                    )?
                 };
                 if flow == Flow::Exit {
                     return Ok(Flow::Exit);
@@ -561,6 +572,17 @@ fn collect_inputs(
     Ok(Answers::Given(values))
 }
 
+/// Everything a run needs from the installed framework, in one place.
+///
+/// Grouped because these three travel together through the whole run flow, and
+/// because `catalog_source` is what a `{wl:...}` reference in an argument vector
+/// resolves against — a run cannot build a command without it.
+struct Runtime<'a> {
+    cfg: &'a Config,
+    registry: &'a Registry,
+    catalog_source: &'a Path,
+}
+
 /// Execute a capability: input collection, concurrent execution, 6-stage
 /// harvest, output display and raw artifact storage.
 ///
@@ -571,11 +593,15 @@ fn run_capability(
     theme: &Theme,
     renderer: &mut Renderer,
     out: &mut io::Stdout,
-    cfg: &Config,
-    registry: &Registry,
+    rt: &Runtime<'_>,
     cap: &Capability,
     stack: &[Frame],
 ) -> Result<Flow> {
+    let Runtime {
+        cfg,
+        registry,
+        catalog_source,
+    } = *rt;
     let values = match collect_inputs(theme, renderer, out, cap, stack)? {
         Answers::Given(values) => values,
         Answers::Cancelled => return Ok(Flow::Continue),
@@ -603,7 +629,7 @@ fn run_capability(
                 format!("{}/{}", binding.binary, operation.name),
                 operation.output,
             );
-            let command = operation.command(&program, &cap.inputs, &values)?;
+            let command = operation.command(&program, &cap.inputs, &values, catalog_source)?;
             let index = jobs.len();
             let stem = format!(
                 "T{:02}_{}_{}",

@@ -30,21 +30,59 @@ runs those argument vectors behind the network boundary.
 
 ## 2. The catalog is the source of truth
 
-`catalog/capabilities.toml` describes ten phases and sixteen capabilities per
-phase. `Catalog::from_toml` refuses to load a file that breaks any of these:
+`catalog/capabilities.toml` describes ten phases and 218 capabilities. Phase
+membership is structural; per-phase counts are not, because a phase with more
+distinct jobs carries more capabilities.
+
+`Catalog::from_toml` refuses to load a file that breaks any of these:
 
 | Rule | Why |
 |---|---|
 | `phase` is one of the ten phases | The phase model is structural, not extensible |
 | every phase holds at least one capability | A half-populated catalog is incomplete, not extensible |
-| `label` is exactly two uppercase words | Labels are the interface, and the interface is fixed |
+| `label` is one to three uppercase words | Labels are headings in a fixed-width menu; three words is a vocabulary choice, not a layout one |
 | every `{placeholder}` names a declared input | A renamed input must fail at startup, not reach a tool as `{target}` |
-| no argument contains shell syntax | Arguments are executed as a vector; a template that implies a shell is a bug |
-| a capability has providers, each with operations, each with arguments | An empty operation would run a bare binary |
+| every `{wl:path}` resolves inside the corpus | A capability must not depend on a path that exists only on the machine it was authored on |
+| a capability has providers, each with operations | A provider block with nothing in it is a hole in the surface |
 | ids are unique and namespaced under their phase | Reports and manifests key on the id |
 
 Validation happens at load time, not at run time, so a malformed catalog is a
 startup failure naming the file, the capability and the reason.
+
+Two things are deliberately *not* fatal, because refusing to start would not help
+anyone:
+
+- **Shell syntax embedded in a payload.** A URL query string, an LDAP filter, an
+  XML entity and a SQL statement all carry `&`, `(`, `;` and `<`. They reach the
+  tool verbatim and do exactly what the author meant.
+- **A wordlist that is not on disk yet.** The operator can fetch it. The
+  capability needing it is reported unavailable, by name, rather than being
+  pointed at a different corpus.
+
+What *is* reported is an argument that **is** a shell operator — `|`, `&&`,
+`2>/dev/null` — as a whole argv entry. No tool takes one, so its presence means a
+command line was pasted in without being split, and the tool will run as if it
+were not there. `tsec --status` lists these.
+
+### The wordlist corpus
+
+`wordlists/` is part of the product, not an optional extra. The catalog names a
+list relative to it and the loader resolves that to an absolute path, so the
+operator is never asked for a corpus and no capability assumes a distribution
+package is installed.
+
+| | |
+|---|---|
+| Reference | `{wl:ssh/passwords.txt}` — a path inside `wordlists/` |
+| Resolution | `$TSEC_WORDLIST_ROOT`, else `<install root>/wordlists` |
+| Traversal | refused; a reference may not escape the corpus |
+| Missing | reported by name; the capability is unavailable, never substituted |
+| Large lists | four exceed 100 MB, so `fetch-wordlists.sh` retrieves them with a pinned SHA-256 |
+
+Corpora are per attack class. `{wl:passwords/rockyou.txt}` and
+`{wl:ssh/passwords.txt}` are different files on purpose: substituting one for
+the other produces a run that looks successful and finds nothing, which is worse
+than a failure.
 
 ### Placeholders and escapes
 
@@ -204,15 +242,24 @@ codes before it shows any findings.
 
 The test suite pins the parts that are expensive to get wrong:
 
-- the shipped catalog loads, every phase holds sixteen capabilities, and every
-  label is two uppercase words;
-- shell syntax in an argument, an undeclared placeholder, a label that is not
-  two uppercase words, and an empty phase are all rejected;
+- the shipped catalog loads, every phase is populated, and every label is one to
+  three uppercase words;
+- an unknown phase, an empty phase, a duplicate id, an undeclared placeholder, a
+  provider with no operations, and a wordlist reference escaping the corpus are
+  all rejected;
+- payload braces are not mistaken for input placeholders — `{10,}` and
+  `{"role":"admin"}` are payload, `{target}` and `{sudo-password}` are inputs;
+- shell syntax inside a payload is left alone, while an argument that is a shell
+  operator is reported without stopping the load;
+- every `{wl:...}` reference in the shipped catalog resolves to a non-empty file
+  inside `wordlists/`, and the shipped catalog names no missing list;
 - placeholder substitution keeps a whitespace-bearing value as one argument,
   `{{ … }}` survives as literal braces, and `%{http_code}` is not treated as a
   placeholder;
+- an operation may declare no arguments at all, because `id`, `env` and
+  `printenv` are run for what they print;
 - a sensitive input is masked in the rendered command and in serialised output;
-- availability reports missing binaries by name;
+- availability reports missing binaries and missing wordlists by name;
 - provider search paths are honoured ahead of `PATH`.
 
 `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`,

@@ -14,17 +14,50 @@ Reference docs:
 - [`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md)
 - [`docs/CAPABILITY_OPERATIONS.md`](docs/CAPABILITY_OPERATIONS.md)
 
-The framework is organised as **ten phases, sixteen capabilities each**. Every
-phase is mandatory: a catalog that leaves one empty is rejected at startup
-rather than shipped half-finished.
+The framework is organised as **ten phases, 218 capabilities**. Every phase is
+mandatory: a catalog that leaves one empty is rejected at startup rather than
+shipped half-finished.
 
-| # | Phase | | # | Phase |
-|---|---|---|---|---|
-| 01 | `RECON` | | 06 | `CREDENTIALS` |
-| 02 | `SURFACE` | | 07 | `LATERAL` |
-| 03 | `VULNERABILITY` | | 08 | `PERSISTENCE` |
-| 04 | `PAYLOAD` | | 09 | `OBJECTIVES` |
-| 05 | `ESCALATION` | | 10 | `WIRELESS` |
+| # | Phase | Caps | | # | Phase | Caps |
+|---|---|---|---|---|---|---|
+| 01 | `RECON` | 22 | | 06 | `CREDENTIALS` | 22 |
+| 02 | `SURFACE` | 22 | | 07 | `LATERAL` | 24 |
+| 03 | `VULNERABILITY` | 22 | | 08 | `PERSISTENCE` | 19 |
+| 04 | `PAYLOAD` | 20 | | 09 | `EXPLOITATION` | 27 |
+| 05 | `ESCALATION` | 24 | | 10 | `WIRELESS` | 16 |
+
+A phase holds what it needs to hold. The counts differ because a phase with more
+distinct things to do carries more capabilities, not because some are padded.
+
+### Wordlists ship with the framework
+
+Every corpus a capability can reach is in [`wordlists/`](wordlists/), and the
+catalog names them relative to that directory. The operator supplies a target
+and whatever the specific attack needs; they are **never** asked for a path to a
+wordlist, and no capability depends on `/usr/share/seclists` or
+`/usr/share/wordlists` existing on the host.
+
+Each service has its own corpus, because `rockyou.txt` is the right answer for
+offline hash cracking and the wrong one for an SSH spray or a WPA handshake:
+
+```
+wordlists/passwords/   offline hash cracking: rockyou, top-1m, JWT secrets
+wordlists/ssh/         account names and passwords for SSH attacks
+wordlists/smb/  ftp/  mail/  db/  ad/     per-service authentication corpora
+wordlists/wifi/        PSK defaults, passphrases, SSID names
+wordlists/web/  dns/  fuzz/              content, subdomain and payload corpora
+wordlists/network/  osint/  rules/      ports, cloud naming, hashcat rules
+```
+
+Four lists are too large for a git repository (GitHub and Codeberg both refuse
+blobs over 100 MB). One command gets them, with a pinned SHA-256 each:
+
+```sh
+./wordlists/fetch-wordlists.sh
+```
+
+See [`wordlists/README.md`](wordlists/README.md) for the full table, provenance
+and the override for a relocated corpus.
 
 ---
 
@@ -40,8 +73,12 @@ rather than shipped half-finished.
 
 ```sh
 cargo build --release
-sudo ./install.sh          # installs /usr/bin/tsec and /opt/tsec/{catalog,config,…}
+sudo ./install.sh          # installs /usr/bin/tsec and /opt/tsec/{catalog,wordlists,config,…}
 ```
+
+The installer deploys the catalog **and** the wordlist corpus to
+`/opt/tsec`, then fetches the four large lists. A missing large list is reported,
+not fatal: the capability that needs it is marked unavailable by name.
 
 Running from a checkout works with no install at all:
 
@@ -53,7 +90,7 @@ TSEC_HOME="$PWD" cargo run --release
 
 ```sh
 tsec                 # the interface
-tsec --status        # availability per phase, and the network boundary
+tsec --status        # availability per phase, the boundary, and wordlist health
 tsec --version
 tsec --help
 ```
@@ -154,15 +191,25 @@ network = true
 The loader enforces, at startup:
 
 - **`phase`** is one of the ten phases, and every phase holds capabilities.
-- **`label`** is exactly two uppercase words — it is what the box shows.
+- **`label`** is one to three uppercase words — it is what the box shows.
 - Every **`{placeholder}`** names a declared input, so a renamed input fails
-  loudly instead of reaching a tool as a literal `{target}`.
-- Arguments may not contain **shell syntax** (`|`, `&`, `;`, `<`, `>`, `` ` ``,
-  `$`, `(`, `)`); a template containing any of it is a catalog error, because
-  arguments are executed as a vector and never through a shell.
+  loudly instead of reaching a tool as a literal `{target}`. A placeholder is an
+  identifier: regex quantifiers (`{10,}`) and JSON bodies (`{"role":"admin"}`)
+  carry braces too, and are not mistaken for inputs.
+- Every **`{wl:path}`** names a bundled wordlist. A reference to a list that is
+  not on disk is reported by name, and the capability needing it is marked
+  unavailable rather than silently pointed at some other corpus.
+- An argument that *is* a shell operator (`|`, `&&`, `2>/dev/null`, …) is
+  reported. Arguments are executed as a vector and never through a shell, so such
+  a byte reaches the tool verbatim and the run looks clean while finding nothing.
+  A shell metacharacter inside a larger token — a URL query string, an LDAP
+  filter, an XML payload, a SQL statement — is legitimate and left alone.
 - `{{` and `}}` are literal braces, `%{…}` is printf-style literal text
   (curl's `%{http_code}`), and `network = false` marks operations that must
   not leave the host.
+
+`tsec --status` prints any of these that were noted but not fatal, so a catalog
+that loads cleanly is not the same as one that behaves correctly.
 
 ## Editing capabilities, providers and commands
 
@@ -174,20 +221,38 @@ re-read on every launch, so an edit takes effect the next time `tsec` starts.
 ### Structure at a glance
 
 ```
-[[capability]]                          one capability (sixteen per phase)
+[[capability]]                          one capability
   id                                    'phase.short-name', unique
   phase                                 one of the ten phase slugs
-  label                                 EXACTLY TWO UPPERCASE WORDS — shown in the menu
+  label                                 ONE TO THREE UPPERCASE WORDS — shown in the menu
   summary                               one sentence, shown in guidance
-  inputs = [ { key, type, required, default, help }, … ]
+  inputs = [ { key, type, required, default, help, rule }, … ]
 [[capability.provider]]                 one provider binary per block
   binary                                the executable name resolved on PATH
 [[capability.provider.operation]]       one command per block
   name                                  shown in the execution monitor
   args                                  the argv template — see below
-  output                                lines | json | xml | raw
+  output                                lines | json | raw | nmap
   network                               true (via oniux) | false (local only)
 ```
+
+### Wordlist references
+
+Inside `args`, `{wl:<path>}` resolves to that file inside `wordlists/`:
+
+```toml
+args = ['-t', 'ssh', '-l', '{wl:ssh/users.txt}', '-P', '{wl:ssh/passwords.txt}', '{rhost}']
+```
+
+The reference may be a whole argument or embedded in one (`-l{wl:web/common.txt}`).
+It resolves against `$TSEC_WORDLIST_ROOT` if that is set, otherwise against
+`<install root>/wordlists`, where the install root is the directory holding
+`catalog/`. A reference that tries to escape that directory is refused.
+`{wlroot}` is the directory itself, for the capabilities that report on the
+corpus rather than consume an entry.
+
+This is why no capability declares a `wordlist` input. The corpus is a property
+of the framework, not of the engagement.
 
 ### Changing flags or options of an existing command
 
@@ -343,13 +408,15 @@ endpoint to point at.
 
 ## Design rules
 
-1. **Capability first.** The operator picks an objective, never a tool.
+1. **Capability first.** The operator picks a capability, never a tool.
 2. **Nothing is guessed.** Every argument vector is declared; a flag the catalog
    does not name is never passed.
-3. **No shell, ever.** Argument vectors only, with shell metacharacters rejected
-   at load time.
+3. **No shell, ever.** Argument vectors only. An argument that is a shell
+   operator is reported at load time, because it means a command line was pasted
+   in without being split; a metacharacter inside a payload is left alone.
 4. **No fallback path.** A network task that cannot get its boundary fails.
-5. **Honest unavailability.** A missing tool is named, never substituted.
+5. **Honest unavailability.** A missing tool is named, never substituted. A
+   missing wordlist is named too, and never quietly swapped for a different one.
 6. **No fake completion.** Failed, timed-out and interrupted tasks are recorded
    as such, with their partial evidence kept.
 7. **Secrets stay out of the evidence.** Sensitive arguments are masked in every
@@ -361,6 +428,10 @@ endpoint to point at.
 
 ```
 catalog/capabilities.toml   the operational surface: phases, capabilities, providers
+wordlists/                  the bundled corpus, one directory per attack class
+  MANIFEST.tsv              path, tier, digest, upstream URL, purpose
+  fetch-wordlists.sh        the four lists too large to commit, digest-checked
+  verify-wordlists.sh       presence and checksum report for the whole corpus
 tools.sh                    phase tool installer (Arch + Kali commands)
 src/catalog.rs              catalog loading and validation
 src/provider.rs             which providers resolve on this host
@@ -369,11 +440,13 @@ src/exec/                   the single spawn site, oniux preflight, isolation
 src/parser.rs               nmap XML, JSON, line and raw parsing into findings
 src/store.rs                run directory, manifest, document, atomic writes
 src/ui/                     panels, menus, run flow, spinner, adaptive theme
-scripts/verify_tsec.py      catalog verification, schema audit, matrix generator
-reports/                    verification outputs (JSON)
 docs/ARCHITECTURE.md        how the pieces fit and why
+docs/CAPABILITY_OPERATIONS.md  the catalog format, field by field
+docs/COMMANDS.md            every operator-facing command
 docs/TROUBLESHOOTING.md     error codes and what to do about them
+wordlists/README.md         the corpus, its provenance and its override
 REQUIREMENTS.TXT            the boundary and the provider toolset
+install.sh                  binary, catalog and corpus to /opt/tsec
 ```
 
 ## Verifying a build
@@ -383,12 +456,18 @@ cargo fmt --check
 cargo clippy --all-targets -- -D warnings
 cargo test              # includes loading and validating the shipped catalog
 cargo build --release
-python3 scripts/verify_tsec.py  # comprehensive audit of all 160 capabilities
+./wordlists/verify-wordlists.sh   # presence and checksums for the whole corpus
+./tools.sh -all -c                # which provider binaries are missing
 ```
 
-`cargo test` fails if `catalog/capabilities.toml` has a phase without sixteen
-capabilities, a label that is not two uppercase words, a placeholder with no
-matching input, or an argument containing shell syntax.
+`cargo test` fails if `catalog/capabilities.toml` has an empty phase, an unknown
+phase, a duplicate id, a label that is not one to three uppercase words, a
+placeholder with no matching input, a provider with no operations, or a wordlist
+reference that escapes the corpus or names nothing.
+
+It also fails if any `{wl:...}` reference in the shipped catalog does not resolve
+to a non-empty file, so a capability cannot quietly ship pointing at a list that
+is not there.
 
 ---
 

@@ -41,8 +41,8 @@ use crate::domain::execution::{ExecutionRecord, TaskStatus};
 use crate::exec::{Cancellation, Runner, TaskSpec};
 use crate::store::HarvestStage;
 use crate::ui::panel::{
-    box_frame, fit, hint_frame, is_interrupt, poll_input, wait_close, Frame, Geometry, Input, Layout,
-    Renderer,
+    box_frame, fit, hint_frame, is_interrupt, poll_input, wait_close, Frame, Geometry, Input,
+    Layout, Renderer,
 };
 use crate::ui::spinner;
 use crate::ui::theme::{Role, Theme};

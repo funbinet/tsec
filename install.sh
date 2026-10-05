@@ -6,6 +6,7 @@
 # Installs:
 #   /usr/bin/tsec                     the framework binary
 #   /opt/tsec/catalog/capabilities.toml   the operational surface
+#   /opt/tsec/wordlists/             the bundled wordlist corpus
 #   /opt/tsec/{config,output,logs,...}    the runtime workspace
 
 set -e
@@ -65,7 +66,7 @@ fi
 echo "[..] installing /usr/bin/tsec"
 install -m 0755 -o root -g root target/release/tsec /usr/bin/tsec
 
-# 5. Install the catalog and create the workspace.
+# 5. Install the catalog and the wordlist corpus, then create the workspace.
 #
 # The binary looks for catalog/capabilities.toml in TSEC_HOME, then in
 # $ROOT, then in the directory it was built from. Installing it here is what
@@ -75,7 +76,22 @@ install -d -m 0755 "$ROOT/catalog"
 install -m 0644 catalog/capabilities.toml "$ROOT/catalog/capabilities.toml"
 
 echo "[..] creating the workspace at $ROOT"
-mkdir -p "$ROOT"/{config,output,logs,wordlists,scripts,tools}
+mkdir -p "$ROOT"/{config,output,logs,scripts,tools}
+
+# The wordlists are part of the product, not an optional extra: the catalog
+# resolves `{wl:...}` against this directory, and an empty one leaves every
+# capability that needs a corpus unable to run. Copy the shipped lists and the
+# manifest, then fetch the four too large for a git repository.
+echo "[..] installing the wordlist corpus to $ROOT/wordlists"
+mkdir -p "$ROOT/wordlists"
+cp -R wordlists/. "$ROOT/wordlists/"
+if [ -x "$ROOT/wordlists/fetch-wordlists.sh" ]; then
+    chmod +x "$ROOT/wordlists"/fetch-wordlists.sh "$ROOT/wordlists"/verify-wordlists.sh
+    # A missing large list is reported, never fatal: the install succeeds and the
+    # capability that needs it is marked unavailable by name.
+    "$ROOT/wordlists/fetch-wordlists.sh" || true
+fi
+
 if [ -n "$SUDO_USER" ]; then
     chown -R "$SUDO_USER:$SUDO_USER" "$ROOT"
 fi
