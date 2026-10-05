@@ -43,10 +43,34 @@ pub enum Category {
     Tls,
     /// A security finding raised by a scanning tool.
     Finding,
+    /// A username and password seen together, e.g. `admin:hunter2`.
+    Credential,
+    /// An account name observed on the target.
+    Username,
+    /// A password, key, private key or connection string.
+    Secret,
+    /// An API key, bearer token or JWT.
+    Token,
+    /// Session material: cookies, session identifiers.
+    Cookie,
+    /// A password hash, ready for an offline attack.
+    Hash,
+    /// A CVE or CWE identifier.
+    Cve,
+    /// A filesystem path, or a file whose exposure matters.
+    File,
+    /// A comment or annotation recovered from source, HTML or a config file.
+    Comment,
+    /// An email address.
+    Email,
     /// Verbatim evidence retained from the raw stream.
     Evidence,
-    /// A credential artefact (hash, ticket, username).
-    Credential,
+    /// Tool progress, banners and timings.
+    ///
+    /// Counted, never presented. Progress chatter is the single largest source
+    /// of noise in a multi-tool run: keeping it in the same bucket as real
+    /// evidence is what makes a harvest look empty when it is not.
+    Noise,
     /// Descriptive metadata about the tool or the run.
     Metadata,
     /// An error or diagnostic emitted by a tool.
@@ -70,34 +94,67 @@ impl Category {
             Category::Http => "HTTP OBSERVATIONS",
             Category::Tls => "TLS OBSERVATIONS",
             Category::Finding => "FINDINGS",
+            Category::Credential => "CREDENTIAL PAIRS",
+            Category::Username => "USERNAMES",
+            Category::Secret => "SECRETS",
+            Category::Token => "TOKENS",
+            Category::Cookie => "COOKIES",
+            Category::Hash => "HASHES",
+            Category::Cve => "VULNERABILITIES",
+            Category::File => "FILES",
+            Category::Comment => "COMMENTS",
+            Category::Email => "EMAILS",
             Category::Evidence => "EVIDENCE",
-            Category::Credential => "CREDENTIALS",
+            Category::Noise => "NOISE",
             Category::Metadata => "METADATA",
             Category::Error => "ERRORS",
         }
     }
 
     /// Presentation order in the consolidated harvest: high-signal first.
+    ///
+    /// Credentials and exploitable material sit above plain inventory because
+    /// they are what changes what the operator does next. `Noise` sorts last so
+    /// it can be excluded from the document without disturbing anything above.
     pub fn order(self) -> u8 {
         match self {
             Category::Finding => 0,
-            Category::Credential => 1,
-            Category::Target => 2,
-            Category::Host => 3,
-            Category::Url => 4,
-            Category::Endpoint => 5,
-            Category::Ip => 6,
-            Category::Port => 7,
-            Category::Service => 8,
-            Category::Version => 9,
-            Category::Technology => 10,
-            Category::Dns => 11,
-            Category::Http => 12,
-            Category::Tls => 13,
-            Category::Evidence => 14,
-            Category::Metadata => 15,
-            Category::Error => 16,
+            Category::Secret => 1,
+            Category::Token => 2,
+            Category::Cookie => 3,
+            Category::Hash => 4,
+            Category::Cve => 5,
+            Category::Username => 6,
+            Category::Credential => 7,
+            Category::Target => 8,
+            Category::Url => 9,
+            Category::Endpoint => 10,
+            Category::Host => 11,
+            Category::Email => 12,
+            Category::Ip => 13,
+            Category::Port => 14,
+            Category::Service => 15,
+            Category::Version => 16,
+            Category::Technology => 17,
+            Category::File => 18,
+            Category::Comment => 19,
+            Category::Dns => 20,
+            Category::Http => 21,
+            Category::Tls => 22,
+            Category::Evidence => 23,
+            Category::Metadata => 24,
+            Category::Noise => 25,
+            Category::Error => 26,
         }
+    }
+
+    /// Whether this category is an actionable artefact rather than narration.
+    ///
+    /// The distinction drives the document: an operator reading a harvest wants
+    /// what they can act on, and wants the chatter that produced it available
+    /// but not in the way.
+    pub fn is_actionable(self) -> bool {
+        !matches!(self, Category::Noise | Category::Metadata | Category::Error)
     }
 }
 

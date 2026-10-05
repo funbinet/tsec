@@ -61,6 +61,14 @@ impl fmt::Display for Stage {
 pub enum ExecutionErrorKind {
     /// The executable is not discoverable on PATH or in the configured toolchain.
     ToolNotInstalled { tool: String },
+    /// Installation was attempted for this provider and the binary still is not
+    /// there afterwards.
+    ///
+    /// Deliberately distinct from [`ExecutionErrorKind::ToolNotInstalled`]:
+    /// "nothing was missing" and "we tried and it did not work" are different
+    /// claims, and reporting a failed install as a failed task invents a
+    /// failure that never happened — no task ran.
+    ToolNotFound { tool: String, reason: String },
     /// The tool is present but its version does not support the requested flags.
     ToolVersionIncompatible {
         tool: String,
@@ -111,6 +119,7 @@ impl ExecutionErrorKind {
     pub fn code(&self) -> &'static str {
         match self {
             ExecutionErrorKind::ToolNotInstalled { .. } => "TOOL_NOT_INSTALLED",
+            ExecutionErrorKind::ToolNotFound { .. } => "TOOL_NOT_FOUND",
             ExecutionErrorKind::ToolVersionIncompatible { .. } => "TOOL_VERSION_INCOMPATIBLE",
             ExecutionErrorKind::InvalidCommand { .. } => "INVALID_COMMAND",
             ExecutionErrorKind::InvalidInput { .. } => "INVALID_INPUT",
@@ -216,6 +225,9 @@ impl TsecError {
         match &self.kind {
             ExecutionErrorKind::ToolNotInstalled { tool } => {
                 format!("`{tool}` is not installed or not discoverable on PATH")
+            }
+            ExecutionErrorKind::ToolNotFound { tool, reason } => {
+                format!("`{tool}` is still not installed after trying to install it: {reason}")
             }
             ExecutionErrorKind::ToolVersionIncompatible { tool, found, need } => {
                 format!("`{tool}` version `{found}` does not satisfy `{need}`")

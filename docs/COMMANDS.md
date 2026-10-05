@@ -108,10 +108,38 @@ Resolves and installs the provider binaries for one phase, straight from
 | `-escalation` | Privilege Escalation | `-wireless` | Wireless |
 
 `-c` exits non-zero when something is missing, so it works as a CI gate. Without
-it, the script attempts an install and falls back to printing Arch and Kali
-commands for whatever it could not install.
+it, the script attempts an install and falls back to printing commands for
+whatever it could not install.
 
 Wordlists are **not** handled here. They ship with the framework.
+
+### Distributions `tools.sh` understands
+
+Detection comes from `/etc/os-release` and drives both the install command and
+the guidance shown. It matches what the framework itself drives during a run, so
+the two never disagree about what the host is.
+
+| Family | Manager | AUR / alternative |
+|---|---|---|
+| Arch, Manjaro, Omarchy | `pacman` | `paru`, else `yay` |
+| Kali, Debian, Ubuntu, Mint, Pop | `apt-get` | — |
+| Fedora, RHEL, CentOS, Rocky, Alma | `dnf`, else `yum` | — |
+| Alpine | `apk` | — |
+| openSUSE, SLES | `zypper` | — |
+
+The tool-to-package table covers all 357 binaries the catalog names, in
+`arch|debian` form. `cargo test` fails if the catalog gains a binary the table
+does not know, so the two cannot drift apart.
+
+### The same thing happens automatically during a run
+
+A capability whose provider is missing does not stop. The framework detects the
+distribution, resolves the package against the host's local package database, and
+installs it on a background thread while the rest of the capability runs. This is
+the same mapping `tools.sh` uses, resolved at run time rather than by the script.
+
+`tools.sh` remains useful for the whole phase at once, for a clean report, and as
+a CI gate — none of which a background install does.
 
 ## `wordlists/fetch-wordlists.sh`
 
@@ -148,6 +176,34 @@ shipped copy matching `MANIFEST.sha256`.
 
 Exits non-zero on a missing or corrupt file, so a partial clone cannot pass
 unnoticed in CI.
+
+## Output
+
+Each run writes to `output/<run-id>/`:
+
+| File | What |
+|---|---|
+| `output.txt` | The operator document: pipeline counts, findings by category, `NEXT ACTIONS` |
+| `output.json` | The same findings structured, with provenance, correlations and per-finding `actionable` |
+| `manifest.json` | Every execution record: command, boundary, status, error code |
+| `raw/` | Unmodified stdout and stderr per task |
+
+`output.json` carries its own run, pipeline and recommendation context, so a
+consumer never has to guess what produced the findings:
+
+```json
+{
+  "run": { "name": "...", "phase": "RECON", "capability": "SUBDOMAIN DISCOVERY",
+           "wordlist_root": "/opt/tsec/wordlists" },
+  "stats": { "tasks": 3, "artefacts": 27, "noise_lines": 2, "final_findings": 23 },
+  "state": "COMPLETE",
+  "recommendations": [ { "confidence": "high", "phase": "credentials",
+                         "capability": "SERVICE LOGIN BRUTE", "because": "...",
+                         "needs": "the host it belongs to" } ],
+  "findings": [ { "category": "SECRETS", "value": "AKIA...", "actionable": true,
+                  "sources": [ ... ] } ]
+}
+```
 
 ## Development
 

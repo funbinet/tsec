@@ -83,6 +83,25 @@ be executable. A tool installed only for another user, or a `bin` directory not
 on the service manager's `PATH`, will not resolve. Point `tools.search_paths` at
 its directory.
 
+### `TOOL_NOT_FOUND`
+
+The framework tried to install a missing provider while the capability ran, and
+the binary still is not there. The task is recorded as **skipped**, not failed:
+nothing ran, so nothing failed. The document names the provider and the reason.
+
+Read the reason in this order:
+
+| Reason | What it means | What to do |
+|---|---|---|
+| `no package in any repository provides it` | No local database has it | `./tools.sh -<phase>` for a search command, or install from upstream |
+| `<pkg>: exit 1: …` | The manager refused | Read the manager's message in the note above it |
+| `could not run <manager>` | No package manager, or not permitted | Install with sudo yourself, or use `tools.sh` |
+
+Two things that are *not* the problem: TSEC does not need `sudo` cached for the
+background install to start — it will simply be refused if it needs it — and a
+tool that is genuinely unavailable never causes a different tool to be used
+instead.
+
 ## Execution
 
 ### `SPAWN_FAILED`
@@ -127,9 +146,9 @@ that is what per-task isolation costs. Lower `execution.max_concurrency` (defaul
 6) to reduce peak memory; raise it to trade memory for wall clock. The first task
 after boot is the slowest; later ones reuse a warm Tor directory.
 
-## Parsing and harvest
+## Parsing
 
-### `0 FINDINGS` with tasks marked complete
+### The harvest looks short, or misses something in the output
 
 The tool probably wrote to its own output file rather than stdout. Check the raw
 capture and its size:
@@ -141,6 +160,13 @@ wc -c /opt/tsec/output/<run-id>/raw/<stem>.out
 An empty file with `exit_code = 0` means the flags produced no output — usually a
 target that resolved to nothing, or an argument vector that still contains an
 unsplit shell operator (see `CATALOG NOTES` above).
+
+### Nothing is listed under `NEXT ACTIONS`
+
+The section only appears when an observation implies a specific capability. An
+empty one is honest: the harvest found inventory but nothing exploitable, so no
+next step is proposed rather than a generic one. Run the capability again with
+more provider operations selected to widen what is collected.
 
 ### `PARSER_FAILURE`
 
@@ -230,6 +256,33 @@ being pointed at a different corpus.
 
 Working as intended. Run the fetcher, or set `TSEC_WORDLIST_ROOT`.
 
+## Missing tools installed in the background
+
+### Nothing was installed
+
+Check that a supported package manager exists. `tools.sh` prints what it found:
+
+```sh
+./tools.sh -recon -c 2>&1 | grep "this host"
+```
+
+`pacman`, `apt-get`, `dnf`, `yum`, `apk` and `zypper` are driven. Anything else
+falls back to guidance only, and the capability runs with whatever is present.
+
+### A tool is in a repository but nothing happened
+
+The package query reads the host's **local** database. After adding a repository,
+refresh it first — `sudo pacman -Sy`, `sudo apt update`, `sudo dnf makecache` —
+and TSEC will find the package on the next run. This is deliberate: deciding
+what to install must not itself open a network connection, because it happens
+before any task runs and therefore before the boundary is in place.
+
+### A tool was installed mid-run but its operations did not run
+
+The mid-run dispatch only picks up providers that finished installing within a
+short grace period after execution starts. Anything later still shows as
+`TOOL_NOT_FOUND`. Run the capability again — it will be available from the start.
+
 ### A tool ran and returned nothing
 
 Check whether its `args` still contains a shell operator split across array
@@ -242,6 +295,8 @@ URL query string, an LDAP filter, an XML entity, a SQL statement. The only place
 a shell is correct is a remote command — `ssh user@host 'mkdir -p ~/.ssh && cat
 >> ~/.ssh/authorized_keys'` is a single argument, because the remote end
 interprets it.
+
+### `0 FINDINGS` with tasks marked complete
 
 ## The interface
 

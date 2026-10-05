@@ -1021,6 +1021,94 @@ mod tests {
     }
 
     #[test]
+    fn every_catalog_binary_has_a_package_mapping_in_tools_sh() {
+        // `tools.sh` reads its tool list from this catalog but keeps its own
+        // tool-to-package table. If the catalog gains a binary the table does not
+        // know, the script silently falls back to a same-name guess — which is
+        // right often enough to hide being wrong. This pins the two together.
+        let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+        let catalog = root.join("catalog/capabilities.toml");
+        let tools = root.join("tools.sh");
+        if !catalog.exists() || !tools.exists() {
+            return;
+        }
+        let cat = Catalog::load(&catalog).unwrap();
+        let script = std::fs::read_to_string(&tools).unwrap();
+
+        let body = script
+            .split("pkg_info() {")
+            .nth(1)
+            .and_then(|rest| rest.split("\n}\n").next())
+            .expect("tools.sh should define pkg_info");
+
+        let mut mapped: Vec<String> = Vec::new();
+        for line in body.lines() {
+            let line = line.trim();
+            let Some((pattern, _)) = line.split_once(") echo ") else {
+                continue;
+            };
+            mapped.extend(pattern.split('|').map(|s| s.trim().to_string()));
+        }
+
+        let mut unmapped: Vec<&str> = Vec::new();
+        for cap in cat.capabilities() {
+            for p in &cap.providers {
+                if !mapped.contains(&p.binary) && !unmapped.contains(&p.binary.as_str()) {
+                    unmapped.push(&p.binary);
+                }
+            }
+        }
+        unmapped.sort_unstable();
+        assert!(
+            unmapped.is_empty(),
+            "tools.sh has no package mapping for {} catalog binaries: {unmapped:?}",
+            unmapped.len()
+        );
+    }
+
+    #[test]
+    fn every_tools_sh_mapping_is_well_formed() {
+        // The mapping is `arch|debian`, and both halves are needed: a missing
+        // half produces a command that installs nothing and looks plausible.
+        let tools = Path::new(env!("CARGO_MANIFEST_DIR")).join("tools.sh");
+        if !tools.exists() {
+            return;
+        }
+        let script = std::fs::read_to_string(&tools).unwrap();
+        let body = script
+            .split("pkg_info() {")
+            .nth(1)
+            .and_then(|rest| rest.split("\n}\n").next())
+            .expect("tools.sh should define pkg_info");
+
+        for line in body.lines() {
+            let line = line.trim();
+            let Some((pattern, rest)) = line.split_once(") echo ") else {
+                continue;
+            };
+            // The `*)` arm is the deliberate same-name fallback, not a mapping.
+            if pattern == "*" {
+                continue;
+            }
+            let value = rest.trim().trim_end_matches(";;").trim();
+            let value = value.trim_matches('"');
+            let parts: Vec<&str> = value.split('|').collect();
+            assert_eq!(
+                parts.len(),
+                2,
+                "mapping for `{pattern}` is not `arch|debian`: {value:?}"
+            );
+            for part in parts {
+                assert!(!part.trim().is_empty(), "`{pattern}` has an empty package");
+                assert!(
+                    !part.contains(['`', '$', ';', '&', '<', '>', '(', ')']),
+                    "`{pattern}` package `{part}` carries shell syntax"
+                );
+            }
+        }
+    }
+
+    #[test]
     fn the_shipped_catalog_loads_and_covers_all_ten_phases() {
         let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("catalog/capabilities.toml");
         if !path.exists() {

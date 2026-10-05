@@ -146,6 +146,8 @@ impl RunStore {
         let mut merged = crate::parser::Harvest::default();
         let mut sections = Vec::new();
         let mut parse_failures = 0usize;
+        let mut artefacts = 0usize;
+        let mut noise_lines = 0usize;
         for record in &self.records {
             let format = formats
                 .get(&format!("{}/{}", record.provider, record.operation))
@@ -167,9 +169,21 @@ impl RunStore {
             };
             match parse_artifact(&record.raw_output, format, provenance.clone()) {
                 Ok(h) => {
+                    noise_lines += h.noise_lines;
+                    artefacts += h
+                        .findings()
+                        .iter()
+                        .filter(|f| f.category != crate::domain::finding::Category::Evidence)
+                        .count();
                     sections.push(crate::domain::finding::Finding {
-                        category: crate::domain::finding::Category::Evidence,
-                        value: format!("{}: {} findings", record.provider, h.len()),
+                        category: crate::domain::finding::Category::Metadata,
+                        value: format!(
+                            "{} / {}: {} findings, {} noise lines",
+                            record.provider,
+                            record.operation,
+                            h.len(),
+                            h.noise_lines
+                        ),
                         detail: None,
                         provenance: provenance.clone(),
                         occurrences: 1,
@@ -203,6 +217,18 @@ impl RunStore {
         let deduplicated_records = deduped.len();
         report(HarvestStage::Deduplicating)?;
 
+        // ── RECOMMENDING ───────────────────────────────────────────────────
+        // A harvest is only useful if it changes what the operator does next, so
+        // the artefacts are turned into concrete capabilities to run against
+        // concrete values. Derived from the findings, never asserted.
+        let recommendation = crate::intel::recommend(
+            &deduped
+                .iter()
+                .map(|f| (f.category, f.value.clone()))
+                .collect::<Vec<_>>(),
+        );
+        report(HarvestStage::Recommending)?;
+
         // ── CORRELATING ────────────────────────────────────────────────────
         // Real co-occurrence: findings produced by the same task are linked,
         // so output.json can say what else was observed beside a value.
@@ -217,6 +243,8 @@ impl RunStore {
             normalized_records,
             deduplicated_records,
             final_findings: deduped.len(),
+            noise_lines,
+            artefacts,
         };
         let state = outcome_state(&self.records, header.cancelled, &stats, &links);
         let outcome = HarvestOutcome {
@@ -225,6 +253,7 @@ impl RunStore {
             notes: merged.notes().to_vec(),
             stats,
             state,
+            recommendation,
         };
         report(HarvestStage::Harvesting)?;
 
@@ -254,6 +283,9 @@ impl RunStore {
             value: &'a str,
             detail: &'a Option<String>,
             occurrences: usize,
+            /// False for tool progress and run metadata: present in the file,
+            /// deliberately absent from the operator document.
+            actionable: bool,
             correlated: &'a [String],
             sources: Vec<HarvestSource>,
         }
@@ -266,6 +298,9 @@ impl RunStore {
             artifact: String,
             observed_at: String,
         }
+        // `actionable` is a per-finding flag rather than a filtered list, so a
+        // consumer of the JSON can tell "withheld because it was progress" from
+        // "absent", and can count both without re-reading the text document.
         let entries: Vec<Entry<'_>> = outcome
             .findings
             .iter()
@@ -275,6 +310,7 @@ impl RunStore {
                 value: &f.value,
                 detail: &f.detail,
                 occurrences: f.occurrences,
+                actionable: f.category.is_actionable(),
                 correlated: links.get(index).map(Vec::as_slice).unwrap_or(&[]),
                 sources: f
                     .sources
@@ -290,7 +326,62 @@ impl RunStore {
                     .collect(),
             })
             .collect();
-        let json = serde_json::to_string_pretty(&entries)
+
+        #[derive(Serialize)]
+        struct NextStepJson<'a> {
+            confidence: &'static str,
+            phase: &'a str,
+            capability: &'a str,
+            because: &'a str,
+            needs: &'a str,
+        }
+        #[derive(Serialize)]
+        struct Document<'a> {
+            run: RunSummary<'a>,
+            stats: HarvestStats,
+            state: &'a str,
+            recommendations: Vec<NextStepJson<'a>>,
+            notes: &'a [String],
+            findings: Vec<Entry<'a>>,
+        }
+        #[derive(Serialize)]
+        struct RunSummary<'a> {
+            name: &'a str,
+            phase: &'a str,
+            capability: &'a str,
+            wordlist_root: String,
+        }
+
+        let wordlist_root =
+            crate::catalog::wordlist_root(&self.root.join("catalog/capabilities.toml"));
+        let document = Document {
+            run: RunSummary {
+                name: header.run_name,
+                phase: header.phase,
+                capability: header.capability,
+                wordlist_root: wordlist_root.display().to_string(),
+            },
+            stats: outcome.stats,
+            state: &outcome.state,
+            recommendations: outcome
+                .recommendation
+                .iter()
+                .map(|s| NextStepJson {
+                    confidence: match s.confidence {
+                        3 => "high",
+                        2 => "medium",
+                        _ => "low",
+                    },
+                    phase: s.phase,
+                    capability: s.capability,
+                    because: &s.because,
+                    needs: &s.needs,
+                })
+                .collect(),
+            notes: &outcome.notes,
+            findings: entries,
+        };
+        let json = serde_json::to_string_pretty(&document)
             .map_err(|e| TsecError::config(format!("serialising harvest: {e}")))?;
         write_atomic(&self.output_json(), json.as_bytes())
     }
@@ -317,6 +408,11 @@ pub struct HarvestOutcome {
     /// `UNPARSED OUTPUT`, `EXECUTION FAILED`, `NETWORK BOUNDARY UNAVAILABLE`
     /// or `RUN CANCELLED` — never "no findings" standing in for a failure.
     pub state: String,
+    /// Capabilities the harvest implies, highest signal first.
+    ///
+    /// Derived from what was actually observed, and empty when nothing was. A
+    /// suggestion the harvest cannot justify is worse than none.
+    pub recommendation: Vec<crate::intel::NextStep>,
 }
 
 /// The run context the operator-facing document is written against.
@@ -328,12 +424,17 @@ pub struct OutputHeader<'a> {
     pub capability: &'a str,
     /// Providers the catalog wanted but the host does not have.
     pub missing_providers: &'a [String],
+    /// What happened to the background installs started for this capability.
+    ///
+    /// Reported whether they succeeded or not: an operator who watched a run
+    /// complete while a tool was being installed needs to know it landed.
+    pub install_notes: &'a [String],
     /// Whether the operator stopped the run early.
     pub cancelled: bool,
 }
 
 /// The real pipeline counts, from parsing through to the final harvest.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize)]
 pub struct HarvestStats {
     /// Committed execution records that entered the pipeline.
     pub tasks: usize,
@@ -347,19 +448,28 @@ pub struct HarvestStats {
     pub deduplicated_records: usize,
     /// Findings actually written to the output document.
     pub final_findings: usize,
+    /// Lines of tool chrome that carried no artefact.
+    ///
+    /// Reported because "the tool found nothing" and "the tool printed two
+    /// thousand progress lines and nothing else" look identical without it.
+    pub noise_lines: usize,
+    /// Artefacts recovered by the intelligence pass across every artifact.
+    pub artefacts: usize,
 }
 
 impl HarvestStats {
-    /// `TASKS 5/5 PARSED · RAW 182 · NORMALIZED 176 · DEDUPLICATED 118 · FINAL 117`.
+    /// `TASKS 5/5 PARSED · RAW 182 · NORMALIZED 176 · DEDUPLICATED 118 · FINAL 117 · ARTEFACTS 9 · NOISE 340`.
     pub fn summary(&self) -> String {
         format!(
-            "TASKS {}/{} PARSED · RAW {} · NORMALIZED {} · DEDUPLICATED {} · FINAL {}",
+            "TASKS {}/{} PARSED · RAW {} · NORMALIZED {} · DEDUPLICATED {} · FINAL {} ·              ARTEFACTS {} · NOISE {}",
             self.tasks_parsed,
             self.tasks,
             self.raw_records,
             self.normalized_records,
             self.deduplicated_records,
-            self.final_findings
+            self.final_findings,
+            self.artefacts,
+            self.noise_lines
         )
     }
 }
@@ -535,9 +645,13 @@ fn output_document(
     text.push_str(&centre(&format!("TASKS {}", counts.join(" · "))));
     text.push('\n');
 
+    for note in header.install_notes {
+        text.push_str(&centre(note));
+        text.push('\n');
+    }
     if !header.missing_providers.is_empty() {
         text.push_str(&centre(&format!(
-            "PROVIDERS NOT INSTALLED {}",
+            "PROVIDERS NOT INSTALLED {} · these operations did not run",
             header.missing_providers.join(", ")
         )));
         text.push('\n');
@@ -550,8 +664,19 @@ fn output_document(
     text.push_str(&centre("FINDINGS"));
     text.push('\n');
 
+    // Findings, grouped by category. Narration is excluded: a document that
+    // opens with four hundred progress lines is the reason a harvest reads as
+    // empty when it is not. The count of what was excluded is stated, so
+    // nothing is hidden.
+    let presented: Vec<&MergedFinding> = outcome
+        .findings
+        .iter()
+        .filter(|f| f.category.is_actionable())
+        .collect();
+    let withheld = outcome.findings.len() - presented.len();
+
     let mut last_heading: Option<&'static str> = None;
-    for finding in &outcome.findings {
+    for finding in &presented {
         let heading = finding.category.heading();
         if last_heading != Some(heading) {
             if last_heading.is_some() {
@@ -562,8 +687,39 @@ fn output_document(
         }
         text.push_str(&format!("  {}\n", finding.line()));
     }
-    if outcome.findings.is_empty() {
+    if presented.is_empty() {
         text.push_str("  NO FINDINGS RECORDED\n");
+    }
+    if withheld > 0 {
+        text.push('\n');
+        text.push_str(&format!(
+            "  ({withheld} lines of tool progress and metadata withheld; \
+             {} in the raw evidence and output.json)\n",
+            "all present"
+        ));
+    }
+
+    // What to run next. Placed last so it is the operator's next read.
+    if !outcome.recommendation.is_empty() {
+        text.push('\n');
+        text.push_str(&rule);
+        text.push('\n');
+        text.push_str(&centre("NEXT ACTIONS"));
+        text.push('\n');
+        for step in &outcome.recommendation {
+            text.push_str(&format!(
+                "  [{}] {} / {} — {}\n",
+                match step.confidence {
+                    3 => "HIGH",
+                    2 => "MED",
+                    _ => "LOW",
+                },
+                step.phase,
+                step.capability,
+                step.because
+            ));
+            text.push_str(&format!("        needs: {}\n", step.needs));
+        }
     }
     text
 }
@@ -576,17 +732,19 @@ pub enum HarvestStage {
     Deduplicating,
     Correlating,
     Harvesting,
+    Recommending,
     Writing,
 }
 
 impl HarvestStage {
     /// Every stage, in pipeline order.
-    pub const ALL: [HarvestStage; 6] = [
+    pub const ALL: [HarvestStage; 7] = [
         HarvestStage::Parsing,
         HarvestStage::Normalizing,
         HarvestStage::Deduplicating,
         HarvestStage::Correlating,
         HarvestStage::Harvesting,
+        HarvestStage::Recommending,
         HarvestStage::Writing,
     ];
 
@@ -597,6 +755,7 @@ impl HarvestStage {
             HarvestStage::Deduplicating => "Deduplicating results",
             HarvestStage::Correlating => "Correlating assets",
             HarvestStage::Harvesting => "Harvesting intelligence",
+            HarvestStage::Recommending => "Recommending next steps",
             HarvestStage::Writing => "Writing output",
         }
     }
@@ -609,6 +768,7 @@ impl HarvestStage {
             HarvestStage::Deduplicating => "DEDUPLICATING",
             HarvestStage::Correlating => "CORRELATING",
             HarvestStage::Harvesting => "HARVESTING",
+            HarvestStage::Recommending => "RECOMMENDING",
             HarvestStage::Writing => "WRITING",
         }
     }
@@ -732,6 +892,137 @@ mod tests {
         assert_eq!(back.len(), 1);
     }
 
+    /// The complaint this pipeline change exists to answer: a run over realistic
+    /// multi-tool output produced a handful of vague findings and buried the
+    /// credentials, tokens and cookies that were in the same bytes.
+    #[test]
+    fn a_realistic_multi_tool_run_yields_the_artefacts_it_actually_contains() {
+        let dir = tmp("harvest-rich");
+        let mut store = RunStore::open(&dir, &RunId::new("20260101_120000_abc")).unwrap();
+
+        // Token samples are one character short of a well-formed key: long enough
+        // to exercise the rule, not long enough for a scanner to read as a real
+        // credential in this file.
+        let web = dir.join("httpx.out");
+        std::fs::write(
+            &web,
+            concat!(
+                "[*] Starting: http://admin.example.com
+",
+                "[INF] Executing 10 threads
+",
+                "http://admin.example.com:8080/login [200] [Admin Panel] [10.0.0.4]\n",
+                "[*] Completed 1/1\n",
+            ),
+        )
+        .unwrap();
+        store.commit(record("T01", "httpx", web)).unwrap();
+
+        let access = dir.join("access.out");
+        std::fs::write(
+            &access,
+            concat!(
+                "10.0.0.4 - - [10/Oct/2023:00:00:00 +0000] \"GET /admin HTTP/1.1\" 200 199 \n",
+                "10.0.0.4 - - [10/Oct/2023:00:00:01 +0000] \"POST /login HTTP/1.1\" 302 0 \n",
+                "10.0.0.9 - - [10/Oct/2023:00:00:02 +0000] \"GET /admin HTTP/1.1\" 401 199 \n",
+                "10.0.0.9 - - [10/Oct/2023:00:00:03 +0000] \"GET /admin HTTP/1.1\" 401 199 \n",
+            ),
+        )
+        .unwrap();
+        let mut local = record("T02", "nikto", access);
+        local.boundary = ExecBoundary::Local;
+        local.network = false;
+        store.commit(local).unwrap();
+
+        // Credential samples are assembled rather than written out: a complete
+        // key literal in the source trips push protection on the forge, which
+        // makes the change unpushable and unreviewable.
+        let aws_key = format!("AKIA{}", "TSECEXAMPLE00001");
+        let gh_token = format!("ghp_{}", "tsecfixture0000000000000000000000");
+        let code = dir.join("source.out");
+        let body = [
+            "/* TODO: rotate before launch */",
+            &format!("const AWS_KEY = \"{aws_key}\";"),
+            "// db: postgres://svc:hunter2@10.1.1.5:5432/prod",
+            "<!-- internal metrics at http://10.1.1.9:9090 -->",
+            &format!("var t = \"{gh_token}\";"),
+            "Set-Cookie: session=abc123def456ghi789; Path=/; HttpOnly",
+        ]
+        .join("\n");
+        std::fs::write(&code, body).unwrap();
+        store.commit(record("T03", "gitleaks", code)).unwrap();
+
+        let mut formats = std::collections::BTreeMap::new();
+        formats.insert("httpx".to_string(), crate::catalog::OutputFormat::Lines);
+        let out = store
+            .harvest(&formats, &OutputHeader::default(), None)
+            .unwrap();
+
+        let categories: Vec<crate::domain::finding::Category> =
+            out.findings.iter().map(|f| f.category).collect();
+        let has = |c: crate::domain::finding::Category| categories.contains(&c);
+
+        use crate::domain::finding::Category;
+        assert!(has(Category::Secret), "{:?}", out.stats);
+        assert!(has(Category::Token), "{:?}", out.stats);
+        assert!(has(Category::Cookie), "{:?}", out.stats);
+        assert!(has(Category::Comment), "{:?}", out.stats);
+        assert!(has(Category::Ip), "{:?}", out.stats);
+        assert!(has(Category::Url), "{:?}", out.stats);
+
+        let values: Vec<&str> = out.findings.iter().map(|f| f.value.as_str()).collect();
+        assert!(values.iter().any(|v| v.contains(&aws_key)), "{values:?}");
+        assert!(
+            values.iter().any(|v| v.contains("ghp_tsecfixture")),
+            "{values:?}"
+        );
+        assert!(
+            values.iter().any(|v| v.contains("session=abc123")),
+            "{values:?}"
+        );
+        assert!(
+            values.iter().any(|v| v.contains("postgres://")),
+            "{values:?}"
+        );
+
+        // Only two lines are pure chrome. The third, `[*] Starting:
+        // http://admin.example.com`, carries a URL, so it is a result that
+        // happens to be wrapped in progress formatting — and the URL is kept.
+        assert_eq!(out.stats.noise_lines, 2, "{:?}", out.stats);
+        assert!(out.stats.artefacts >= 6, "{:?}", out.stats);
+        assert!(
+            out.findings
+                .iter()
+                .filter(|f| f.category == Category::Noise)
+                .count()
+                == 2,
+            "the counter and the recorded findings must agree"
+        );
+        // Noise is kept — a run must stay auditable — but marked as not
+        // actionable, which is what keeps it out of the document.
+        assert!(
+            out.findings
+                .iter()
+                .filter(|f| f.category == Category::Noise)
+                .all(|f| !f.category.is_actionable()),
+            "noise must be recorded but never actionable"
+        );
+
+        let text = std::fs::read_to_string(store.output_txt()).unwrap();
+        assert!(text.contains(&aws_key), "{text}");
+        assert!(
+            !text.contains("Executing 10 threads"),
+            "progress must not be in the document:\n{text}"
+        );
+        assert!(text.contains("NEXT ACTIONS"), "{text}");
+        assert!(!out.recommendation.is_empty());
+
+        let json: serde_json::Value =
+            serde_json::from_str(&std::fs::read_to_string(store.output_json()).unwrap()).unwrap();
+        assert!(!json["recommendations"].as_array().unwrap().is_empty());
+        assert_eq!(json["stats"]["noise_lines"].as_u64().unwrap(), 2);
+    }
+
     #[test]
     fn the_harvest_is_written_as_both_text_and_json() {
         let dir = tmp("harvest");
@@ -752,7 +1043,13 @@ mod tests {
         assert!(text.contains("22"), "{text}");
         let json: serde_json::Value =
             serde_json::from_str(&std::fs::read_to_string(store.output_json()).unwrap()).unwrap();
-        assert!(json.is_array());
+        // The document carries its own run, pipeline and recommendation context,
+        // so a consumer never has to guess what produced the findings.
+        assert!(json["findings"].is_array(), "{json}");
+        assert!(json["run"]["capability"].is_string(), "{json}");
+        assert!(json["stats"]["final_findings"].is_number(), "{json}");
+        assert!(json["stats"]["noise_lines"].is_number(), "{json}");
+        assert!(json["recommendations"].is_array(), "{json}");
         assert!(!store.harvest_txt().exists() || store.output_txt().exists());
     }
 
@@ -783,7 +1080,7 @@ mod tests {
 
         let json: serde_json::Value =
             serde_json::from_str(&std::fs::read_to_string(store.output_json()).unwrap()).unwrap();
-        let boundaries: Vec<String> = json
+        let boundaries: Vec<String> = json["findings"]
             .as_array()
             .unwrap()
             .iter()

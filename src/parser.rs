@@ -44,6 +44,10 @@ const MAX_INPUT_BYTES: u64 = 32 * 1024 * 1024;
 pub struct Harvest {
     findings: Vec<Finding>,
     truncated: bool,
+    /// Lines of tool chrome — progress, timings, banners — that carried no
+    /// artefact. Counted rather than kept, and reported so an operator can tell
+    /// "the tool said nothing" from "the tool said only progress".
+    pub noise_lines: usize,
     /// Non-fatal problems, e.g. a malformed JSON line that was kept as evidence.
     notes: Vec<String>,
 }
@@ -57,6 +61,14 @@ impl Harvest {
     }
     pub fn notes(&self) -> &[String] {
         &self.notes
+    }
+
+    /// Findings an operator can act on, with narration removed.
+    pub fn actionable(&self) -> Vec<&Finding> {
+        self.findings
+            .iter()
+            .filter(|f| f.category.is_actionable())
+            .collect()
     }
     pub fn is_empty(&self) -> bool {
         self.findings.is_empty()
@@ -99,6 +111,7 @@ impl Harvest {
     pub fn absorb(&mut self, other: Harvest) {
         self.findings.extend(other.findings);
         self.notes.extend(other.notes);
+        self.noise_lines += other.noise_lines;
         self.truncated |= other.truncated;
     }
 
@@ -223,6 +236,12 @@ impl MergedFinding {
 /// `format` is the format the catalog declared for the operation. A tool that
 /// emits something else is handled by the classifier, which is why a mismatch
 /// degrades to evidence rather than to an error.
+///
+/// The declared format decides how the *shape* is understood. It does not decide
+/// what is looked for: [`crate::intel`] scans every line of every artifact
+/// regardless of format, because most tools print an exploitable artefact on a
+/// line they did not format for the purpose — a leaked key in an access log, a
+/// credential in a `raw` report, a session cookie in an `http-post-form` dump.
 pub fn parse_artifact(
     path: &Path,
     format: OutputFormat,
@@ -239,12 +258,45 @@ pub fn parse_artifact(
     }
     let text = String::from_utf8_lossy(&bytes.text).into_owned();
 
+    // ── INTELLIGENCE ───────────────────────────────────────────────────────
+    // Runs first and across the whole body. A line that yields nothing but
+    // chatter is counted as noise and left out of the document; a line that
+    // yields an artefact is kept even when it also looks like chatter, because
+    // that is exactly where keys and credentials turn up.
+    let (extracted, _) = crate::intel::assess_all(&text);
+    // Chatter is recorded here and only here. The format parsers below step over
+    // these lines rather than classifying them, so the count has one owner and
+    // cannot drift from the number of `Noise` findings actually recorded.
+    for line in text.lines() {
+        let trimmed = line.trim();
+        if trimmed.is_empty() {
+            continue;
+        }
+        if crate::intel::extract(trimmed).is_empty() && crate::intel::is_noise(trimmed) {
+            harvest.noise_lines += 1;
+            harvest.push(Category::Noise, trimmed, None);
+        }
+    }
+    // The extractor falls back to evidence for a line it does not recognise;
+    // the line parsers own evidence, so only real artefacts are taken here.
+    let artefacts: Vec<&crate::intel::Extraction> = extracted
+        .iter()
+        .filter(|e| e.category != Category::Evidence)
+        .collect();
+    for e in &artefacts {
+        harvest.push(e.category, e.value.clone(), e.detail.clone());
+    }
+
     match format {
         OutputFormat::Nmap => parse_nmap_xml(&text, &mut harvest),
         OutputFormat::Json => parse_jsonl(&text, &mut harvest),
         OutputFormat::Lines => parse_lines(&text, &mut harvest),
         // A tool's own format is kept verbatim. The framework has no opinion
-        // about sqlmap's or nikto's layout, so the whole record is the evidence.
+        // about sqlmap's or nikto's layout, so the whole record is the
+        // evidence. Lines the intelligence pass already understood appear twice
+        // — once as the artefact, once as the evidence — and deduplication
+        // collapses the difference in category and value, so nothing is buried
+        // and nothing is lost.
         OutputFormat::Raw => parse_raw(&text, &mut harvest),
     }
     harvest.attribute(provenance);
@@ -425,8 +477,11 @@ fn parse_jsonl(text: &str, h: &mut Harvest) {
         if line.is_empty() {
             continue;
         }
-        // A tool's progress chatter on stdout is not an error; it is evidence.
+        // A tool's progress chatter on stdout is neither an error nor evidence.
         if !line.starts_with('{') && !line.starts_with('[') {
+            if crate::intel::extract(line).is_empty() && crate::intel::is_noise(line) {
+                continue;
+            }
             h.push(Category::Evidence, line, Some(format!("line {}", n + 1)));
             continue;
         }
@@ -482,11 +537,13 @@ fn parse_nuclei_record(v: &Value, h: &mut Harvest) {
     if let Some(m) = s("matcher-name") {
         h.push(Category::Technology, m, Some("nuclei matcher".into()));
     }
-    // Subdomain enumeration arrives as plain hostnames, which the line parser
-    // would classify anyway; here it is explicit.
+    // Subdomain enumeration arrives as plain hostnames. A `host` field holding a
+    // full URL is already recorded above as a URL, and repeating it as a hostname
+    // would put `https://x` in the HOSTS section.
     if let Some(host) = s("host").or_else(|| s("input")) {
-        if host.contains('.') && !host.contains(' ') {
-            h.push(Category::Host, host, Some("nuclei host".into()));
+        let name = host_of(&host).unwrap_or(host.clone());
+        if name.contains('.') && !name.contains(' ') && !name.contains("://") {
+            h.push(Category::Host, name, Some("nuclei host".into()));
         }
     }
 }
@@ -510,6 +567,13 @@ fn parse_lines(text: &str, h: &mut Harvest) {
 
 /// Decide what one line of `lines` output is.
 fn classify_line(line: &str, lineno: usize, h: &mut Harvest) {
+    // Tool chrome was already recorded by `parse_artifact`; step over it rather
+    // than filing it as evidence, which is what made a multi-tool harvest read
+    // as noise with nothing in it.
+    if crate::intel::extract(line).is_empty() && crate::intel::is_noise(line) {
+        return;
+    }
+
     // A bracketed httpx probe: `https://h [200] [title] [ip] [Tech:1.0,Tech2]`.
     if line.contains("] [") {
         if let Some((url, rest)) = line.split_once(" [") {

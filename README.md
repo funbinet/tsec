@@ -155,15 +155,97 @@ missing opens a guidance box with verified install commands (queried from
    and a live tally (`n/m FINISHED · RUNNING · QUEUED · ELAPSED`). `Esc` or
    `Ctrl+C` asks before stopping anything; only `Y` cancels, and evidence
    already collected is kept.
-3. **The `PROCESSING` box.** One box, six real stages — parsing, normalizing,
-   deduplicating, correlating, harvesting, writing — each ticked (`✓`) only
-   when the corresponding work has actually finished. No timer-driven
+3. **The `PROCESSING` box.** One box, seven real stages — parsing, normalizing,
+   deduplicating, correlating, harvesting, recommending, writing — each ticked
+   (`✓`) only when the corresponding work has actually finished. No timer-driven
    animation, no duplication.
 4. **The `OUTPUT` screen.** The run's document, previewed up to 500 lines
    (the saved file and the viewer are never truncated), an `OUTPUT FILE` box
    naming the saved path, and exactly three operations in the hint:
    `-[I/K] SCROLL   -[L] OPEN FULL   -[J/ESC] CLOSE`. `L` opens the full
    scrollable viewer directly — there is no `Open full output? [Y/n]` prompt.
+
+## What a run actually gives you
+
+Raw tool output is not the deliverable. The deliverable is what can be used
+against the target next, so the harvest is built in two passes.
+
+**The format pass** reads the shape the catalog declared — nmap's XML, nuclei's
+JSON lines, one-finding-per-line output — and understands it as that tool means
+it.
+
+**The intelligence pass** (`src/intel.rs`) then scans every line of every
+artifact, whatever its declared format, for artefact shapes that matter:
+
+| Recovered | Examples |
+|---|---|
+| `SECRETS` | AWS keys, private keys, `password=` assignments, DSNs with inline credentials |
+| `TOKENS` | GitHub, Slack, Google, Stripe, GitLab, npm, OpenAI, Anthropic keys; JWTs; bearer and `Authorization` headers |
+| `COOKIES` | `Set-Cookie` headers, `PHPSESSID`, `JSESSIONID`, `ASP.NET` session ids, CSRF and refresh tokens |
+| `CREDENTIAL PAIRS` | `user:pass` as hydra, nikto and access logs emit it |
+| `HASHES` | crypt, NTLM, NetNTLMv1/v2, Kerberos, DYNECT, SSHA |
+| `VULNERABILITIES` | CVE, CWE, GHSA, OWASP identifiers |
+| `FILES` | `.git/`, `.env`, `.aws/credentials`, `wp-config.php`, keys, certs, dumps, archives, source files |
+| `COMMENTS` | HTML, block and inline comments; `TODO` / `FIXME` / `HACK` markers |
+| `EMAILS`, `URLS`, `IP ADDRESSES`, `MACs`, `HOSTS`, `PORTS` | the inventory |
+
+One line yields as many findings as it really carries, which is the point: an
+access-log line holds the client IP, the URL, the status *and* a credential, and
+before this pass all four were filed as one unremarkable line of evidence.
+
+Every artefact keeps the line it came from as its `detail`, so a three-character
+finding is still interpretable weeks later without re-reading the artifact.
+Nothing is invented: a finding exists only because a pattern matched bytes a tool
+actually printed.
+
+### Noise is separated, not discarded
+
+Progress banners, progress bars, timings and run summaries are the largest
+single source of unreadable output in a multi-tool run. They are classified as
+`Noise`: counted, kept in `output.json`, and excluded from the document, with
+the excluded count stated at the foot of the findings. A run that found nothing
+and a run that printed two thousand progress lines now look different.
+
+### Next actions
+
+The harvest ends with `NEXT ACTIONS`: the capabilities the observations imply,
+strongest signal first, each naming the phase, the capability, why it follows
+from what was found, and what the operator has to supply.
+
+```
+NEXT ACTIONS
+  [HIGH] credentials / CREDENTIAL DUMP LINUX / SERVICE LOGIN BRUTE — a password,
+         private key or connection string was recovered in the clear
+        needs: the host it belongs to
+  [HIGH] exploitation / PUBLIC CVE SWEEP — a CVE identifier was reported
+        needs: the affected host and its version
+```
+
+A step is only offered when a specific observed artefact implies it. Suggesting
+an attack because a port was open is noise.
+
+## Missing tools are installed while the run proceeds
+
+A capability whose provider is not installed does not stop. The framework
+detects the distribution and its package manager, resolves the package against
+the host's **local** package database, and installs it on a background thread
+while the rest of the capability runs:
+
+| Family | Manager | Verified by |
+|---|---|---|
+| Arch, Manjaro, Omarchy | `pacman` (+ `paru`/`yay` for the AUR) | `pacman -Si` |
+| Debian, Ubuntu, Kali, Mint, Pop | `apt-get` | `apt-cache show` |
+| Fedora, RHEL, CentOS, Rocky, Alma | `dnf`, `yum` | `dnf --cacheonly info` |
+| Alpine | `apk` | `apk info -a` |
+| openSUSE, SLES | `zypper` | `zypper --non-interactive info` |
+
+Every query is an offline metadata read. A package name is never invented, and a
+tool that is in no repository is reported as such with a search command to run.
+
+If the install lands before the capability finishes, its operations are dispatched
+in the same run. If it does not, the provider is recorded as **`TOOL_NOT_FOUND`** —
+skipped, not failed, because nothing ran and nothing failed — and named in the
+document with the reason.
 
 ## The catalog
 

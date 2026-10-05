@@ -64,6 +64,36 @@ What *is* reported is an argument that **is** a shell operator — `|`, `&&`,
 command line was pasted in without being split, and the tool will run as if it
 were not there. `tsec --status` lists these.
 
+### The intelligence pass
+
+The format parsers answer "what shape did this tool print?". That is necessary
+and not sufficient: most tools do not print findings one per line, they print
+progress banners and then a line carrying several independent artefacts.
+
+```text
+10.0.0.4 - - "POST /login HTTP/1.1" 302 0 "Mozilla/5.0" "admin:Sup3rS3cr3t"
+```
+
+Whole-line classification files that under one heading and separates nothing.
+`src/intel.rs` scans every line of every artifact, whatever its declared format,
+for artefact shapes — secrets, tokens, cookies, hashes, CVEs, exposed files,
+comments, credentials, and the network inventory — and emits one finding per
+match. It runs before and independently of the format parsers, which own the
+shapes a regex cannot decide: hostnames, `host:port`, httpx bracket fields.
+
+Two properties keep this safe over arbitrary tool output:
+
+* **Nothing is invented.** A finding exists only because a pattern matched bytes
+  the tool printed. The matched text and the line it came from both travel with
+  the finding, so the interpretation is checkable against the raw evidence.
+* **Noise is separated, not deleted.** Progress bars, timings and banners become
+  `Category::Noise`: counted, retrievable, and out of the document. Folding them
+  in with real evidence is what made previous harvests read as empty.
+
+`intel::recommend` closes the loop by mapping what was harvested to the
+capabilities that follow from it, ranked by signal strength. It is a routing
+table, not advice: every step names a phase and a capability that exist.
+
 ### The wordlist corpus
 
 `wordlists/` is part of the product, not an optional extra. The catalog names a
@@ -238,6 +268,37 @@ codes before it shows any findings.
 | Telemetry, phone-home, crash uploads | Evidence leaves the machine only when the operator moves it |
 | A `main.rs` that knows how the framework works | `main.rs` parses arguments, loads config and hands over |
 
+## 9a. Provider installation
+
+A missing provider is a fact about the host, not an error in the capability.
+`src/install.rs` handles it in three steps, each of which is deliberately local:
+
+1. **Detect** the distribution and its package manager: `pacman`, `apt-get`,
+   `dnf`, `yum`, `apk`, `zypper`, plus an AUR helper on Arch.
+2. **Resolve** the binary to a package by querying the host's local package
+   database — `pacman -Si`, `apt-cache show`, `dnf --cacheonly info`,
+   `apk info -a`, `zypper --non-interactive info`. All of these are offline
+   metadata reads, which matters: deciding what to install happens before any
+   task runs, and it must not require the boundary.
+3. **Install** on a background thread while the capability runs with whatever
+   else it can.
+
+No package name is ever guessed. A binary that resolves in no repository is
+reported as such, with the search command the operator can run. That is a real
+answer; "there is no package for this" is not one.
+
+The install outcome is recorded distinctly from execution failure:
+
+| Situation | Recorded as |
+|---|---|
+| Binary present | a normal task |
+| Installed during the run | a normal task, labelled *(installed mid-run)* |
+| Still missing afterwards | `TOOL_NOT_FOUND`, status `Skipped` |
+
+The last row is the important one. Nothing ran, so nothing failed: reporting it
+as a failed task would invent a failure that never happened, and would make a
+capability whose every provider was missing read as `EXECUTION FAILED`.
+
 ## 10. Verification
 
 The test suite pins the parts that are expensive to get wrong:
@@ -260,7 +321,17 @@ The test suite pins the parts that are expensive to get wrong:
   `printenv` are run for what they print;
 - a sensitive input is masked in the rendered command and in serialised output;
 - availability reports missing binaries and missing wordlists by name;
-- provider search paths are honoured ahead of `PATH`.
+- provider search paths are honoured ahead of `PATH`;
+- the intelligence pass recovers a credential, a token and a cookie from
+  realistic multi-tool output, counts progress lines separately, and keeps both
+  out of the document;
+- a URL is never reported as a credential pair, and a `Set-Cookie` header yields
+  one finding rather than two;
+- every `arch|debian` mapping in `tools.sh` is well formed, and every binary the
+  catalog names has one, so the two cannot drift apart;
+- every package manager produces a direct argv with no shell metacharacter, and
+  apt is asked for non-interactive minimal installs;
+- guidance for a binary that exists in no repository invents nothing.
 
 `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`,
 `cargo test` and `cargo build --release` are the gate for every change.

@@ -17,8 +17,14 @@ templates are executed, and where to edit or add provider operations safely.
   - Converts selected capability + collected inputs into executable jobs.
 - `src/exec/mod.rs`
   - Executes commands, enforces network-boundary routing, captures stdout/stderr.
+- `src/intel.rs`
+  - Scans every line of every artifact for exploitable artefact shapes, and maps
+    the result to the capabilities that follow from it.
 - `src/parser.rs`
   - Parses raw evidence based on per-operation `output` format.
+- `src/install.rs`
+  - Detects the distribution, resolves a missing provider against the host's
+    local package database, and installs it in the background during a run.
 - `src/store.rs`
   - Harvests, normalizes, deduplicates, correlates, and writes `output.txt/json`.
 
@@ -150,6 +156,31 @@ The one case where a shell *is* correct is a remote command: `ssh user@host 'mkd
 remote end interprets it. Chain operators belong inside that one argument, not
 split across the vector.
 
+## What the operation's output becomes
+
+`output` decides how the *shape* is understood. It does not decide what is looked
+for: `src/intel.rs` scans every line of every artifact regardless, so a leaked
+key in an access log, a credential in a `raw` report and a session cookie in an
+`http-post-form` dump are all recovered.
+
+```toml
+[[capability.provider.operation]]
+name = 'Access Log Sweep'
+args = ['-f', '/var/log/nginx/access.log']
+output = 'raw'          # the format is not understood...
+```
+
+…and the `Set-Cookie:` header and the `admin:hunter2` pair in the same file are
+still reported under `COOKIES` and `CREDENTIAL PAIRS`.
+
+Two things are deliberately not findings:
+
+- **Progress and chatter.** Classified `Noise`, counted, excluded from the
+  document, and stated as an excluded count. A line that both looks like progress
+  and contains an artefact keeps the artefact.
+- **Shape the regex cannot decide.** Hostnames, `host:port` and httpx bracket
+  fields belong to the format parsers, which understand them properly.
+
 ## Common failure points
 
 | Symptom | Cause |
@@ -161,4 +192,5 @@ split across the vector.
 | `CATALOG NOTES` in `--status` names an operation | Its `args` contains a shell operator as a whole argument |
 | Capability shows as unavailable, reason names a wordlist | Run `wordlists/fetch-wordlists.sh`, or set `TSEC_WORDLIST_ROOT` |
 | Wrong `output` mode | Parser failures and poor harvesting; match the tool's real format |
-| Provider not installed | Capability guidance is shown and the provider is skipped |
+| Provider not installed | Installed in the background; if that fails, recorded as `TOOL_NOT_FOUND` and skipped, never as a failed task |
+| An artefact looks wrong in the harvest | `output` mode, or the pattern in `src/intel.rs`, is wrong for that tool — check the raw artifact |

@@ -28,10 +28,10 @@ use crate::config::Config;
 use crate::domain::ids::{RunId, TaskId};
 use crate::domain::input::InputValues;
 use crate::domain::plan::RawArtifact;
-use crate::error::{Result, TsecError};
+use crate::error::{ExecutionErrorKind, Result, Stage, TsecError};
 use crate::exec::oniux::OniuxBackend;
 use crate::exec::{Launcher, Runner, RunnerConfig, TaskSpec};
-use crate::install::advise;
+use crate::install::{self, advise, InstallJob, InstallOutcome};
 use crate::provider::Registry;
 use crate::store::{HarvestStage, OutputHeader, RunStore};
 use crate::ui::execution::{self, Job, Processing};
@@ -415,6 +415,15 @@ fn menu(
 }
 
 /// Explain missing provider(s) and show verified Arch Linux installation advice.
+/// The phase slug a capability belongs to, for the guidance box.
+fn phase_menu_phase(cap: &Capability) -> &'static str {
+    PHASES
+        .iter()
+        .copied()
+        .find(|p| cap.id.starts_with(&format!("{p}.")))
+        .unwrap_or("recon")
+}
+
 fn provider_guidance(
     theme: &Theme,
     renderer: &mut Renderer,
@@ -442,9 +451,18 @@ fn provider_guidance(
             rows.push((pair("REQUIRED", &binding.binary), Role::Foreground));
             rows.push((pair("STATUS", "NOT INSTALLED"), Role::Error));
             let advice = advise(&binding.binary);
+            let key = if advice.is_auto_installable() {
+                "AUTO INSTALL"
+            } else {
+                "MANUAL"
+            };
             for (i, cmd) in advice.commands.iter().enumerate() {
-                let key = if i == 0 { "ARCH LINUX" } else { "ALTERNATIVE" };
-                rows.push((pair(key, cmd), Role::Success));
+                let label = if i == 0 {
+                    key.to_string()
+                } else {
+                    "ALTERNATIVE".to_string()
+                };
+                rows.push((pair(&label, cmd), Role::Success));
             }
             for note in &advice.notes {
                 rows.push((pair("NOTE", note), Role::Muted));
@@ -467,7 +485,7 @@ fn provider_guidance(
             rows.push((
                 pair(
                     "NOTE",
-                    "Network tasks require oniux (yay -S oniux, or ./tools.sh -recon)",
+                    "Network tasks require oniux (paru -S oniux, or ./tools.sh -recon)",
                 ),
                 Role::Muted,
             ));
@@ -476,7 +494,21 @@ fn provider_guidance(
     }
 
     rows.push((
-        "Install the missing provider(s), run tools.sh for this phase, or pick another capability."
+        format!(
+            "Run this capability to install {} in the background, run tools.sh -{} for the \
+             whole phase, or pick another capability.",
+            if crate::install::can_install() {
+                "the missing provider(s) automatically"
+            } else {
+                "the missing provider(s) manually — no supported package manager was found"
+            },
+            phase_menu_phase(cap)
+        ),
+        Role::Foreground,
+    ));
+    rows.push((
+        "A provider that is still missing after the run is reported as TOOL_NOT_FOUND, \
+         never as a failed task."
             .to_string(),
         Role::Muted,
     ));
@@ -615,6 +647,26 @@ fn run_capability(
     let mut formats: BTreeMap<String, OutputFormat> = BTreeMap::new();
     let mut jobs: Vec<Job> = Vec::new();
 
+    // A provider that is not installed is not the end of the task: start
+    // installing it now, on its own thread, and let the capability proceed with
+    // whatever else it can run. The outcome is decided at the end of the run,
+    // when the install has had the whole execution to finish.
+    let mut installs: Vec<InstallJob> = Vec::new();
+    if install::can_install() {
+        for binding in &cap.providers {
+            if binding.operations.is_empty() {
+                continue;
+            }
+            if resolve_program(registry, &binding.binary).is_some() {
+                continue;
+            }
+            let advice = install::advise(&binding.binary);
+            if advice.is_auto_installable() {
+                installs.push(InstallJob::spawn(&binding.binary));
+            }
+        }
+    }
+
     for binding in &cap.providers {
         if binding.operations.is_empty() {
             continue;
@@ -671,23 +723,182 @@ fn run_capability(
         },
     );
 
-    let outcome = execution::execute(
-        theme,
-        out,
-        renderer,
-        jobs,
-        phase_word,
-        &cap.label,
-        runner,
-        cfg.execution.max_concurrency,
-    )
-    .map_err(|e| TsecError::io("running the execution monitor", &e))?;
+    // While the run is executing, a background install may finish. Anything that
+    // landed is resolved now, so its operations can still be dispatched in a
+    // second pass rather than being silently dropped from the capability.
+    let mut late_jobs: Vec<Job> = Vec::new();
+    if !installs.is_empty() {
+        // Give an install a brief head start so a cached package does not have
+        // to wait for the whole run to be over before its capability can use it.
+        // Bounded, and never a reason to delay: anything still pending is picked
+        // up by the settle step at the end.
+        let grace = Instant::now() + Duration::from_millis(1500);
+        while Instant::now() < grace {
+            let pending = installs
+                .iter_mut()
+                .any(|j| matches!(j.poll(), InstallOutcome::Pending));
+            if !pending {
+                break;
+            }
+            std::thread::sleep(Duration::from_millis(50));
+        }
+
+        // Dispatch whatever is now available but was not at the start.
+        for binding in &cap.providers {
+            if binding.operations.is_empty() || missing_providers.is_empty() {
+                continue;
+            }
+            if !missing_providers.iter().any(|m| m == &binding.binary) {
+                continue;
+            }
+            let Some(program) = resolve_program(registry, &binding.binary) else {
+                continue;
+            };
+            for operation in &binding.operations {
+                formats.insert(
+                    format!("{}/{}", binding.binary, operation.name),
+                    operation.output,
+                );
+                let command = operation.command(&program, &cap.inputs, &values, catalog_source)?;
+                let index = late_jobs.len();
+                let stem = format!(
+                    "T{:02}_{}_{}",
+                    index + 1,
+                    clean_slug(&binding.binary),
+                    clean_slug(&operation.name)
+                );
+                late_jobs.push(Job {
+                    index,
+                    spec: TaskSpec {
+                        id: TaskId(index),
+                        provider: binding.binary.clone(),
+                        operation: operation.name.clone(),
+                        label: format!(
+                            "{} · {} (installed mid-run)",
+                            binding.binary, operation.name
+                        ),
+                        timeout: Duration::from_secs(cfg.execution.timeout_secs),
+                        artifacts: RawArtifact {
+                            primary: store.raw_stdout(&stem),
+                            stderr: store.raw_stderr(&stem),
+                        },
+                        sensitive_args: command.sensitive_args().to_vec(),
+                    },
+                    command,
+                });
+            }
+            missing_providers.retain(|m| m != &binding.binary);
+        }
+    }
+
+    let outcome = if late_jobs.is_empty() {
+        execution::execute(
+            theme,
+            out,
+            renderer,
+            jobs,
+            phase_word,
+            &cap.label,
+            runner,
+            cfg.execution.max_concurrency,
+        )
+        .map_err(|e| TsecError::io("running the execution monitor", &e))?
+    } else {
+        jobs.extend(late_jobs);
+        execution::execute(
+            theme,
+            out,
+            renderer,
+            jobs,
+            phase_word,
+            &cap.label,
+            runner,
+            cfg.execution.max_concurrency,
+        )
+        .map_err(|e| TsecError::io("running the execution monitor", &e))?
+    };
+
+    // ── Settle the background installs ────────────────────────────────────
+    // A provider that is still missing now is reported as TOOL_NOT_FOUND rather
+    // than as a failed task: nothing ran, so nothing failed.
+    let mut install_notes: Vec<String> = Vec::new();
+    let mut install_reasons: BTreeMap<String, String> = BTreeMap::new();
+    for job in &mut installs {
+        let binary = job.binary().to_string();
+        match job.settle() {
+            InstallOutcome::Installed { package } => {
+                install_notes.push(format!("installed {package} while the capability ran"))
+            }
+            InstallOutcome::Refused { package, reason } => {
+                install_notes.push(format!("could not install {package}: {reason}"));
+                install_reasons.insert(binary, format!("{package}: {reason}"));
+            }
+            InstallOutcome::Unavailable { reason } => {
+                install_notes.push(reason.clone());
+                install_reasons.insert(binary, reason);
+            }
+            InstallOutcome::NoPackage => {
+                install_reasons.insert(binary, "no package in any repository provides it".into());
+            }
+            InstallOutcome::Pending => {}
+        }
+    }
 
     for (_, record) in &outcome.records {
         store.commit(record.clone())?;
     }
 
+    // A provider that is still missing after the install settled produced no task
+    // at all. It is recorded as skipped with `TOOL_NOT_FOUND`, so the manifest
+    // and the document say "this did not run, and here is why" instead of
+    // quietly omitting it. Recording it as a failure would be a lie: nothing was
+    // executed, so nothing failed.
+    let reasons: BTreeMap<String, String> = install_reasons.clone();
+    for binary in &missing_providers {
+        let reason = reasons
+            .get(binary)
+            .cloned()
+            .unwrap_or_else(|| "no package provides it".to_string());
+        let error = TsecError::new(
+            Stage::ResolveTools,
+            ExecutionErrorKind::ToolNotFound {
+                tool: binary.clone(),
+                reason,
+            },
+        );
+        let now = chrono::Utc::now();
+        store.commit(crate::domain::execution::ExecutionRecord {
+            task_id: format!("S{}", binary),
+            phase: phase_word.to_string(),
+            capability: cap.label.clone(),
+            provider: binary.clone(),
+            operation: String::new(),
+            label: format!("{binary} · not installed"),
+            command: binary.clone(),
+            program: binary.clone(),
+            args: Vec::new(),
+            network: false,
+            boundary: crate::domain::execution::ExecBoundary::Local,
+            launched: String::new(),
+            uses_shell: false,
+            started_at: now,
+            finished_at: now,
+            duration_ms: 0,
+            exit_code: None,
+            stdout_bytes: 0,
+            stderr_bytes: 0,
+            raw_output: store.raw_stdout(&format!("S_{}", clean_slug(binary))),
+            stderr_output: Some(store.raw_stderr(&format!("S_{}", clean_slug(binary)))),
+            status: crate::domain::execution::TaskStatus::Skipped,
+            error_code: Some(error.kind.code().to_string()),
+            error_message: Some(error.reason()),
+            harvest_section: None,
+        })?;
+    }
+
     // ── Branch: all tasks failed → RUN FAILURE (no processing, no output) ──
+    // Only real attempts count. A capability whose every provider was missing has
+    // not "failed"; it has not run, and it is shown as such.
     if all_tasks_failed(&outcome.records) {
         return show_run_failure(theme, renderer, out, &outcome.records);
     }
@@ -698,6 +909,7 @@ fn run_capability(
         phase: phase_word,
         capability: &cap.label,
         missing_providers: &missing_providers,
+        install_notes: &install_notes,
         cancelled: outcome.cancelled,
     };
 
