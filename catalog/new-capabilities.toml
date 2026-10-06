@@ -2,7 +2,7 @@
 # Copyright (c) funbinet. All rights reserved.
 # Part of TSEC terminal cybersecurity operations platform by funbinet.
 #
-# Ten phases, between eleven and twenty-seven capabilities each. Every operation is an explicit
+# Ten phases, sixteen capabilities each. Every operation is an explicit
 # argument vector with {input} placeholders declared by the capability's
 # input schema. Nothing here is executed through a shell; templates that
 # carry shell syntax are rejected at load time.
@@ -1147,7 +1147,7 @@ output = 'lines'
 network = true
 [[capability.provider.operation]]
 name = 'Subdomain Historical'
-args = ['{domain}']
+args = ['{domain}', '-get-subs']
 output = 'lines'
 network = true
 [[capability.provider]]
@@ -1745,7 +1745,7 @@ output = 'lines'
 network = false
 [[capability.provider.operation]]
 name = 'AWS Key Pattern Sweep'
-args = ['-rniE', 'AKIA[0-9A-Z]{{16}}', '{path}']
+args = ['-rniE', 'AKIA[0-9A-Z]{16}', '{path}']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -3917,7 +3917,7 @@ network = false
 binary = 'grep'
 [[capability.provider.operation]]
 name = 'IP Pattern Pull'
-args = ['-oE', '([0-9]{1,3}\.){{3}}[0-9]{1,3}', '{target}']
+args = ['-oE', '([0-9]{1,3}\.){3}[0-9]{1,3}', '{target}']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -6034,7 +6034,7 @@ network = true
 binary = 'osv-scanner'
 [[capability.provider.operation]]
 name = 'Recursive Scan'
-args = ['scan', '--recursive', '{path}', '--format', 'json']
+args = ['-r', '{path}', '--json']
 output = 'json'
 network = true
 [[capability.provider]]
@@ -9752,7 +9752,6 @@ phase = 'escalation'
 label = 'TOKEN IMPERSONATION'
 summary = 'Enumerate domain tokens and impersonate privileged principals'
 inputs = [
-  { key = 'domain', type = 'domain', required = true },
   { key = 'rhost', type = 'target', required = true },
   { key = 'username', type = 'username', required = true },
   { key = 'password', type = 'password', required = true },
@@ -11218,7 +11217,6 @@ phase = 'escalation'
 label = 'REMOTE CODE EXEC'
 summary = 'Convert foothold-level access into remote command execution probes'
 inputs = [
-  { key = 'domain', type = 'domain', required = true },
   { key = 'rhost', type = 'target', required = true },
   { key = 'username', type = 'username', required = true },
   { key = 'password', type = 'password', required = true },
@@ -11309,7 +11307,7 @@ args = ['smb', '{rhost}', '-u', '{username}', '-p', '{password}', '-x', 'hostnam
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-getUsers'
+binary = 'impacket-mqtt-check' if False else 'impacket-getUsers'
 [[capability.provider.operation]]
 name = 'Domain User Pull'
 args = ['{domain}/{username}:{password}', '{rhost}']
@@ -11452,7 +11450,7 @@ network = false
 binary = 'grep'
 [[capability.provider.operation]]
 name = 'Hash Pattern Triage'
-args = ['-cE', '^[0-9a-f]{{32}}$|^[0-9a-f]{{40}}$|^[0-9a-f]{{64}}$', '/dev/null']
+args = ['-cE', '^[0-9a-f]{32}$|^[0-9a-f]{40}$|^[0-9a-f]{64}$', '/dev/null']
 output = 'lines'
 network = false
 
@@ -11560,7 +11558,7 @@ network = false
 binary = 'maskprocessor'
 [[capability.provider.operation]]
 name = 'Mask Generate Count'
-args = ['?u?l?l?l?l?d?d?d?d', '--seq-max=2']
+args = ['?u?l?l?l?l?d?d?d?d', '--cpu-time', '5']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -12100,7 +12098,7 @@ network = true
 [[capability]]
 id = 'credentials.kerberoast'
 phase = 'credentials'
-label = 'KERBEROAST TICKET HARVEST'
+label = 'KERBEROAST'
 summary = 'Harvest and crack service account tickets in the domain'
 inputs = [
   { key = 'rhost', type = 'target', required = true },
@@ -13104,7 +13102,7 @@ network = false
 binary = 'grep'
 [[capability.provider.operation]]
 name = 'AWS Key Pattern'
-args = ['-rE', 'AKIA[0-9A-Z]{{16}}', '{path}']
+args = ['-rE', 'AKIA[0-9A-Z]{16}', '{path}']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -13139,14 +13137,14 @@ network = false
 binary = 'grep'
 [[capability.provider.operation]]
 name = 'Google API Pattern'
-args = ['-rE', 'AIza[0-9A-Za-z_-]{{35}}', '{path}']
+args = ['-rE', 'AIza[0-9A-Za-z_-]{35}', '{path}']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'grep'
 [[capability.provider.operation]]
 name = 'Twilio Key Pattern'
-args = ['-rE', 'SK[0-9a-fA-F]{{32}}', '{path}']
+args = ['-rE', 'SK[0-9a-fA-F]{32}', '{path}']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -13181,7 +13179,7 @@ network = false
 binary = 'grep'
 [[capability.provider.operation]]
 name = 'Heroku Sendgrid Pattern'
-args = ['-rE', 'SG\\.[A-Za-z0-9_-]+|heroku[0-9a-f]{{8}}@', '{path}']
+args = ['-rE', 'SG\\.[A-Za-z0-9_-]+|heroku[0-9a-f]{8}@', '{path}']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -13737,7 +13735,7 @@ network = false
 binary = 'maskprocessor'
 [[capability.provider.operation]]
 name = 'Mask Generate'
-args = ['?u?l?l?l?l?l?d?d?d?d', '--output-file=/tmp/mask.txt']
+args = ['?u?l?l?l?l?l?d?d?d?d', '--output-file', '/tmp/mask.txt']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -18159,7 +18157,7 @@ network = true
 [[capability]]
 id = 'exploitation.deserialization'
 phase = 'exploitation'
-label = 'DESERIALIZATION EXPLOITATION'
+label = 'DESERIALIZATION'
 summary = 'Exploit insecure deserialization across Java, PHP and Python stacks'
 inputs = [
   { key = 'url', type = 'url', required = true },
@@ -20795,7 +20793,7 @@ network = true
 binary = 'ffuf'
 [[capability.provider.operation]]
 name = 'IDOR ID Fuzz'
-args = ['-u', '{url}/api/users/FUZZ', '-w', '{wl:fuzz/numeric-values.txt}', '-mc', '200', '-t', '10']
+args = ['-u', '{url}/api/users/FUZZ', '-w', '{wl:fuzz/numbers.txt}', '-mc', '200', '-t', '10']
 output = 'lines'
 network = true
 [[capability.provider]]

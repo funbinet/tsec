@@ -95,6 +95,25 @@ fn run() -> Result<()> {
                         println!("               ... and {} more", other.len() - 20);
                     }
                 }
+
+                // Providers that resolved but do not accept the options the
+                // catalog passes them. Availability counts these as ready, so
+                // without this line every operation built for them fails at once
+                // and the reason is only visible one task at a time.
+                let faults = tsec::provider_identity::flag_mismatches(&catalog);
+                if !faults.is_empty() {
+                    println!();
+                    println!(
+                        "{:<14} {}",
+                        "WRONG TOOL",
+                        faults.len().to_string()
+                            + " (resolve, but do not accept the flags the catalog uses)"
+                    );
+                    for fault in &faults {
+                        println!("               {} — {}", fault.binary, fault.identity);
+                        println!("                 {}", fault.reason());
+                    }
+                }
                 return Ok(());
             }
             "--version" | "-v" => {

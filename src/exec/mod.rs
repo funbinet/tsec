@@ -330,13 +330,22 @@ impl Runner {
 
         let outcome = self.supervise(child, spec.timeout, cancel).await;
 
+        // What the tool said on the way out, before the status is reduced to a
+        // number. Most tools explain themselves here — an unrecognised flag, a
+        // missing template, a refused connection — and that line is the only
+        // thing that says which of those it was. `exited with status 2` cannot.
+        let said = stderr_tail(&spec.artifacts.stderr);
+
         let (status, exit_code, error_code, error_message) = match outcome {
             Outcome::Exited(0) => (TaskStatus::Complete, Some(0), None, None),
             Outcome::Exited(code) => (
                 TaskStatus::Failed,
                 Some(code),
                 Some("EXIT_STATUS".to_string()),
-                Some(format!("exited with status {code}")),
+                Some(match said {
+                    Some(line) => format!("exited {code}: {line}"),
+                    None => format!("exited with status {code}"),
+                }),
             ),
             Outcome::TimedOut => (
                 TaskStatus::TimedOut,
@@ -548,6 +557,25 @@ fn io_err(context: &str, e: &io::Error) -> TsecError {
             reason: e.to_string(),
         },
     )
+}
+
+/// The most telling line a tool wrote to stderr, if it wrote one.
+///
+/// Scanned from the end, because the last thing a failing tool says is the one
+/// about its failure; the first lines are often its banner. Progress lines are
+/// skipped, since "Loaded 42 templates" explains nothing when the run then dies.
+fn stderr_tail(path: &std::path::Path) -> Option<String> {
+    let text = std::fs::read_to_string(path).ok()?;
+    let line = text
+        .lines()
+        .rev()
+        .map(str::trim)
+        .find(|l| !l.is_empty() && !l.starts_with('['))?
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ");
+    let head: String = line.chars().take(200).collect();
+    Some(head)
 }
 
 fn file_sizes(a: &RawArtifact) -> (usize, usize) {

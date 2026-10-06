@@ -28,7 +28,7 @@ Reports, without touching the network:
 ```sh
 $ tsec --status
 TSEC 3.0.0
-187/218 available
+142/200 available
 RECON          21/22
 SURFACE        20/22
 ...

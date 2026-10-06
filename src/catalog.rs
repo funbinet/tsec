@@ -7,7 +7,7 @@
 //! a catalog it cannot vouch for.
 //!
 //! Rules enforced here, not elsewhere:
-//!   * a phase label is one uppercase word and a capability label one to three;
+//!   * a phase label is one uppercase word and a capability label two to three;
 //!   * every `{placeholder}` names a declared input, so a renamed input fails
 //!     loudly instead of reaching a tool as a literal `{target}`;
 //!   * every `{wl:...}` reference names a bundled wordlist, so no capability
@@ -820,19 +820,20 @@ impl Catalog {
     }
 }
 
-/// Reject a label that is not one to three uppercase words.
+/// Reject a label that is not two or three uppercase words.
 ///
-/// One word is allowed because some capabilities name a single thing
-/// (`KERBEROAST`). Three is allowed because several genuinely need it
-/// (`SSH KEY HARVEST`) and shortening them to satisfy a style rule loses
-/// meaning the operator relies on. The rule exists so a label reads as a
-/// heading in a fixed-width menu, not to enforce a vocabulary.
+/// Two is the floor because a one-word label reads as a noun rather than a
+/// heading, and the menu gives every capability a label in the same column.
+/// Three is the ceiling because several genuinely need it (`SSH KEY HARVEST`)
+/// and shortening them to satisfy a style rule loses meaning the operator
+/// relies on. The rule exists so a label reads as a heading in a fixed-width
+/// menu, not to enforce a vocabulary.
 fn check_label<F>(fail: &F, where_: &str, label: &str) -> Result<()>
 where
     F: Fn(String) -> TsecError,
 {
     let words: Vec<&str> = label.split(' ').collect();
-    let ok = (1..=3).contains(&words.len())
+    let ok = (2..=3).contains(&words.len())
         && words.iter().all(|w| {
             !w.is_empty()
                 && w.chars().next().is_some_and(|c| c.is_ascii_uppercase())
@@ -843,7 +844,7 @@ where
         Ok(())
     } else {
         Err(fail(format!(
-            "{where_} label {label:?} must be one to three uppercase words, e.g. \
+            "{where_} label {label:?} must be two or three uppercase words, e.g. \
              `PORT DISCOVERY` or `SSH KEY HARVEST`"
         )))
     }
@@ -1222,25 +1223,27 @@ mod tests {
     }
 
     #[test]
-    fn a_label_must_be_one_to_three_uppercase_words() {
+    fn a_label_must_be_two_or_three_uppercase_words() {
         for bad in [
             "PORT DISCOVERY RUNS TODAY",
             "PORT DISCOVERY AND THEN SOME",
             "port discovery",
             "PORT  DISCOVERY",
+            // One word reads as a noun, not a heading.
+            "KERBEROAST",
             "",
         ] {
             let toml = full_catalog().replace(r#"label = "DO THING""#, &relabel(bad));
             let e = Catalog::from_toml(&toml, Path::new("t.toml")).unwrap_err();
             assert!(
-                e.reason().contains("one to three uppercase words"),
+                e.reason().contains("two or three uppercase words"),
                 "label {bad:?} should be rejected, got {}",
                 e.reason()
             );
         }
-        // One and three words are both accepted, so the rule stays a style
+        // Two and three words are both accepted, so the rule stays a style
         // check rather than a vocabulary.
-        for good in ["KERBEROAST", "PORT DISCOVERY", "SSH KEY HARVEST"] {
+        for good in ["PORT DISCOVERY", "SSH KEY HARVEST", "METADATA EXTRACTION"] {
             let toml = full_catalog().replace(r#"label = "DO THING""#, &relabel(good));
             Catalog::from_toml(&toml, Path::new("t.toml")).unwrap();
         }

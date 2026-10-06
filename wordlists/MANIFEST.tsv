@@ -71,8 +71,10 @@ wordlists/ad/attributes.txt	ship	-	https://raw.githubusercontent.com/danielmiess
 wordlists/web/common.txt	ship	-	https://raw.githubusercontent.com/danielmiessler/SecLists/master/Discovery/Web-Content/common.txt	Small high-signal web path list
 wordlists/web/big.txt	ship	-	https://raw.githubusercontent.com/danielmiessler/SecLists/master/Discovery/Web-Content/big.txt	Medium web path list
 wordlists/web/raft-medium.txt	ship	-	https://raw.githubusercontent.com/danielmiessler/SecLists/master/Discovery/Web-Content/raft-medium-directories.txt	RAFT medium directories
+wordlists/web/admin-panels.txt	ship	-	-	Administrative panel and login paths, hand-curated: common CMS admin prefixes, control panels and exposed config backups
 wordlists/web/logins.txt	ship	-	https://raw.githubusercontent.com/danielmiessler/SecLists/master/Discovery/Web-Content/Logins.fuzz.txt	Login and authentication endpoints
 wordlists/web/api-endpoints.txt	ship	-	https://raw.githubusercontent.com/danielmiessler/SecLists/master/Discovery/Web-Content/api/api-endpoints.txt	REST API endpoint paths
+wordlists/web/httpmethods.txt	ship	-	-	https://www.rfc-editor.org/rfc/rfc9110.html#name-methods	HTTP request methods from RFC 9110, for method-fuzzing verbs
 wordlists/web/burp-parameter-names.txt	ship	-	https://raw.githubusercontent.com/danielmiessler/SecLists/master/Discovery/Web-Content/burp-parameter-names.txt	Request parameter names for parameter fuzzing
 wordlists/web/wp-plugins.txt	ship	-	https://raw.githubusercontent.com/danielmiessler/SecLists/master/Discovery/Web-Content/CMS/wp-plugins.fuzz.txt	WordPress plugin slugs
 wordlists/web/cms-backups.txt	ship	-	https://raw.githubusercontent.com/danielmiessler/SecLists/master/Discovery/Web-Content/Common-DB-Backups.txt	Exposed database backup files
@@ -95,11 +97,11 @@ wordlists/fuzz/ssrf.txt	ship	-	Loopback, cloud metadata, file and protocol-handl
 wordlists/fuzz/ssti.txt	ship	-	Jinja, Twig, Freemarker, Velocity, OGNL and EL expressions	Server-side template injection expressions
 wordlists/fuzz/ids.txt	ship	-	Numeric, null, traversal and prototype-chain identifiers	Insecure direct object reference identifiers
 wordlists/fuzz/injections.txt	ship	-	https://raw.githubusercontent.com/danielmiessler/SecLists/master/Fuzzing/HTML5sec-Injections-Jhaddix.txt	HTML5 and general injection payloads
-wordlists/fuzz/xss.txt	ship	-	Script, event handler and URL scheme payloads	Cross-site scripting payloads
+wordlists/fuzz/xss-payloads.txt	ship	-	Script, event handler and URL scheme payloads	Cross-site scripting payloads
 wordlists/fuzz/xxe.txt	ship	-	https://raw.githubusercontent.com/danielmiessler/SecLists/master/Fuzzing/XXE-Fuzzing.txt	XML external entity payloads
 wordlists/fuzz/ssi.txt	ship	-	https://raw.githubusercontent.com/danielmiessler/SecLists/master/Fuzzing/SSI-Injection-Jhaddix.txt	Server-side include payloads
 wordlists/fuzz/format-string.txt	ship	-	https://raw.githubusercontent.com/danielmiessler/SecLists/master/Fuzzing/FormatString-Jhaddix.txt	Format string payloads
-wordlists/fuzz/numbers.txt	ship	-	https://raw.githubusercontent.com/danielmiessler/SecLists/master/Fuzzing/3-digits-000-999.txt	Numeric identifier fuzzing corpus
+wordlists/fuzz/numeric-values.txt	ship	-	https://raw.githubusercontent.com/danielmiessler/SecLists/master/Fuzzing/3-digits-000-999.txt	Numeric identifier fuzzing corpus
 wordlists/fuzz/unicode.txt	ship	-	https://raw.githubusercontent.com/danielmiessler/SecLists/master/Fuzzing/Unicode.txt	Unicode codepoint corpus
 wordlists/fuzz/ldap.txt	ship	-	https://raw.githubusercontent.com/danielmiessler/SecLists/master/Fuzzing/LDAP.Fuzzing.txt	LDAP injection payloads
 wordlists/fuzz/naughty-strings.txt	ship	-	https://raw.githubusercontent.com/danielmiessler/SecLists/master/Fuzzing/big-list-of-naughty-strings.txt	Payloads that break naive parsers

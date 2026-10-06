@@ -51,6 +51,7 @@ pub mod install;
 pub mod intel;
 pub mod parser;
 pub mod provider;
+pub mod provider_identity;
 pub mod store;
 pub mod ui;
 

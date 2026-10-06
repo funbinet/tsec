@@ -105,6 +105,29 @@ fn noise_patterns() -> &'static [Regex] {
             // A bare separator or box-drawing rule.
             r"^\s*[-=_*~]{3,}\s*$",
             r"^\s*[+|]\s*[-=]{3,}\s*[+|]?\s*$",
+            // An ASCII-art logo. Several of the most-used tools print one on
+            // every run: nuclei, httpx, katana, subfinder and amass all draw
+            // their name in slash-and-underscore figures before doing any work.
+            // A line made only of word characters, whitespace and the
+            // punctuation such figures use — and carrying a slash, so a URL
+            // never matches — is artwork rather than a result.
+            r"^[\s\\/_.*|`~^()\[\]{}<>-]*[\\/][\s\\/_.*|`~^()\[\]{}<>-]*$",
+            // A banner line naming the project's own site or handle. These are indented
+            // with tabs under the logo, which is what tells them apart from a
+            // bare hostname in the results — `example.com` is a finding.
+            r"^\t+\s*\S+\.(?:io|com|dev|net|org|sh|ai|co)\s*$",
+            // A version figure trailing a logo, separated from it by spaces: nuclei ends
+            // its figure with `/_/   v3.11.1`.
+            r"^[\s\\/_.*,|`~^()\[\]{}<>-]*\s+v?\d+\.\d+[\w.\-+]*\s*$",
+            // The fragments such a logo is drawn from. A caption line carries no
+            // slash, so it needs its own shape: short, and made only of the
+            // characters a figure is built from.
+            r"^[\s_(){}\[\]<>-]{0,20}$",
+            // A severity level in brackets. ProjectDiscovery colours the level
+            // *inside* the brackets and pads the whole thing with escapes, so
+            // the optional colour codes are allowed around and within them:
+            // `[\x1b[1;31mFTL\x1b[0m] Could not run enumeration`.
+            r"(?i)^\s*\x1b?\[[0-9;]*m?\s*\[?\s*(?:\x1b\[[0-9;]*m)?\s*(?:ftl|fatal|err|error|wrn|warn|inf|info|dbg|debug)\s*(?:\x1b\[[0-9;]*m)?\s*\]?\s*(?:\x1b\[[0-9;]*m)?",
         ]
         .iter()
         .map(|p| Regex::new(p).expect("noise pattern compiles"))
@@ -122,7 +145,13 @@ pub fn is_noise(line: &str) -> bool {
     if trimmed.is_empty() {
         return true;
     }
-    noise_patterns().iter().any(|p| p.is_match(trimmed))
+    // Patterns match the untrimmed line as well, because leading whitespace is
+    // itself evidence: a banner centres itself with tabs or runs of spaces,
+    // while a result comes flush to the margin. Trimming first would throw away
+    // the only thing distinguishing the two.
+    noise_patterns()
+        .iter()
+        .any(|p| p.is_match(trimmed) || p.is_match(line))
 }
 
 // ── artefact patterns ────────────────────────────────────────────────────────
@@ -960,6 +989,40 @@ mod tests {
             assert!(is_noise(line), "{line:?} should be noise");
         }
         assert!(!is_noise("10.0.0.1:22"));
+    }
+
+    #[test]
+    fn an_ascii_art_banner_is_noise_not_a_finding() {
+        // Captured from `nuclei -nc` on a real run. These five lines are the
+        // whole reason a harvest opened with a logo instead of results.
+        for line in [
+            "                     __     _",
+            "   ____  __  _______/ /__  (_)",
+            "  / __ \\/ / / / ___/ / _ \\/ /",
+            " / / / / /_/ / /__/ /  __/ /",
+            "/_/ /_/\\__,_/\\___/_/\\___/_/   v3.11.1",
+            "\t\tprojectdiscovery.io",
+            "[INF] Current nuclei version: v3.11.1 (latest)",
+            "[INF] Executing 1213 signed templates from projectdiscovery/nuclei-templates",
+            // naabu refuses to run and says so in a coloured bracket.
+            "\u{1b}[1;31mFTL\u{1b}[0m] Could not run enumeration: no valid ipv4 or ipv6 targets",
+        ] {
+            assert!(is_noise(line), "banner line {line:?} should be noise");
+        }
+
+        // The findings that share those banners must all survive. A hostname is
+        // the shape a banner's own site line also has, which is what makes this
+        // worth asserting.
+        for line in [
+            "example.com",
+            "https://example.com/admin",
+            "200",
+            "192.0.2.10",
+            "[dns-waf-detect:cloudflare] [dns] [info] example.com",
+            "[waf-detect:cloudflare] [http] [info] https://example.com",
+        ] {
+            assert!(!is_noise(line), "{line:?} is a result and must be kept");
+        }
     }
 
     #[test]

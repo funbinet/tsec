@@ -120,6 +120,7 @@ pkg_info() {
         asnmap) echo "asnmap|asnmap" ;;
         assetfinder) echo "assetfinder|assetfinder" ;;
         at) echo "at|at" ;;
+        atq) echo "at|at" ;;
         awk) echo "gawk|gawk" ;;
         aws) echo "aws-cli|awscli" ;;
         # b
@@ -128,10 +129,13 @@ pkg_info() {
         besside-ng) echo "aircrack-ng|aircrack-ng" ;;
         bettercap) echo "bettercap|bettercap" ;;
         blackbird) echo "blackbird|blackbird" ;;
+        binwalk) echo "binwalk|binwalk" ;;
         bully) echo "bully|bully" ;;
         # c
         capsh) echo "libcap|libcap2-bin" ;;
-        cat|chmod|cp) echo "coreutils|coreutils" ;;
+        cargo-audit) echo "cargo-audit|cargo-audit" ;;
+        capinfos) echo "wireshark-cli|wireshark-cli" ;;
+        cat|chmod|comm|cp|cut|sha1sum|size|sort|type) echo "coreutils|coreutils" ;;
         cdncheck) echo "cdncheck|cdncheck" ;;
         certipy) echo "certipy-ad|certipy-ad" ;;
         certutil) echo "adfind|adfind" ;;
@@ -195,6 +199,9 @@ pkg_info() {
         # g
         garble) echo "garble|garble" ;;
         gau) echo "gau|gau" ;;
+        gf) echo "gf|gf" ;;
+        go-audit) echo "go-audit|go-audit" ;;
+        gsutil) echo "google-cloud-cli|google-cloud-sdk" ;;
         gcc) echo "gcc|gcc" ;;
         geoiplookup) echo "geoip-bin|geoip-bin" ;;
         getcap|getpcaps) echo "libcap|libcap2-bin" ;;
@@ -243,6 +250,8 @@ pkg_info() {
         john) echo "john|john" ;;
         joomscan) echo "joomscan|joomscan" ;;
         journalctl) echo "systemd|systemd" ;;
+        impacket-addcomputer|impacket-describeTicket|impacket-getUsers|impacket-services|impacket-smbserver|impacket-atexec|impacket-dcomexec|impacket-dementor|impacket-findDelegation|impacket-getArch|impacket-getST|impacket-getTGT|impacket-getUserSPNs|impacket-lookupsid|impacket-mssqlclient|impacket-net|impacket-ntlmrelayx|impacket-printbugger|impacket-psexec|impacket-reg|impacket-secretsdump|impacket-smbclient|impacket-smbexec|impacket-wmiexec|impacket-GetNPUsers) echo "impacket|python3-impacket" ;;
+        interactsh-client) echo "interactsh-client|interactsh-client" ;;
         jq) echo "jq|jq" ;;
         jwt_tool) echo "jwt_tool|jwt_tool" ;;
         # k
@@ -257,6 +266,7 @@ pkg_info() {
         # l
         ldapsearch) echo "openldap|ldap-utils" ;;
         ligolo-ng|ligolo-proxy) echo "ligolo-ng|ligolo-ng" ;;
+        ldd) echo "glibc|libc-bin" ;;
         linkfinder) echo "linkfinder|linkfinder" ;;
         ls) echo "coreutils|coreutils" ;;
         ltrace) echo "ltrace|ltrace" ;;
@@ -284,6 +294,7 @@ pkg_info() {
         naabu) echo "naabu|naabu" ;;
         name-that-hash) echo "name-that-hash|name-that-hash" ;;
         nbtscan) echo "nbtscan|nbtscan" ;;
+        npm) echo "npm|npm" ;;
         nc) echo "netcat-openbsd|netcat-openbsd" ;;
         ncat) echo "nmap|ncat" ;;
         ncrack) echo "ncrack|ncrack" ;;
@@ -330,6 +341,7 @@ pkg_info() {
         python3) echo "python|python3" ;;
         # r
         rabin2) echo "radare2|radare2" ;;
+        r2) echo "radare2|radare2" ;;
         radamsa) echo "radamsa|radamsa" ;;
         rar2john) echo "john|john" ;;
         readelf) echo "binutils|binutils" ;;
@@ -344,7 +356,14 @@ pkg_info() {
         rpm) echo "rpm|rpm" ;;
         rustscan) echo "rustscan|rustscan" ;;
         # s
+        crtndstry) echo "crtndstry|crtndstry" ;;
+        s3scanner) echo "s3scanner|s3scanner" ;;
         scapy) echo "scapy|scapy" ;;
+        scp) echo "openssh|openssh-client" ;;
+        shuffledns) echo "shuffledns|shuffledns" ;;
+        sqlite3) echo "sqlite|sqlite3" ;;
+        strip) echo "binutils|binutils" ;;
+        sublist3r) echo "sublist3r|sublist3r" ;;
         scoutsuite) echo "scoutsuite|scoutsuite" ;;
         searchsploit) echo "exploitdb|exploitdb" ;;
         sed) echo "sed|sed" ;;
@@ -383,6 +402,7 @@ pkg_info() {
         systemctl|systemd-run) echo "systemd|systemd" ;;
         # t
         tail) echo "coreutils|coreutils" ;;
+        tshark) echo "wireshark-cli|wireshark-cli" ;;
         tcpdump) echo "tcpdump|tcpdump" ;;
         testssl.sh) echo "testssl.sh|testssl.sh" ;;
         theharvester) echo "theharvester|theharvester" ;;
@@ -416,6 +436,7 @@ pkg_info() {
         wfuzz) echo "wfuzz|wfuzz" ;;
         wget) echo "wget|wget" ;;
         whatweb) echo "whatweb|whatweb" ;;
+        proxychains) echo "proxychains-ng|proxychains" ;;
         which) echo "which|debianutils" ;;
         whois) echo "whois|whois" ;;
         windapsearch) echo "windapsearch|windapsearch" ;;

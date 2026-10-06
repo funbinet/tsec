@@ -85,20 +85,14 @@ fn compose_stack(stack: &[Frame], panel: &Frame, hint: &str, theme: &Theme) -> F
 }
 
 /// Full uppercase name for each phase.
+///
+/// The catalog is the single source of truth for this, so the main menu can
+/// never drift from `tsec --status` or from the phase a run is recorded under.
+/// The `_ => slug` fallback means an unknown phase shows its slug rather than
+/// nothing, which is the honest rendering for a catalog that names a phase this
+/// build does not know.
 fn phase_display_name(slug: &str) -> &str {
-    match slug {
-        "recon" => "RECON",
-        "surface" => "SURFACE",
-        "vulnerability" => "VULNERABILITY",
-        "payload" => "PAYLOAD",
-        "escalation" => "ESCALATION",
-        "credentials" => "CREDENTIALS",
-        "lateral" => "LATERAL",
-        "persistence" => "PERSISTENCE",
-        "objectives" => "OBJECTIVES",
-        "wireless" => "WIRELESS",
-        _ => slug,
-    }
+    phase_label(slug).unwrap_or(slug)
 }
 
 /// Enter the framework's top level: the ten phases, then status and outputs.
@@ -1065,6 +1059,19 @@ fn status_screen(
         let ready = caps.iter().filter(|cap| cap.is_available()).count();
         rows.push((pair(label, &format!("{ready}/{}", caps.len())), Role::Muted));
     }
+
+    // A provider can resolve and still be the wrong program. Report that here,
+    // where an operator reads availability, instead of letting it surface later
+    // as a wall of unexplained task failures.
+    let faults = crate::provider_identity::flag_mismatches(catalog);
+    if !faults.is_empty() {
+        rows.push((String::new(), Role::Muted));
+        rows.push((format!("WRONG PROVIDER  {}", faults.len()), Role::Warning));
+        for fault in &faults {
+            rows.push((pair(&fault.binary, &fault.reason()), Role::Warning));
+        }
+    }
+
     rows.push((String::new(), Role::Muted));
     rows.push((catalog.source().display().to_string(), Role::Secondary));
 
@@ -1334,6 +1341,15 @@ mod tests {
         assert_eq!(phase_display_name("surface"), "SURFACE");
         assert_eq!(phase_display_name("escalation"), "ESCALATION");
         assert_eq!(phase_display_name("unknown"), "unknown");
+        // Every phase the framework defines renders in capitals, from one source.
+        for phase in crate::catalog::PHASES {
+            let shown = phase_display_name(phase);
+            assert!(
+                shown.chars().all(|c| !c.is_lowercase()),
+                "phase {phase} renders as {shown}"
+            );
+        }
+        assert_eq!(phase_display_name("exploitation"), "EXPLOITATION");
     }
 
     #[test]

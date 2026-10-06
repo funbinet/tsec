@@ -657,6 +657,30 @@ fn output_document(
         text.push('\n');
     }
 
+    // Why each operation failed, in the tool's own words.
+    //
+    // A tally that reads FAILED 41 tells an operator nothing they can act on. The
+    // reason is already captured — every task records its exit code and stderr —
+    // so the document states it, which is the difference between a run that
+    // teaches and one that has to be repeated with a shell open.
+    let mut explained = false;
+    for record in records.iter().filter(|r| !r.status.is_success()) {
+        if !explained {
+            text.push_str(&centre(&format!(
+                "WHY {} DID NOT RUN",
+                records.iter().filter(|r| !r.status.is_success()).count()
+            )));
+            text.push('\n');
+            explained = true;
+        }
+        text.push_str(&format!(
+            "  {} {} — {}\n",
+            record.status.label(),
+            record.operation,
+            record.failure_reason()
+        ));
+    }
+
     // Full-width rule, then the findings section: title centred, entries left.
     let rule = "─".repeat(WIDTH);
     text.push_str(&rule);

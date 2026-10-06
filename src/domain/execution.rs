@@ -212,6 +212,81 @@ impl ExecutionRecord {
             .map(|n| TaskId(n.saturating_sub(1)))
             .unwrap_or(TaskId(0))
     }
+
+    /// Why this task did not complete, in one line, for a human.
+    ///
+    /// The tool's own message comes first: an unrecognised flag, a missing
+    /// template, a refused connection. Those name the actual problem and let it
+    /// be fixed. Where there is no message, the exit code and status stand in,
+    /// because "exited 2" is still more than a bare FAILED.
+    pub fn failure_reason(&self) -> String {
+        if let Some(message) = self
+            .error_message
+            .as_ref()
+            .map(|m| m.trim())
+            .filter(|m| !m.is_empty())
+        {
+            return collapse(message);
+        }
+        match self.status {
+            TaskStatus::Skipped => "excluded during preflight".to_string(),
+            TaskStatus::TimedOut => format!("timed out after {}ms", self.duration_ms),
+            TaskStatus::Interrupted => "cancelled by the operator".to_string(),
+            _ => match self.exit_code {
+                Some(code) => format!("exited {code} with no message"),
+                None => "did not run".to_string(),
+            },
+        }
+    }
+}
+
+/// One line, from however many the tool wrote.
+///
+/// A usage banner leads most of these messages and says nothing about why the run
+/// failed, so the line that names the error is preferred over the first one that
+/// happens to be there.
+fn collapse(text: &str) -> String {
+    let lines: Vec<&str> = text
+        .lines()
+        .map(str::trim)
+        .filter(|l| !l.is_empty())
+        .collect();
+    let chosen = lines
+        .iter()
+        .find(|l| names_an_error(l))
+        .or_else(|| lines.last())
+        .copied()
+        .unwrap_or("");
+    let line = chosen.split_whitespace().collect::<Vec<_>>().join(" ");
+    if line.chars().count() <= 160 {
+        return line;
+    }
+    let head: String = line.chars().take(159).collect();
+    head.trim_end().to_string()
+}
+
+/// Whether this line states a failure rather than restating how to call the tool.
+fn names_an_error(line: &str) -> bool {
+    let lower = line.to_lowercase();
+    [
+        "error",
+        "no such option",
+        "no such flag",
+        "not defined",
+        "not recognized",
+        "unrecognized",
+        "unknown flag",
+        "unknown option",
+        "invalid",
+        "cannot ",
+        "failed",
+        "denied",
+        "refused",
+        "required",
+        "missing",
+    ]
+    .iter()
+    .any(|m| lower.contains(m))
 }
 
 #[cfg(test)]
@@ -295,5 +370,88 @@ mod tests {
             "\"LOCAL\""
         );
         assert!(!ExecBoundary::Local.is_network());
+    }
+
+    fn record(
+        status: TaskStatus,
+        exit_code: Option<i32>,
+        message: Option<&str>,
+    ) -> ExecutionRecord {
+        ExecutionRecord {
+            task_id: "T1".into(),
+            phase: "recon".into(),
+            capability: "recon.subdomain-discovery".into(),
+            provider: "subfinder".into(),
+            operation: "Passive Enumeration".into(),
+            label: "passive".into(),
+            command: "subfinder -d example.com".into(),
+            program: "subfinder".into(),
+            args: vec!["-d".into(), "example.com".into()],
+            network: true,
+            boundary: ExecBoundary::Oniux,
+            launched: "oniux exec subfinder -d example.com".into(),
+            uses_shell: false,
+            started_at: Utc::now(),
+            finished_at: Utc::now(),
+            duration_ms: 412,
+            status,
+            exit_code,
+            stdout_bytes: 0,
+            stderr_bytes: 30,
+            raw_output: PathBuf::from("/tmp/raw"),
+            stderr_output: Some(PathBuf::from("/tmp/err")),
+            harvest_section: None,
+            error_code: Some("EXIT_STATUS".into()),
+            error_message: message.map(str::to_string),
+        }
+    }
+
+    #[test]
+    fn a_failure_states_the_tools_own_reason() {
+        // The case that started this: a wall of FAILED with nothing to act on.
+        let r = record(
+            TaskStatus::Failed,
+            Some(2),
+            Some("exited 2: flag provided but not defined: -get-subs"),
+        );
+        let reason = r.failure_reason();
+        assert!(
+            reason.contains("-get-subs"),
+            "the offending flag must survive: {reason}"
+        );
+        assert!(reason.chars().count() <= 165, "one line: {reason}");
+    }
+
+    #[test]
+    fn a_failure_without_a_message_still_says_something() {
+        let r = record(TaskStatus::Failed, Some(2), None);
+        assert_eq!(r.failure_reason(), "exited 2 with no message");
+
+        let skipped = record(TaskStatus::Skipped, None, None);
+        assert_eq!(skipped.failure_reason(), "excluded during preflight");
+
+        let timed_out = record(TaskStatus::TimedOut, None, None);
+        assert!(timed_out.failure_reason().contains("412ms"));
+    }
+
+    #[test]
+    fn a_multiline_tool_message_is_reduced_to_one_readable_line() {
+        let r = record(
+            TaskStatus::Failed,
+            Some(1),
+            Some("Usage: httpx [OPTIONS] URL\n\n  Error: No such option: -u\n"),
+        );
+        let reason = r.failure_reason();
+        assert!(!reason.contains('\n'), "{reason}");
+        assert!(reason.contains("No such option: -u"), "{reason}");
+    }
+
+    #[test]
+    fn a_very_long_message_is_truncated_rather_than_wrapping() {
+        let long = "x".repeat(500);
+        let r = record(TaskStatus::Failed, Some(1), Some(&long));
+        let reason = r.failure_reason();
+        assert!(reason.chars().count() <= 160, "one line, bounded: {reason}");
+        assert!(!reason.contains("  "), "no double spacing: {reason}");
     }
 }
