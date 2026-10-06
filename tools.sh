@@ -127,6 +127,7 @@ pkg_info() {
         b2sum|base64) echo "coreutils|coreutils" ;;
         bash) echo "bash|bash" ;;
         besside-ng) echo "aircrack-ng|aircrack-ng" ;;
+        bluetoothctl|btmon) echo "bluez-utils|bluez" ;;
         bettercap) echo "bettercap|bettercap" ;;
         blackbird) echo "blackbird|blackbird" ;;
         binwalk) echo "binwalk|binwalk" ;;
@@ -217,7 +218,8 @@ pkg_info() {
         gpxlogger) echo "gpxlogger|gpxlogger" ;;
         grep) echo "grep|grep" ;;
         grype) echo "grype|grype" ;;
-        gzip) echo "gzip|gzip" ;;
+        hping3) echo "hping|hping3" ;;
+        gatttool) echo "bluez|bluez" ;;
         # h
         hakrawler) echo "hakrawler|hakrawler" ;;
         hamster) echo "hamster|hamster" ;;
@@ -229,6 +231,8 @@ pkg_info() {
         head) echo "coreutils|coreutils" ;;
         horst) echo "horst|horst" ;;
         host) echo "bind|dnsutils" ;;
+        gzip) echo "gzip|gzip" ;;
+        hciconfig|hcitool) echo "bluez|bluez" ;;
         hostapd) echo "hostapd|hostapd" ;;
         hostapd-mana) echo "hostapd-mana|hostapd" ;;
         hostapd-wpe) echo "hostapd-wpe|hostapd" ;;
@@ -270,6 +274,9 @@ pkg_info() {
         linkfinder) echo "linkfinder|linkfinder" ;;
         ls) echo "coreutils|coreutils" ;;
         ltrace) echo "ltrace|ltrace" ;;
+        macchanger) echo "macchanger|macchanger" ;;
+        md5sum) echo "coreutils|coreutils" ;;
+        kalibrate-rtl) echo "kalibrate-rtl|kalibrate-rtl" ;;
         lynis) echo "lynis|lynis" ;;
         # m
         maigret) echo "maigret|maigret" ;;
@@ -298,6 +305,7 @@ pkg_info() {
         nc) echo "netcat-openbsd|netcat-openbsd" ;;
         ncat) echo "nmap|ncat" ;;
         ncrack) echo "ncrack|ncrack" ;;
+        one-sixtyone) echo "onesixtyone|onesixtyone" ;;
         netdiscover) echo "netdiscover|netdiscover" ;;
         networkminer) echo "networkminer|networkminer" ;;
         nikto) echo "nikto|nikto" ;;
@@ -379,6 +387,7 @@ pkg_info() {
         smbmap) echo "smbmap|smbmap" ;;
         snmpwalk) echo "net-snmp|snmp" ;;
         socat) echo "socat|socat" ;;
+        sdptool) echo "bluez|bluez" ;;
         socialscan) echo "socialscan|socialscan" ;;
         sqlmap) echo "sqlmap|sqlmap" ;;
         sqsh) echo "freetds|freetds-bin" ;;
@@ -437,6 +446,9 @@ pkg_info() {
         wget) echo "wget|wget" ;;
         whatweb) echo "whatweb|whatweb" ;;
         proxychains) echo "proxychains-ng|proxychains" ;;
+        packetforge-ng) echo "packetforge-ng|packetforge-ng" ;;
+        diff) echo "diffutils|diffutils" ;;
+        wpa_supplicant) echo "wpa_supplicant|wpa_supplicant" ;;
         which) echo "which|debianutils" ;;
         whois) echo "whois|whois" ;;
         windapsearch) echo "windapsearch|windapsearch" ;;

@@ -30,7 +30,7 @@ runs those argument vectors behind the network boundary.
 
 ## 2. The catalog is the source of truth
 
-`catalog/capabilities.toml` describes ten phases and 221 capabilities. Phase
+`catalog/capabilities.toml` describes ten phases and 226 capabilities. Phase
 membership is structural; per-phase counts are not, because a phase with more
 distinct jobs carries more capabilities.
 
@@ -196,6 +196,24 @@ for that operation (`nmap`, `json`, `lines`, `raw`) and produces findings with
 provenance. Choosing the format per *operation* rather than per tool matters:
 one provider can emit different formats per operation, and reading nmap's XML as
 a line list would silently lose the structured ports.
+
+Only tasks that completed are harvested. A task that failed printed its usage
+because the flag was wrong, its banner because it exited early, or its error
+because a file was missing; reading any of that as findings produced a page of
+`--help` lines reported as comments and a version banner reported as evidence.
+The failure itself is not lost — the document's WHY section states what each
+operation said on the way out, and the bytes stay in the raw evidence.
+
+Every line is stripped of terminal control sequences before it is matched or
+shown. Most of this catalog colours its output, and an escape left in place
+corrupts the value of the finding it belongs to while the fragment it was part
+of becomes a finding of its own.
+
+A line the extractor does not recognise is recorded as `Evidence` and kept in
+`output.json`, but `Evidence` is not actionable and never reaches `output.txt`.
+A line not yet known to be nothing is certainly not known to be intelligence,
+and an operator reading a document needs every line in it to be a claim about
+the target.
 
 Findings from every task are merged, deduplicated by (category, value), and
 correlated by counting their sources. Unparsed or empty output is recorded as a

@@ -149,6 +149,40 @@ impl RunStore {
         let mut artefacts = 0usize;
         let mut noise_lines = 0usize;
         for record in &self.records {
+            // A task that did not complete produced no result to harvest.
+            //
+            // Its output is what the tool prints when it cannot do the job: a
+            // usage dump because the flag was wrong, a banner because it exited
+            // early, an error line because the file was missing. Harvesting that
+            // turned a failed operation into a page of findings — `--help` output
+            // read as comments, a version banner read as evidence — which is worse
+            // than silence, because it looks like the tool reported something.
+            // The failure itself is not lost: the document's WHY section states
+            // what each operation said on the way out, and the bytes remain in
+            // the raw evidence.
+            if !record.status.is_success() {
+                sections.push(crate::domain::finding::Finding {
+                    category: crate::domain::finding::Category::Metadata,
+                    value: format!(
+                        "{} / {}: not harvested ({})",
+                        record.provider,
+                        record.operation,
+                        record.status.label()
+                    ),
+                    detail: Some(record.failure_reason()),
+                    provenance: crate::domain::finding::Provenance {
+                        boundary: record.boundary,
+                        provider: record.provider.clone(),
+                        operation: record.operation.clone(),
+                        task_id: record.task_id.clone(),
+                        command: record.command.clone(),
+                        observed_at: record.finished_at,
+                        artifact: record.raw_output.clone(),
+                    },
+                    occurrences: 1,
+                });
+                continue;
+            }
             let format = formats
                 .get(&format!("{}/{}", record.provider, record.operation))
                 .or_else(|| formats.get(&record.operation))

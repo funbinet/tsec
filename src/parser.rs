@@ -258,16 +258,23 @@ pub fn parse_artifact(
     }
     let text = String::from_utf8_lossy(&bytes.text).into_owned();
 
+    // Every line is stripped of terminal control sequences before anything looks
+    // at it. Nearly every tool here colours its output, and an escape left in a
+    // value corrupts the finding it belongs to — and a leftover fragment becomes
+    // a finding by itself.
+    let clean: Vec<String> = text.lines().map(crate::intel::strip_ansi).collect();
+    let clean_text = clean.join("\n");
+
     // ── INTELLIGENCE ───────────────────────────────────────────────────────
     // Runs first and across the whole body. A line that yields nothing but
     // chatter is counted as noise and left out of the document; a line that
     // yields an artefact is kept even when it also looks like chatter, because
     // that is exactly where keys and credentials turn up.
-    let (extracted, _) = crate::intel::assess_all(&text);
+    let (extracted, _) = crate::intel::assess_all(&clean_text);
     // Chatter is recorded here and only here. The format parsers below step over
     // these lines rather than classifying them, so the count has one owner and
     // cannot drift from the number of `Noise` findings actually recorded.
-    for line in text.lines() {
+    for line in &clean {
         let trimmed = line.trim();
         if trimmed.is_empty() {
             continue;
@@ -275,6 +282,12 @@ pub fn parse_artifact(
         if crate::intel::extract(trimmed).is_empty() && crate::intel::is_noise(trimmed) {
             harvest.noise_lines += 1;
             harvest.push(Category::Noise, trimmed, None);
+        } else if crate::intel::extract(trimmed).is_empty()
+            && crate::intel::is_blank_after_stripping(trimmed)
+        {
+            // A lone escape remnant or a closing bracket. Not noise in the sense
+            // of progress chatter, and not a finding: nothing was said.
+            harvest.noise_lines += 1;
         }
     }
     // The extractor falls back to evidence for a line it does not recognise;
@@ -288,16 +301,16 @@ pub fn parse_artifact(
     }
 
     match format {
-        OutputFormat::Nmap => parse_nmap_xml(&text, &mut harvest),
-        OutputFormat::Json => parse_jsonl(&text, &mut harvest),
-        OutputFormat::Lines => parse_lines(&text, &mut harvest),
+        OutputFormat::Nmap => parse_nmap_xml(&clean_text, &mut harvest),
+        OutputFormat::Json => parse_jsonl(&clean_text, &mut harvest),
+        OutputFormat::Lines => parse_lines(&clean_text, &mut harvest),
         // A tool's own format is kept verbatim. The framework has no opinion
         // about sqlmap's or nikto's layout, so the whole record is the
         // evidence. Lines the intelligence pass already understood appear twice
         // — once as the artefact, once as the evidence — and deduplication
         // collapses the difference in category and value, so nothing is buried
         // and nothing is lost.
-        OutputFormat::Raw => parse_raw(&text, &mut harvest),
+        OutputFormat::Raw => parse_raw(&clean_text, &mut harvest),
     }
     harvest.attribute(provenance);
     Ok(harvest)

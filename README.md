@@ -14,7 +14,7 @@ Reference docs:
 - [`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md)
 - [`docs/CAPABILITY_OPERATIONS.md`](docs/CAPABILITY_OPERATIONS.md)
 
-The framework is organised as **ten phases, 221 capabilities**. Every phase is
+The framework is organised as **ten phases, 226 capabilities**. Every phase is
 mandatory: a catalog that leaves one empty is rejected at startup rather than
 shipped half-finished.
 

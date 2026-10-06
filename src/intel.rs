@@ -69,6 +69,112 @@ pub struct Assessment {
 ///
 /// These are the lines that make a multi-tool harvest unreadable. Each pattern
 /// is anchored on phrasing that appears in tool chrome rather than in results.
+/// Remove terminal control sequences from a line of tool output.
+///
+/// Nearly every tool in this catalog colours its output, and a surprising number
+/// are invoked without their `-nc`/`--no-color` flag or write progress to stderr,
+/// which is not coloured off. Left in place, the escapes corrupt the value of
+/// every finding drawn from that line — `0 payload/android/\x1b[45mmeterpreter…`
+/// is reported with the escape still in it, and the fragment `[45m` on its own
+/// becomes a finding of its own.
+///
+/// The sequences are removed before anything is matched or displayed, so no rule
+/// has to know about them and no document can carry one.
+pub fn strip_ansi(line: &str) -> String {
+    if !line.contains('\x1b') {
+        return line.to_string();
+    }
+    let mut out = String::with_capacity(line.len());
+    let mut chars = line.chars().peekable();
+    while let Some(c) = chars.next() {
+        if c != '\x1b' {
+            out.push(c);
+            continue;
+        }
+        match chars.peek().copied() {
+            // OSC: a hyperlink or a title, ended by BEL or ST (`ESC \`). Tools
+            // that hyperlink help text wrap each option in one.
+            Some(']') => {
+                chars.next();
+                let mut prev = '\0';
+                for c in chars.by_ref() {
+                    if c == '\x07' || (prev == '\x1b' && c == '\\') {
+                        break;
+                    }
+                    prev = c;
+                }
+            }
+            // CSI: colour, cursor movement, erasure. Parameter and intermediate
+            // bytes, then a final byte in @..~.
+            Some('[') => {
+                chars.next();
+                for c in chars.by_ref() {
+                    if ('\x40'..='\x7e').contains(&c) {
+                        break;
+                    }
+                }
+            }
+            // A two-byte escape such as ESC ( B.
+            Some(_) => {
+                chars.next();
+            }
+            None => {}
+        }
+    }
+    out
+}
+
+/// Whether a line carries no information once it is trimmed and stripped.
+///
+/// A leftover colour fragment, a stray closing bracket, a run of box-drawing is
+/// not a finding in any sense, and treating it as evidence is how one of these
+/// artifacts filled a document with `[0m` and `"@`.
+pub fn is_blank_after_stripping(line: &str) -> bool {
+    let stripped = strip_ansi(line);
+    let trimmed = stripped.trim();
+    if trimmed.is_empty() {
+        return true;
+    }
+    // Nothing but punctuation: brackets, quotes, dashes and the like.
+    trimmed.chars().all(|c| {
+        c.is_whitespace()
+            || matches!(
+                c,
+                '[' | ']'
+                    | '"'
+                    | '\''
+                    | '`'
+                    | '\\'
+                    | '-'
+                    | '_'
+                    | '|'
+                    | '/'
+                    | '.'
+                    | ','
+                    | ';'
+                    | ':'
+                    | '*'
+                    | '#'
+                    | '>'
+                    | '<'
+                    | '@'
+                    | '%'
+                    | '='
+                    | '+'
+                    | '&'
+                    | '!'
+                    | '?'
+                    | '('
+                    | ')'
+                    | '{'
+                    | '}'
+                    | '$'
+                    | '^'
+                    | '~'
+            )
+    })
+}
+
 fn noise_patterns() -> &'static [Regex] {
     static P: OnceLock<Vec<Regex>> = OnceLock::new();
     P.get_or_init(|| {
@@ -128,6 +234,23 @@ fn noise_patterns() -> &'static [Regex] {
             // the optional colour codes are allowed around and within them:
             // `[\x1b[1;31mFTL\x1b[0m] Could not run enumeration`.
             r"(?i)^\s*\x1b?\[[0-9;]*m?\s*\[?\s*(?:\x1b\[[0-9;]*m)?\s*(?:ftl|fatal|err|error|wrn|warn|inf|info|dbg|debug)\s*(?:\x1b\[[0-9;]*m)?\s*\]?\s*(?:\x1b\[[0-9;]*m)?",
+            // A table, in the one shape tables are printed in: three or more
+            // columns separated by runs of spaces. Column headings have no
+            // column separators of their own, so they are matched by the title
+            // case rule below; this catches the rules and the data rows.
+            r"^\s*\S+(?:\s{2,}\S+){2,}$",
+            // Column headings: two or more Title Case words, no separators.
+            // `# Full Name Disclosure Date Rank Check Name`.
+            r"^[#|]?\s*(?:[A-Z][a-z0-9]+\s+){1,}[A-Z][a-z0-9]+\s*$",
+            // A copyright or licence banner.
+            r"(?i)^\s*(?:copyright|\(c\)|©|all rights reserved|licen[cs]e|free and open|source available)",
+            // A tool refusing to do what it was asked, or missing what it needs.
+            // This is a diagnostic, not an observation about the target.
+            r"(?i)^\S*(?:\s+\S+)*:\s*(?:cannot|could not|can't|unable to|failed to|error|invalid|unknown|no such|not found|is required|is not|permission denied|refused|unreachable)\b",
+            r"(?i)\b(?:No such file or directory|command not found|not recognized as an internal|is not recognized as|parse error|invalid value .* for flag)\b",
+            // A usage line: an option with its description, the shape every
+            // `--help` dump is made of.
+            r"^\s+--?[A-Za-z][\w-]*(?:[ ,=]|$)",
         ]
         .iter()
         .map(|p| Regex::new(p).expect("noise pattern compiles"))
@@ -246,6 +369,21 @@ fn looks_like_host(token: &str) -> bool {
         && !token.ends_with('.')
         && token.split('.').all(|label| {
             !label.is_empty() && label.chars().all(|c| c.is_ascii_alphanumeric() || c == '-')
+        })
+}
+
+/// Whether a matched comment is really a table's column headings.
+///
+/// Two or more Title Case words and no other content: `# Full Name Disclosure
+/// Date Rank Check Name`. A comment carries punctuation, lower case or a verb;
+/// a heading does not.
+fn is_column_heading(text: &str) -> bool {
+    let body = text.trim_start_matches(['#', '|', '-', ' ', '\t']);
+    let words: Vec<&str> = body.split_whitespace().collect();
+    words.len() >= 2
+        && words.iter().all(|w| {
+            w.chars().next().is_some_and(|c| c.is_ascii_uppercase())
+                && w.chars().all(|c| c.is_ascii_alphanumeric() || c == '-')
         })
 }
 
@@ -429,11 +567,27 @@ fn rules() -> &'static [Rule] {
             Rule::new(
                 Comment,
                 "TODO/FIXME marker",
-                r"(?i)\b(?:TODO|FIXME|HACK|XXX|BUG|NOTE):\s*[^\r\n*]{0,120}",
+                // `NOTE:` and `BUG:` are left out deliberately. Half of all tool
+                // documentation prose begins "Note:", so matching it turned every
+                // description in a payload listing into a code comment.
+                r"(?i)\b(?:TODO|FIXME|HACK|XXX):\s*[^\r\n*]{0,120}",
             )
             .trimming_tail(),
             Rule::new(Comment, "block comment", r"/\*[\s\S]{0,400}?\*/"),
-            Rule::new(Comment, "shell or SQL comment", r"(?:^|\s)(?:--|#)\s?[A-Za-z][^\r\n]{0,120}"),
+            // A SQL comment needs its space, or it is a long option.
+            //
+            // `--check-cname, -c Also check CNAME records` is a help line, and
+            // reading it as a comment turned every option of every misinvoked
+            // tool into a finding. `-- comment` is still a comment.
+            Rule::new(
+                Comment,
+                "shell or SQL comment",
+                r"(?:^|\s)(?:--\s|#\s?)[A-Za-z][^\r\n]{0,120}",
+            )
+            // `# Full Name Disclosure Date Rank Check Name` is a table's column
+            // headings, not a comment. A comment says something in prose; a
+            // heading is a run of Title Case words and nothing else.
+            .accept_where(|m| !is_column_heading(m)),
             // ── network ────────────────────────────────────────────────────
             Rule::new(Email, "email address", r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,63}\b"),
             Rule::new(Url, "URL", r#"\bhttps?://[^\s"'<>)\]}]{4,}"#),
@@ -1046,6 +1200,67 @@ mod tests {
         assert!(found
             .iter()
             .any(|e| e.category == Category::Evidence && e.value == "weird unparsed tool output"));
+    }
+
+    #[test]
+    fn the_output_that_made_a_harvest_unreadable_is_no_longer_harvested() {
+        // Every line below is taken from a real harvest in /opt whose document
+        // was unreadable: a misinvoked tool's help text read as comments, a
+        // packer's banner read as evidence, a table of its own index read as
+        // results. None of them is a claim about the target.
+        for line in [
+            "--check-cname, -c Also check CNAME records (default: false)",
+            "--resolver value Use custom DNS server (format server.com or server.com:port)",
+            "Copyright (C) 1996 - 2026",
+            "Ultimate Packer for eXecutables",
+            "File size Ratio Format Name",
+            "Packed 0 files",
+            "# Full Name Disclosure Date Rank Check Name",
+            "implant: cannot open `implant' (No such file or directory)",
+            "upx: FileNotFoundException: implant: No such file or directory",
+        ] {
+            let stripped = strip_ansi(line);
+            assert!(
+                extract(&stripped).is_empty(),
+                "{line:?} must yield no artefact, got {:?}",
+                extract(&stripped)
+            );
+        }
+
+        // The findings that were buried under them must still be found.
+        for (line, category) in [
+            ("admin:hunter2", Category::Credential),
+            ("https://example.com/admin", Category::Url),
+            ("10.0.0.5", Category::Ip),
+        ] {
+            assert!(
+                extract(line).iter().any(|e| e.category == category),
+                "{line:?} must still yield {category:?}"
+            );
+        }
+
+        // A real comment is still a comment: the `--` now needs its space.
+        assert!(extract("-- a genuine SQL note about the schema")
+            .iter()
+            .any(|e| e.category == Category::Comment));
+        assert!(extract("# a genuine shell note")
+            .iter()
+            .any(|e| e.category == Category::Comment));
+    }
+
+    #[test]
+    fn terminal_colour_never_reaches_a_finding() {
+        // Coloured output is the default for much of this catalog, and an escape
+        // left in place corrupts the value and invents findings of its own.
+        let raw = "0 payload/android/\u{1b}[45mmeterpreter_reverse_tcp\u{1b}[0m . normal";
+        let clean = strip_ansi(raw);
+        assert!(!clean.contains('\u{1b}'), "escape survived: {clean:?}");
+        assert!(clean.contains("meterpreter_reverse_tcp"), "{clean:?}");
+
+        // A bare fragment left over from a strip is not evidence of anything.
+        assert!(is_blank_after_stripping("\u{1b}[0m"));
+        assert!(is_blank_after_stripping("\"@"));
+        assert!(!is_blank_after_stripping("admin:hunter2"));
     }
 
     #[test]

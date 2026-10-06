@@ -64,6 +64,13 @@ pub enum Category {
     /// An email address.
     Email,
     /// Verbatim evidence retained from the raw stream.
+    ///
+    /// Counted and kept in `output.json`, never presented as a finding. A line
+    /// the extractor does not recognise is not yet known to be nothing — but it
+    /// is certainly not known to be intelligence either, and printing it in the
+    /// document is what turned one misinvoked tool's `--help` output into twenty
+    /// findings. An operator reading a document needs every line in it to be a
+    /// claim about the target.
     Evidence,
     /// Tool progress, banners and timings.
     ///
@@ -154,7 +161,10 @@ impl Category {
     /// what they can act on, and wants the chatter that produced it available
     /// but not in the way.
     pub fn is_actionable(self) -> bool {
-        !matches!(self, Category::Noise | Category::Metadata | Category::Error)
+        !matches!(
+            self,
+            Category::Noise | Category::Metadata | Category::Error | Category::Evidence
+        )
     }
 }
 

