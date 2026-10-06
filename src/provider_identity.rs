@@ -26,7 +26,15 @@ use crate::catalog::Catalog;
 
 /// How long a provider's `--help` may take. A wedged binary must not make
 /// `tsec --status` hang.
-const HELP_TIMEOUT: Duration = Duration::from_secs(8);
+const HELP_TIMEOUT: Duration = Duration::from_secs(3);
+
+/// How long a *supplementary* help form may take.
+///
+/// `--help` is the one every tool answers, so it gets the full budget. The rest
+/// are guesses at where a tool hides its options, tried only after the first came
+/// back thin — and a tool that does not answer one of them promptly is a tool
+/// that is doing something other than printing help.
+const EXTRA_HELP_TIMEOUT: Duration = Duration::from_millis(700);
 
 /// Largest help text read. Flags appear in the first screen or not at all.
 const HELP_LIMIT: u64 = 256 * 1024;
@@ -147,12 +155,20 @@ pub fn identity(path: &Path) -> Identity {
 /// Help invocations to try, in order.
 ///
 /// `--help` comes before `-h`, because several tools print a short usage error
-/// under `-h` while `--help` prints the real menu. The doubled short form is here
-/// for tools whose summary help omits options, as `unzip -h` does of `-P`.
+/// under `-h` while `--help` prints the real menu. The doubled and lettered short
+/// forms are here for tools whose summary help omits options: `unzip -h` has no
+/// `-P`, `zip -h` documents 15 options where `zip -h2` documents 77, and
+/// `mdk4 --fullhelp` describes attack modes that `--help` does not.
 ///
 /// A bare invocation is deliberately absent: with no arguments it either starts
 /// the tool's real work, against a target, or waits on input.
-const HELP_ARGS: [&[&str]; 3] = [&["--help"], &["-hh"], &["-h"]];
+const HELP_ARGS: [(&[&str], Duration); 5] = [
+    (&["--help"], HELP_TIMEOUT),
+    (&["-h"], EXTRA_HELP_TIMEOUT),
+    (&["-hh"], EXTRA_HELP_TIMEOUT),
+    (&["--fullhelp"], EXTRA_HELP_TIMEOUT),
+    (&["-h2"], EXTRA_HELP_TIMEOUT),
+];
 
 /// Enough flags to consider a help text informative.
 const HELP_FLOOR: usize = 40;
@@ -185,8 +201,8 @@ const SELF_DESCRIBING_FLOOR: usize = 20;
 fn help_text(path: &Path) -> String {
     let mut best = FlagSet::default();
     let mut best_text = String::new();
-    for args in HELP_ARGS {
-        let Some(raw) = run_capped(path, args) else {
+    for (args, budget) in HELP_ARGS {
+        let Some(raw) = run_capped(path, args, budget) else {
             continue;
         };
         let text = strip_escapes(&raw);
@@ -195,7 +211,7 @@ fn help_text(path: &Path) -> String {
         }
         // curl prints a category menu rather than its options unless asked twice.
         if text.contains("split into categories") {
-            if let Some(raw) = run_capped(path, &["--help", "all"]) {
+            if let Some(raw) = run_capped(path, &["--help", "all"], HELP_TIMEOUT) {
                 let all = strip_escapes(&raw);
                 let all_flags = parse_flags(&all);
                 if all_flags.len() > parse_flags(&text).len() {
@@ -306,7 +322,7 @@ fn strip_escapes(text: &str) -> String {
     out
 }
 
-fn run_capped(path: &Path, args: &[&str]) -> Option<String> {
+fn run_capped(path: &Path, args: &[&str], timeout: Duration) -> Option<String> {
     let mut child = Command::new(path)
         .args(args)
         .env("LC_ALL", "C")
@@ -315,35 +331,50 @@ fn run_capped(path: &Path, args: &[&str]) -> Option<String> {
         .stderr(Stdio::piped())
         .spawn()
         .ok()?;
-    let mut out = String::new();
-    if let Some(mut stdout) = child.stdout.take() {
-        let mut buf = Vec::new();
-        let _ = stdout.by_ref().take(HELP_LIMIT).read_to_end(&mut buf);
-        out.push_str(&String::from_utf8_lossy(&buf));
-    }
-    if let Some(mut stderr) = child.stderr.take() {
-        let mut buf = Vec::new();
-        let _ = stderr.by_ref().take(HELP_LIMIT).read_to_end(&mut buf);
-        out.push_str(&String::from_utf8_lossy(&buf));
-    }
-    let deadline = Instant::now() + HELP_TIMEOUT;
+
+    // The streams are drained on their own threads. Reading them here would block
+    // until end-of-file, and a tool asked for help that prints nothing and waits
+    // — or that forks a scanner — never closes them, so the deadline below would
+    // never be reached. Killing the child ends the read.
+    let stdout = child.stdout.take().map(drain);
+    let stderr = child.stderr.take().map(drain);
+
+    let deadline = Instant::now() + timeout;
     loop {
         match child.try_wait() {
-            Ok(Some(_)) => return Some(out),
+            Ok(Some(_)) => break,
             Ok(None) => {}
             Err(_) => {
                 let _ = child.kill();
                 let _ = child.wait();
-                return Some(out);
+                break;
             }
         }
         if Instant::now() >= deadline {
             let _ = child.kill();
             let _ = child.wait();
-            return Some(out);
+            break;
         }
         std::thread::sleep(Duration::from_millis(20));
     }
+
+    let mut out = String::new();
+    out.push_str(&stdout.map(join).unwrap_or_default());
+    out.push_str(&stderr.map(join).unwrap_or_default());
+    Some(out)
+}
+
+/// Read a pipe to end-of-file, keeping at most [`HELP_LIMIT`] bytes.
+fn drain<R: Read + Send + 'static>(pipe: R) -> std::thread::JoinHandle<String> {
+    std::thread::spawn(move || {
+        let mut buf = Vec::new();
+        let _ = pipe.take(HELP_LIMIT).read_to_end(&mut buf);
+        String::from_utf8_lossy(&buf).into_owned()
+    })
+}
+
+fn join(handle: std::thread::JoinHandle<String>) -> String {
+    handle.join().unwrap_or_default()
 }
 
 fn parse_flags(help: &str) -> FlagSet {
@@ -693,6 +724,22 @@ mod tests {
         assert!(reason.contains("-u"));
         assert!(reason.contains("-silent"));
         assert!(reason.contains("--method"));
+    }
+
+    #[test]
+    fn a_probe_gives_up_on_a_binary_that_never_exits() {
+        // `sleep` accepts no options and prints nothing. It stands in for any
+        // tool asked for help that does not answer: reading its output must not
+        // block waiting for an end-of-file that never comes.
+        let started = Instant::now();
+        let out = run_capped(Path::new("/bin/sleep"), &["30"], Duration::from_millis(300))
+            .expect("the probe returns whatever it managed to read");
+        assert!(out.is_empty(), "sleep says nothing: {out:?}");
+        assert!(
+            started.elapsed() < Duration::from_secs(5),
+            "the deadline must be honoured, took {:?}",
+            started.elapsed()
+        );
     }
 
     #[test]

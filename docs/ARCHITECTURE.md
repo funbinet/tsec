@@ -30,7 +30,7 @@ runs those argument vectors behind the network boundary.
 
 ## 2. The catalog is the source of truth
 
-`catalog/capabilities.toml` describes ten phases and 200 capabilities. Phase
+`catalog/capabilities.toml` describes ten phases and 221 capabilities. Phase
 membership is structural; per-phase counts are not, because a phase with more
 distinct jobs carries more capabilities.
 

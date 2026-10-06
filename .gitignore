@@ -20,7 +20,9 @@
 # names its capture after the moment it began, so a check run leaves one behind
 # every time and they are never wanted in a repository.
 /Kismet-*.kismet
+/Kismet-*.kismet-journal
 *.pcapng
+*.pcap
 
 # Secrets
 .env

@@ -257,7 +257,7 @@ pkg_info() {
         # k
         katana) echo "katana|katana" ;;
         keytool) echo "jre-openjdk-headless|default-jre-headless" ;;
-        kismet|kismet_server) echo "kismet|kismet" ;;
+        kismet) echo "kismet|kismet" ;;
         kiterunner) echo "kiterunner|kiterunner" ;;
         klist) echo "krb5-client|krb5-user" ;;
         kubectl) echo "kubectl|kubectl" ;;
