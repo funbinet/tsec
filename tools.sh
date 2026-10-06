@@ -237,7 +237,7 @@ pkg_info() {
         hostapd-mana) echo "hostapd-mana|hostapd" ;;
         hostapd-wpe) echo "hostapd-wpe|hostapd" ;;
         hping3) echo "hping|hping3" ;;
-        httpx) echo "httpx-toolkit|httpx-toolkit" ;;
+        httpx-pd) echo "-|-" ;;
         hydra) echo "hydra|hydra" ;;
         # i
         id) echo "coreutils|coreutils" ;;

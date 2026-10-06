@@ -675,7 +675,13 @@ fn run_capability(
                 format!("{}/{}", binding.binary, operation.name),
                 operation.output,
             );
-            let command = operation.command(&program, &cap.inputs, &values, catalog_source)?;
+            let command = operation.command(
+                &program,
+                &cap.inputs,
+                &values,
+                catalog_source,
+                Some(&store.artifacts_dir()),
+            )?;
             let index = jobs.len();
             let stem = format!(
                 "T{:02}_{}_{}",
@@ -753,7 +759,13 @@ fn run_capability(
                     format!("{}/{}", binding.binary, operation.name),
                     operation.output,
                 );
-                let command = operation.command(&program, &cap.inputs, &values, catalog_source)?;
+                let command = operation.command(
+                    &program,
+                    &cap.inputs,
+                    &values,
+                    catalog_source,
+                    Some(&store.artifacts_dir()),
+                )?;
                 let index = late_jobs.len();
                 let stem = format!(
                     "T{:02}_{}_{}",
@@ -898,6 +910,25 @@ fn run_capability(
     }
 
     // ── Branch: some/all succeeded → Processing → Output ───────────────────
+    // What the run actually left behind. Listing the directory is the only
+    // honest answer: a tool can report success having written nothing, or write
+    // something and say nothing.
+    let artifacts: Vec<(String, u64)> = std::fs::read_dir(store.artifacts_dir())
+        .map(|entries| {
+            entries
+                .flatten()
+                .filter_map(|e| {
+                    let meta = e.metadata().ok()?;
+                    if !meta.is_file() {
+                        return None;
+                    }
+                    Some((e.file_name().to_string_lossy().into_owned(), meta.len()))
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+    let artifacts = &artifacts;
+
     let header = OutputHeader {
         run_name: run_id.as_str(),
         phase: phase_word,
@@ -905,6 +936,7 @@ fn run_capability(
         missing_providers: &missing_providers,
         install_notes: &install_notes,
         cancelled: outcome.cancelled,
+        artifacts,
     };
 
     let mut processing = Processing::new(renderer, theme);

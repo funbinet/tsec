@@ -24,6 +24,11 @@
 *.pcapng
 *.pcap
 
+# What an OSINT or payload tool drops in the working directory when it runs.
+# maigret names its report after the handle it searched unless told otherwise.
+/reports/report_*
+
+
 # Secrets
 .env
 

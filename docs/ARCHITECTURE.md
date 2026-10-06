@@ -175,10 +175,19 @@ every command is the thing this design removes.
 ```
 <output_dir>/<run_id>/
 ├── manifest.json     one record per task, written after each task completes
-├── harvest.txt       consolidated findings
-├── harvest.json      findings with their sources
+├── output.txt        the operator-facing document
+├── output.json       findings with their sources
+├── artifacts/        anything the run generated
 └── raw/<stem>.out|.err
 ```
+
+A generated payload belongs to the run that made it. `msfvenom -o rev.elf`
+given a bare filename writes to the working directory the tool happened to be
+launched from, which is the operator's shell: the file is still there several runs
+later, nobody knows which run produced it, and the document has no path to give.
+`{artifacts}` resolves to the current run's own directory, so
+`-o {artifacts}/rev.elf` writes there, the run leaves nothing in the working
+directory, and `output.txt` lists what was made and how large it is.
 
 - **Artifact stems** are `YYYYMMDD_HHMMSS_PHASE_CAPABILITY_PROVIDER_OPERATION`,
   sanitised to `[a-z0-9_]`, so a file found in isolation still identifies itself.

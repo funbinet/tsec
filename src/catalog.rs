@@ -104,6 +104,18 @@ const WORDLIST_ROOT_PLACEHOLDER: &str = "{wlroot}";
 /// talk about the key rather than the token.
 const WORDLIST_ROOT_KEY: &str = "wlroot";
 
+/// Placeholder naming the directory a run writes anything it creates into.
+///
+/// A payload generator given `-o stager.exe` writes to the working directory it
+/// was launched from, which is the operator's shell, not the run. Several runs
+/// later the file is still there, nobody knows which run produced it, and the
+/// document has nothing to point at. `{artifacts}` resolves to the current run's
+/// own `artifacts/` directory, so what a run makes stays with that run.
+pub const ARTIFACTS_PLACEHOLDER: &str = "{artifacts}";
+
+/// The same, without the braces.
+const ARTIFACTS_KEY: &str = "artifacts";
+
 /// How a tool's output should be read once captured.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -336,6 +348,7 @@ impl Operation {
         specs: &[InputSpec],
         values: &InputValues,
         catalog_path: &Path,
+        artifacts_dir: Option<&Path>,
     ) -> Result<Command> {
         let mut args: Vec<String> = Vec::with_capacity(self.args.len());
         let mut sensitive: Vec<usize> = Vec::new();
@@ -362,6 +375,17 @@ impl Operation {
                     );
                     continue;
                 }
+                if key == ARTIFACTS_KEY {
+                    let dir = artifacts_dir.ok_or_else(|| {
+                        TsecError::catalog(format!(
+                            "operation `{}` writes into the run's artefact directory, but no \
+                             run directory is known here",
+                            self.name
+                        ))
+                    })?;
+                    args.push(dir.display().to_string());
+                    continue;
+                }
                 let spec = specs.iter().find(|s| s.key == key).ok_or_else(|| {
                     TsecError::catalog(format!(
                         "operation `{}` uses undeclared input {{{key}}}",
@@ -373,7 +397,18 @@ impl Operation {
                 }
                 args.push(values.get(key).to_string());
             } else {
-                let token = expand_wordlists(token, catalog_path, &self.name)?;
+                let token = if token.contains(ARTIFACTS_PLACEHOLDER) {
+                    let dir = artifacts_dir.ok_or_else(|| {
+                        TsecError::catalog(format!(
+                            "operation `{}` writes into the run's artefact directory, but no \
+                             run directory is known here",
+                            self.name
+                        ))
+                    })?;
+                    token.replace(ARTIFACTS_PLACEHOLDER, &dir.display().to_string())
+                } else {
+                    expand_wordlists(token, catalog_path, &self.name)?
+                };
                 args.push(expand(&token, specs, values, &self.name)?);
             }
         }
@@ -890,9 +925,9 @@ fn placeholders(token: &str) -> Vec<&str> {
             b'{' => match token[i + 1..].find('}') {
                 Some(offset) => {
                     let body = &token[i + 1..i + 1 + offset];
-                    // `{wlroot}` is a framework placeholder for the wordlist
-                    // directory, not something an operator supplies.
-                    if is_input_key(body) && body != WORDLIST_ROOT_KEY {
+                    // `{wlroot}` and `{artifacts}` name framework directories,
+                    // not something an operator supplies.
+                    if is_input_key(body) && body != WORDLIST_ROOT_KEY && body != ARTIFACTS_KEY {
                         out.push(body);
                     }
                     i = i + 1 + offset + 1;
@@ -995,7 +1030,13 @@ mod tests {
         let mut values = InputValues::new();
         values.insert("target", "host");
         let cmd = op
-            .command(Path::new("sh"), &cap.inputs, &values, Path::new("t.toml"))
+            .command(
+                Path::new("sh"),
+                &cap.inputs,
+                &values,
+                Path::new("t.toml"),
+                None,
+            )
             .unwrap();
         assert_eq!(cmd.args(), &["-c".to_string(), "echo { host }".to_string()]);
     }
@@ -1203,11 +1244,28 @@ mod tests {
         let mut values = InputValues::new();
         values.insert("domain", "example.com");
 
+        // Every operation of a shipped capability must render against a real run
+        // directory: an operation that writes into `{artifacts}` cannot render
+        // without one, and that is a property worth asserting.
+        let run_dir = Path::new("/tmp/tsec-test-run/artifacts");
         let mut saw_path = false;
         for (binary, op) in cap.all_operations() {
             let cmd = op
-                .command(Path::new(binary), &cap.inputs, &values, &catalog)
+                .command(
+                    Path::new(binary),
+                    &cap.inputs,
+                    &values,
+                    &catalog,
+                    Some(run_dir),
+                )
                 .unwrap_or_else(|e| panic!("{binary}/{}: {}", op.name, e.reason()));
+            for arg in cmd.args() {
+                assert!(
+                    !arg.contains("{artifacts}"),
+                    "{binary}/{} left the placeholder unsubstituted: {arg}",
+                    op.name
+                );
+            }
             for arg in cmd.args() {
                 if arg.starts_with("/") && arg.contains("/wordlists/") {
                     assert!(
@@ -1393,7 +1451,7 @@ mod tests {
         let mut values = InputValues::new();
         values.insert("rhost", "10.0.0.5");
         let cmd = op
-            .command(Path::new("hydra"), &specs, &values, &catalog)
+            .command(Path::new("hydra"), &specs, &values, &catalog, None)
             .unwrap();
         assert_eq!(
             cmd.args()[5],
@@ -1420,7 +1478,7 @@ mod tests {
             network: true,
         };
         let cmd = op
-            .command(Path::new("ffuf"), &[], &InputValues::new(), &catalog)
+            .command(Path::new("ffuf"), &[], &InputValues::new(), &catalog, None)
             .unwrap();
         assert_eq!(
             cmd.args()[0],
@@ -1551,7 +1609,13 @@ mod tests {
         let mut values = InputValues::new();
         values.insert("target", "a b c");
         let cmd = op
-            .command(Path::new("naabu"), &specs, &values, Path::new("t.toml"))
+            .command(
+                Path::new("naabu"),
+                &specs,
+                &values,
+                Path::new("t.toml"),
+                None,
+            )
             .unwrap();
         assert_eq!(cmd.args(), &["-iL".to_string(), "a b c".to_string()]);
     }
@@ -1577,7 +1641,7 @@ mod tests {
         values.insert("username", "admin");
         values.insert("password", "hunter2");
         let cmd = op
-            .command(Path::new("nxc"), &specs, &values, Path::new("t.toml"))
+            .command(Path::new("nxc"), &specs, &values, Path::new("t.toml"), None)
             .unwrap();
         assert_eq!(cmd.args()[3], "hunter2");
         assert_eq!(cmd.display_safe(), format!("nxc -u admin -p {REDACTED}"));
@@ -1598,7 +1662,13 @@ mod tests {
         let mut values = InputValues::new();
         values.insert("url", "https://example.com");
         let cmd = op
-            .command(Path::new("curl"), &specs, &values, Path::new("t.toml"))
+            .command(
+                Path::new("curl"),
+                &specs,
+                &values,
+                Path::new("t.toml"),
+                None,
+            )
             .unwrap();
         assert_eq!(
             cmd.args(),
@@ -1622,7 +1692,13 @@ mod tests {
         let mut values = InputValues::new();
         values.insert("rate", "250");
         let cmd = op
-            .command(Path::new("naabu"), &specs, &values, Path::new("t.toml"))
+            .command(
+                Path::new("naabu"),
+                &specs,
+                &values,
+                Path::new("t.toml"),
+                None,
+            )
             .unwrap();
         assert_eq!(cmd.args(), &["--rate=250".to_string()]);
     }
@@ -1650,5 +1726,52 @@ mod tests {
     fn full_catalog_helper_covers_ten_phases() {
         let cat = Catalog::from_toml(&full_catalog(), Path::new("t.toml")).unwrap();
         assert_eq!(cat.capabilities().len(), PHASES.len());
+    }
+
+    #[test]
+    fn a_generated_artefact_is_written_inside_the_run_not_the_shell() {
+        // Borrowed from the shipped catalog, because that is where the real
+        // operation lives: the assertion is about rendering, not about a fixture.
+        let catalog = Catalog::load(Path::new("catalog/capabilities.toml")).unwrap();
+        let cap = catalog
+            .capabilities()
+            .iter()
+            .find(|c| c.id == "payload.shellcode-generation")
+            .expect("shipped capability");
+        let op = cap
+            .providers
+            .iter()
+            .flat_map(|p| &p.operations)
+            .find(|o| o.name == "Linux ELF")
+            .expect("the operation that writes a payload");
+
+        let mut values = InputValues::new();
+        for spec in &cap.inputs {
+            values.insert(spec.key.clone(), "x");
+        }
+        let dir = Path::new("/tmp/tsec-run-42/artifacts");
+        let cmd = op
+            .command(
+                Path::new("msfvenom"),
+                &cap.inputs,
+                &values,
+                Path::new("catalog/capabilities.toml"),
+                Some(dir),
+            )
+            .unwrap();
+
+        assert_eq!(
+            cmd.args().last().unwrap(),
+            "/tmp/tsec-run-42/artifacts/rev.elf",
+            "a generated payload belongs to the run"
+        );
+        assert!(
+            !cmd.args().iter().any(|a| a == "rev.elf"),
+            "nothing may be written to the working directory it was launched from"
+        );
+        assert!(
+            !cmd.args().iter().any(|a| a.contains("{artifacts}")),
+            "the placeholder must not survive rendering"
+        );
     }
 }

@@ -55,7 +55,7 @@ impl RunStore {
     /// Create (or reopen) the directory for `run_id`.
     pub fn open(output_dir: &Path, run_id: &RunId) -> Result<Self> {
         let root = output_dir.join(run_id.as_str());
-        for dir in [root.clone(), root.join("raw")] {
+        for dir in [root.clone(), root.join("raw"), root.join("artifacts")] {
             std::fs::create_dir_all(&dir).map_err(|e| io_err(&dir, &e))?;
         }
         Ok(Self {
@@ -81,6 +81,24 @@ impl RunStore {
     }
     pub fn raw_stderr(&self, task: &str) -> PathBuf {
         self.root.join("raw").join(format!("{task}.err"))
+    }
+    /// Where anything a run creates is written.
+    ///
+    /// A generated payload, a compiled loader, a captured hash file: each is
+    /// created inside this run's directory rather than the working directory it
+    /// happened to be launched from. Two consequences, both wanted. A run leaves
+    /// nothing behind in the operator's working directory, and every artefact a
+    /// run produced is still there next to the manifest that describes it.
+    pub fn artifacts_dir(&self) -> PathBuf {
+        self.root.join("artifacts")
+    }
+    /// The path a task's generated artefact should be written to.
+    ///
+    /// Named after the task so two operations cannot overwrite one another, and
+    /// kept flat so the directory listing is the answer to "what did this run
+    /// make".
+    pub fn artifact(&self, stem: &str, file: &str) -> PathBuf {
+        self.artifacts_dir().join(format!("{stem}_{file}"))
     }
     /// The consolidated operator-facing text harvest: `output.txt`.
     pub fn output_txt(&self) -> PathBuf {
@@ -465,6 +483,13 @@ pub struct OutputHeader<'a> {
     pub install_notes: &'a [String],
     /// Whether the operator stopped the run early.
     pub cancelled: bool,
+    /// Everything the run created, with the path it can be found at.
+    ///
+    /// A payload generator writes a file and says nothing about where it went.
+    /// The document therefore lists the run's artefact directory and names what
+    /// is in it, so the output is something an operator can act on rather than a
+    /// claim that something was made.
+    pub artifacts: &'a [(String, u64)],
 }
 
 /// The real pipeline counts, from parsing through to the final harvest.
@@ -757,6 +782,28 @@ fn output_document(
         ));
     }
 
+    // What this run created. A generator that writes a file and exits 0 has
+    // reported success, but success is not a path: the operator needs to know
+    // where the artefact landed and how big it is.
+    if !header.artifacts.is_empty() {
+        text.push_str(&rule);
+        text.push('\n');
+        text.push_str(&centre(&format!(
+            "ARTIFACTS CREATED {} — in {}/artifacts",
+            header.artifacts.len(),
+            header.run_name
+        )));
+        text.push('\n');
+        for (name, bytes) in header.artifacts {
+            text.push_str(&format!("  {name}  ({} bytes)\n", thousands(*bytes)));
+        }
+        text.push('\n');
+        text.push_str(&centre(
+            "these are written by the run; nothing was left in your working directory",
+        ));
+        text.push('\n');
+    }
+
     // What to run next. Placed last so it is the operator's next read.
     if !outcome.recommendation.is_empty() {
         text.push('\n');
@@ -830,6 +877,19 @@ impl HarvestStage {
             HarvestStage::Writing => "WRITING",
         }
     }
+}
+
+/// Group digits so a byte count reads as a size rather than a number.
+fn thousands(n: u64) -> String {
+    let digits = n.to_string();
+    let mut out = String::with_capacity(digits.len() + digits.len() / 3);
+    for (i, c) in digits.chars().enumerate() {
+        if i > 0 && (digits.len() - i) % 3 == 0 {
+            out.push(',');
+        }
+        out.push(c);
+    }
+    out
 }
 
 /// Write `bytes` to `path` atomically: same-directory temp file, then rename.
