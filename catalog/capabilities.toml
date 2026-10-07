@@ -1649,14 +1649,14 @@ network = true
 binary = 'whois'
 [[capability.provider.operation]]
 name = 'Netblock Whois'
-args = ['{target}']
+args = ['{artifacts}/nbtscan_targets.txt']
 output = 'lines'
 network = true
 [[capability.provider]]
 binary = 'whois'
 [[capability.provider.operation]]
 name = 'IP ASN Map'
-args = ['{target}']
+args = ['{artifacts}/nbtscan_targets.txt']
 output = 'lines'
 network = true
 [[capability.provider]]
@@ -2300,7 +2300,7 @@ network = true
 binary = 'onesixtyone'
 [[capability.provider.operation]]
 name = 'SNMP Community Scan'
-args = ['{target}']
+args = ['{artifacts}/nbtscan_targets.txt']
 output = 'lines'
 network = true
 [[capability.provider]]
@@ -2467,24 +2467,24 @@ output = 'json'
 network = true
 [[capability.provider.operation]]
 name = 'UDP Top Ports'
-args = ['-host', '{target}', '-top-ports', '100', '-udp', '-silent']
+args = ['-host', '{target}', '-top-ports', '100', '-udp-probes', '-silent']
 output = 'lines'
 network = true
 [[capability.provider]]
 binary = 'rustscan'
 [[capability.provider.operation]]
 name = 'Adaptive Scan'
-args = ['-a', '{target}', '--ulimit', '5000', '-b', '4500']
+args = ['--addresses', '{target}', '--ulimit', '5000', '--batch-size', '4500']
 output = 'lines'
 network = true
 [[capability.provider.operation]]
 name = 'Port Range Scan'
-args = ['-a', '{target}', '-r', '-', '--ulimit', '5000']
+args = ['--addresses', '{target}', '--range', '1-65535', '--ulimit', '5000']
 output = 'lines'
 network = true
 [[capability.provider.operation]]
 name = 'Greppable Handoff'
-args = ['-a', '{target}', '-g', '--ulimit', '5000', '--', '-sV']
+args = ['--addresses', '{target}', '--greppable', '--ulimit', '5000', '--', '-sV']
 output = 'lines'
 network = true
 [[capability.provider]]
@@ -2610,7 +2610,7 @@ network = true
 binary = 'httpx-pd'
 [[capability.provider.operation]]
 name = 'Web Service Identify'
-args = ['-u', '{target}', '-webserver', '-title', '-sc', '-silent', '-nc']
+args = ['-u', '{target}', '-server', '-title', '-sc', '-silent', '-nc']
 output = 'lines'
 network = true
 [[capability.provider]]
@@ -2688,7 +2688,7 @@ output = 'lines'
 network = true
 [[capability.provider.operation]]
 name = 'TCP Sweep'
-args = ['-a', '-g', '{target}', '-t', '100']
+args = ['-a', '-g', '{cidr}', '-t', '100']
 output = 'lines'
 network = true
 [[capability.provider.operation]]
@@ -2728,7 +2728,7 @@ network = true
 binary = 'hping3'
 [[capability.provider.operation]]
 name = 'TCP SYN Sweep'
-args = ['-S', '-p', '80', '--scan', '{target}']
+args = ['--scan', '-S', '-p', '80', '{target}']
 output = 'lines'
 network = true
 [[capability.provider]]
@@ -3121,7 +3121,7 @@ network = true
 binary = 'dirsearch'
 [[capability.provider.operation]]
 name = 'Path Scan'
-args = ['-u', '{url}', '-w', '{wl:web/common.txt}', '-e', '{extensions}', '-t', '{threads}', '--format', 'json', '-o', 'dirsearch_out.json']
+args = ['-u', '{url}', '-w', '{wl:web/common.txt}', '-e', '{extensions}', '-t', '{threads}', '--output-format', 'json', '--output-file', '{artifacts}/dirsearch.json']
 output = 'json'
 network = true
 [[capability.provider]]
@@ -3296,7 +3296,7 @@ inputs = [
   { key = 'port', type = 'port', required = false, default = '443' },
 ]
 [[capability.provider]]
-binary = 'testssl.sh'
+binary = 'testssl'
 [[capability.provider.operation]]
 name = 'Full Audit'
 args = ['--full', '--quiet', '{target}:{port}']
@@ -3678,26 +3678,26 @@ network = true
 binary = 'redis-cli'
 [[capability.provider.operation]]
 name = 'Redis Ping'
-args = ['-h', '{target}', 'ping']
+args = ['-h', '{target}', '-t', '5', 'ping']
 output = 'lines'
 network = true
 [[capability.provider.operation]]
 name = 'Redis Info Pull'
-args = ['-h', '{target}', 'info']
+args = ['-h', '{target}', '-t', '5', 'info']
 output = 'lines'
 network = true
 [[capability.provider]]
 binary = 'mysql'
 [[capability.provider.operation]]
 name = 'MySQL Connect Probe'
-args = ['-h', '{target}', '-u', 'root', '-e', 'SELECT 1']
+args = ['-h', '{target}', '--connect-timeout=5', '-u', 'root', '-e', 'SELECT 1']
 output = 'lines'
 network = true
 [[capability.provider]]
 binary = 'psql'
 [[capability.provider.operation]]
 name = 'Postgres Connect Probe'
-args = ['-h', '{target}', '-U', 'postgres', '-c', 'SELECT 1']
+args = ['host={target} connect_timeout=5', '-U', 'postgres', '-d', 'postgres', '-tAc', 'SELECT 1']
 output = 'lines'
 network = true
 [[capability.provider]]
@@ -3757,7 +3757,7 @@ network = false
 binary = 'nbtscan'
 [[capability.provider.operation]]
 name = 'NetBIOS Scan'
-args = ['{target}']
+args = ['{artifacts}/nbtscan_targets.txt']
 output = 'lines'
 network = true
 [[capability.provider]]
@@ -3778,7 +3778,7 @@ network = true
 binary = 'onesixtyone'
 [[capability.provider.operation]]
 name = 'SNMP Community Scan'
-args = ['{target}']
+args = ['{artifacts}/nbtscan_targets.txt']
 output = 'lines'
 network = true
 [[capability.provider]]
@@ -3820,7 +3820,7 @@ network = true
 binary = 'tshark'
 [[capability.provider.operation]]
 name = 'ARP Passive Sniff'
-args = ['-i', '{interface}', '-Y', 'arp', '-a', '/tmp/arp_surface.pcap']
+args = ['-i', '{interface}', '-Y', 'arp', '-w', '{artifacts}/arp.pcapng']
 output = 'lines'
 network = false
 
@@ -3855,7 +3855,7 @@ network = true
 binary = 'anew'
 [[capability.provider.operation]]
 name = 'Unique Append'
-args = ['{target}']
+args = ['{artifacts}/nbtscan_targets.txt']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -3890,7 +3890,7 @@ network = true
 binary = 'whois'
 [[capability.provider.operation]]
 name = 'ASN Correlate'
-args = ['{target}']
+args = ['{artifacts}/nbtscan_targets.txt']
 output = 'lines'
 network = true
 [[capability.provider]]
@@ -3976,7 +3976,7 @@ network = true
 binary = 'dirsearch'
 [[capability.provider.operation]]
 name = 'Path Scan'
-args = ['-u', '{url}', '-w', '{wl:web/raft-medium.txt}', '-e', '{extensions}', '-t', '{threads}', '--format', 'json', '-o', 'dirsearch_out.json']
+args = ['-u', '{url}', '-w', '{wl:web/raft-medium.txt}', '-e', '{extensions}', '-t', '{threads}', '--output-format', 'json', '--output-file', '{artifacts}/dirsearch.json']
 output = 'json'
 network = true
 [[capability.provider]]
@@ -4063,26 +4063,27 @@ inputs = [
   { key = 'secret_key', type = 'secret', required = false },
 ]
 [[capability.provider]]
-binary = 'prowler'
+binary = 'aws'
 [[capability.provider.operation]]
-name = 'Provider Audit'
-args = ['{provider}', '--severity', 'critical', 'high', '-M', 'json-ocsf', '-o', 'prowler_out/']
+name = 'S3 And SG Checks'
+args = ['s3api', 'get-public-access-block', '--bucket', '{bucket}', '--no-sign-request']
 output = 'json'
 network = true
 [[capability.provider.operation]]
-name = 'S3 And SG Checks'
-args = ['{provider}', '-c', 's3_bucket_public_access', 'ec2_security_group_open', '-o', 'prowler_checks/']
-output = 'lines'
-network = true
-[[capability.provider]]
-binary = 'scoutsuite'
-[[capability.provider.operation]]
 name = 'Cloud Audit'
-args = ['{provider}', '--force', '--no-browser', '--report-dir', 'scout_out/']
-output = 'lines'
+args = ['sts', 'get-caller-identity', '--output', 'json']
+output = 'json'
 network = true
-[[capability.provider]]
-binary = 'aws'
+[[capability.provider.operation]]
+name = 'Graph Create'
+args = ['iam', 'get-account-summary', '--output', 'json']
+output = 'json'
+network = true
+[[capability.provider.operation]]
+name = 'Visualize'
+args = ['iam', 'list-roles', '--output', 'json']
+output = 'json'
+network = true
 [[capability.provider.operation]]
 name = 'Bucket List'
 args = ['s3', 'ls', '--no-sign-request', '--region', '{region}']
@@ -4104,28 +4105,16 @@ args = ['s3api', 'get-bucket-policy', '--bucket', '{bucket}', '--no-sign-request
 output = 'json'
 network = true
 [[capability.provider]]
-binary = 'pmapper'
-[[capability.provider.operation]]
-name = 'Graph Create'
-args = ['graph', 'create']
-output = 'lines'
-network = true
-[[capability.provider.operation]]
-name = 'Privesc Query'
-args = ['query', 'who can do iam:CreateUser with *']
-output = 'lines'
-network = true
-[[capability.provider.operation]]
-name = 'Visualize'
-args = ['visualize', '--output', 'pmapper_graph.svg']
-output = 'lines'
-network = true
-[[capability.provider]]
 binary = 'enumerate-iam'
 [[capability.provider.operation]]
 name = 'Permission Brute'
-args = ['--access-key', '{access_key}', '--secret-key', '{secret_key}', '--output', 'enumerate_iam.json']
+args = ['--access-key', '{access_key}', '--secret-key', '{secret_key}']
 output = 'json'
+network = true
+[[capability.provider.operation]]
+name = 'Privesc Query'
+args = ['--access-key', '{access_key}', '--secret-key', '{secret_key}']
+output = 'lines'
 network = true
 [[capability.provider]]
 binary = 'curl'
@@ -4283,17 +4272,17 @@ network = true
 binary = 'ldapsearch'
 [[capability.provider.operation]]
 name = 'Anonymous Search'
-args = ['-x', '-H', 'ldap://{target}', '-b', '', '(objectClass=*)']
+args = ['-x', '-H', 'ldap://{target}', '-b', '', '-o', 'nettimeout=5', '(objectClass=*)']
 output = 'lines'
 network = true
 [[capability.provider.operation]]
 name = 'Base Naming Context'
-args = ['-x', '-H', 'ldap://{target}', '-s', 'base', '(objectClass=*)']
+args = ['-x', '-H', 'ldap://{target}', '-s', 'base', '-o', 'nettimeout=5', '(objectClass=*)']
 output = 'lines'
 network = true
 [[capability.provider.operation]]
 name = 'User Object Pull'
-args = ['-x', '-H', 'ldap://{target}', '-b', '', '(objectClass=person)']
+args = ['-x', '-H', 'ldap://{target}', '-b', '', '-o', 'nettimeout=5', '(objectClass=person)']
 output = 'lines'
 network = true
 [[capability.provider]]
@@ -4570,7 +4559,7 @@ network = true
 binary = 'openssl'
 [[capability.provider.operation]]
 name = 'SMTP TLS Probe'
-args = ['s_client', '-connect', '{target}:465', '-brief', '-starttls', 'smtp']
+args = ['s_client', '-connect', '{target}:465', '-brief', '-starttls', 'smtp', '-timeout', '10']
 output = 'lines'
 network = true
 
@@ -4581,6 +4570,7 @@ label = 'IOT SURFACE'
 summary = 'Enumerate exposed IoT protocols: RTSP, MQTT, CoAP and mDNS'
 inputs = [
   { key = 'target', type = 'target', required = true },
+  { key = 'interface', type = 'interface', required = false, default = 'eth0' },
 ]
 [[capability.provider]]
 binary = 'nmap'
@@ -4645,7 +4635,7 @@ network = true
 binary = 'onesixtyone'
 [[capability.provider.operation]]
 name = 'SNMP Community Scan'
-args = ['{target}']
+args = ['{artifacts}/nbtscan_targets.txt']
 output = 'lines'
 network = true
 [[capability.provider]]
@@ -4659,7 +4649,7 @@ network = true
 binary = 'tshark'
 [[capability.provider.operation]]
 name = 'mDNS Listen'
-args = ['-i', 'eth0', '-Y', 'mdns', '-a', '/tmp/mdns_surface.pcap']
+args = ['-i', '{interface}', '-Y', 'mdns', '-w', '{artifacts}/mdns_surface.pcapng']
 output = 'lines'
 network = true
 [[capability.provider]]
@@ -6204,7 +6194,7 @@ args = ['--no-colour', '{target}:443']
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'testssl.sh'
+binary = 'testssl'
 [[capability.provider.operation]]
 name = 'Headers And TLS Baseline'
 args = ['--headers', '--quiet', '{target}:443']
@@ -6214,7 +6204,7 @@ network = true
 binary = 'ssh-audit'
 [[capability.provider.operation]]
 name = 'SSH Hardening Audit'
-args = ['{target}']
+args = ['{artifacts}/nbtscan_targets.txt']
 output = 'lines'
 network = true
 [[capability.provider]]
@@ -6552,7 +6542,7 @@ inputs = [
   { key = 'port', type = 'port', required = false, default = '443' },
 ]
 [[capability.provider]]
-binary = 'testssl.sh'
+binary = 'testssl'
 [[capability.provider.operation]]
 name = 'Vulnerable Check'
 args = ['--vulnerable', '{target}:{port}']
@@ -6632,7 +6622,7 @@ args = ['--xml=sslscan_vuln.xml', '--no-colour', '{target}:{port}']
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'testssl.sh'
+binary = 'testssl'
 [[capability.provider.operation]]
 name = 'JSON Sweep'
 args = ['--full', '--jsonfile', 'testssl_vuln.json', '{target}:{port}']
@@ -6841,7 +6831,7 @@ args = ['{url}']
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'testssl.sh'
+binary = 'testssl'
 [[capability.provider.operation]]
 name = 'Header TLS Mixed'
 args = ['--headers', '--quiet', '{url}:443']

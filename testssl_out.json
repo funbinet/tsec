@@ -1,0 +1,130 @@
+[
+         {
+              "id"           : "engine_problem",
+              "ip"           : "/",
+              "port"         : "443",
+              "severity"     : "WARN",
+              "finding"      : "No engine or GOST support via engine with your /usr/bin/openssl"
+          }
+,         {
+              "id"           : "service",
+              "ip"           : "example.com/104.20.23.154",
+              "port"         : "443",
+              "severity"     : "DEBUG",
+              "finding"      : "Couldn't determine service, skipping all HTTP checks"
+          }
+,         {
+              "id"           : "pre_128cipher",
+              "ip"           : "example.com/104.20.23.154",
+              "port"         : "443",
+              "severity"     : "INFO",
+              "finding"      : "No 128 cipher limit bug"
+          }
+,         {
+              "id"           : "SSLv2",
+              "ip"           : "example.com/104.20.23.154",
+              "port"         : "443",
+              "severity"     : "OK",
+              "finding"      : "not offered"
+          }
+,         {
+              "id"           : "SSLv3",
+              "ip"           : "example.com/104.20.23.154",
+              "port"         : "443",
+              "severity"     : "OK",
+              "finding"      : "not offered"
+          }
+,         {
+              "id"           : "TLS1",
+              "ip"           : "example.com/104.20.23.154",
+              "port"         : "443",
+              "severity"     : "INFO",
+              "finding"      : "not offered"
+          }
+,         {
+              "id"           : "TLS1_1",
+              "ip"           : "example.com/104.20.23.154",
+              "port"         : "443",
+              "severity"     : "LOW",
+              "finding"      : "offered (deprecated)"
+          }
+,         {
+              "id"           : "TLS1_2",
+              "ip"           : "example.com/104.20.23.154",
+              "port"         : "443",
+              "severity"     : "OK",
+              "finding"      : "offered"
+          }
+,         {
+              "id"           : "TLS1_3",
+              "ip"           : "example.com/104.20.23.154",
+              "port"         : "443",
+              "severity"     : "OK",
+              "finding"      : "offered with final"
+          }
+,         {
+              "id"           : "NPN",
+              "ip"           : "example.com/104.20.23.154",
+              "port"         : "443",
+              "severity"     : "WARN",
+              "finding"      : "not possible for TLS 1.3-only hosts"
+          }
+,         {
+              "id"           : "ALPN_HTTP2",
+              "ip"           : "example.com/104.20.23.154",
+              "port"         : "443",
+              "severity"     : "OK",
+              "finding"      : "h2"
+          }
+,         {
+              "id"           : "ALPN",
+              "ip"           : "example.com/104.20.23.154",
+              "port"         : "443",
+              "severity"     : "INFO",
+              "finding"      : "http/1.1"
+          }
+,         {
+              "id"           : "GREASE",
+              "ip"           : "example.com/104.20.23.154",
+              "port"         : "443",
+              "severity"     : "OK",
+              "finding"      : "No bugs found."
+          }
+,         {
+              "id"           : "cipherlist_NULL",
+              "ip"           : "example.com/104.20.23.154",
+              "port"         : "443",
+              "severity"     : "OK",
+              "cwe"          : "CWE-327",
+              "finding"      : "not offered"
+          }
+,         {
+              "id"           : "cipherlist_aNULL",
+              "ip"           : "example.com/104.20.23.154",
+              "port"         : "443",
+              "severity"     : "OK",
+              "cwe"          : "CWE-327",
+              "finding"      : "not offered"
+          }
+,         {
+              "id"           : "cipherlist_EXPORT",
+              "ip"           : "example.com/104.20.23.154",
+              "port"         : "443",
+              "severity"     : "OK",
+              "cwe"          : "CWE-327",
+              "finding"      : "not offered"
+          }
+         {
+              "id"           : "scanProblem",
+              "ip"           : "/",
+              "port"         : "443",
+              "severity"     : "FATAL",
+              "finding"      : "non-empty 'testssl_out.json' exists. Either use '--append' or (re)move it"
+          }
+         {
+              "id"           : "scanProblem",
+              "ip"           : "/",
+              "port"         : "443",
+              "severity"     : "FATAL",
+              "finding"      : "non-empty 'testssl_out.json' exists. Either use '--append' or (re)move it"
+          }

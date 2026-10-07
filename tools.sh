@@ -333,9 +333,7 @@ pkg_info() {
         pip-audit) echo "python-pip-audit|python3-pip-audit" ;;
         pixiewps) echo "pixiewps|pixiewps" ;;
         plink) echo "putty|putty-tools" ;;
-        pmapper) echo "pmapper|pmapper" ;;
         printenv) echo "coreutils|coreutils" ;;
-        prowler) echo "prowler|prowler" ;;
         proxychains4) echo "proxychains-ng|proxychains4" ;;
         ps) echo "procps-ng|procps" ;;
         psql) echo "postgresql-libs|postgresql-client" ;;
@@ -371,7 +369,6 @@ pkg_info() {
         sqlite3) echo "sqlite|sqlite3" ;;
         strip) echo "binutils|binutils" ;;
         sublist3r) echo "sublist3r|sublist3r" ;;
-        scoutsuite) echo "scoutsuite|scoutsuite" ;;
         searchsploit) echo "exploitdb|exploitdb" ;;
         sed) echo "sed|sed" ;;
         semgrep) echo "semgrep|semgrep" ;;
@@ -412,7 +409,7 @@ pkg_info() {
         tail) echo "coreutils|coreutils" ;;
         tshark) echo "wireshark-cli|wireshark-cli" ;;
         tcpdump) echo "tcpdump|tcpdump" ;;
-        testssl.sh) echo "testssl.sh|testssl.sh" ;;
+        testssl) echo "testssl.sh|testssl.sh" ;;
         theharvester) echo "theharvester|theharvester" ;;
         tlsx) echo "tlsx|tlsx" ;;
         tplmap) echo "tplmap|tplmap" ;;
