@@ -60,6 +60,16 @@ urls.txt
 archive_urls.txt
 results.txt
 report.txt
+output.txt
+names.txt
+subdomains.txt
+subs.txt
+domains.txt
+hosts.txt
+live_hosts.txt
+open_ports.txt
+found.txt
+hits.txt
 /ferox_content.json
 /ferox_dirs.json
 /sslscan_out.xml
