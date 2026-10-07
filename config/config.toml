@@ -55,7 +55,6 @@ dnsx = 3600
 httpx-pd = 3600
 tlsx = 3600
 naabu = 3600
-asnmap = 3600
 mapcidr = 3600
 nuclei = 7200
 interactsh-client = 5400

@@ -64,6 +64,13 @@ pub struct FlagSet {
 }
 
 impl FlagSet {
+    /// Fold another help text's options into this set.
+    pub fn merge(&mut self, other: &FlagSet) {
+        self.long.extend(other.long.iter().cloned());
+        self.short.extend(other.short.iter().copied());
+        self.dash_long.extend(other.dash_long.iter().cloned());
+    }
+
     /// Whether this help text documents `flag`, as written.
     ///
     /// A single-dash multi-character token is ambiguous, because three
@@ -118,6 +125,16 @@ pub fn flags_used(args: &[String]) -> BTreeSet<String> {
 /// `--help` is tried before `-h` and before a bare invocation, because several
 /// tools print a short usage error when run with no arguments and a naive probe
 /// picks that up instead of the real help.
+pub fn documented_flags_for(path: &Path, subcommand: Option<&str>) -> FlagSet {
+    let mut set = documented_flags(path);
+    if let Some(name) = subcommand {
+        if let Some(raw) = run_capped(path, &[name, "--help"], SUBCOMMAND_HELP) {
+            set.merge(&parse_flags(&strip_escapes(&raw)));
+        }
+    }
+    set
+}
+
 pub fn documented_flags(path: &Path) -> FlagSet {
     static CACHE: OnceLock<Mutex<BTreeMap<PathBuf, FlagSet>>> = OnceLock::new();
     let cache = CACHE.get_or_init(|| Mutex::new(BTreeMap::new()));
@@ -165,6 +182,15 @@ pub fn identity(path: &Path) -> Identity {
 ///
 /// A bare invocation is deliberately absent: with no arguments it either starts
 /// the tool's real work, against a target, or waits on input.
+/// Help for a subcommand's own options, probed only when the operation's first
+/// argument is a word rather than a flag.
+///
+/// `zgrab2 http --port 80 host` is correct and `zgrab2 --help` never mentions
+/// `--port`, because zgrab2 puts it on the `http` subcommand. Reading only the
+/// top-level help makes a correct invocation look like an invented flag, which
+/// is how a check that is supposed to catch mistakes starts crying wolf.
+const SUBCOMMAND_HELP: Duration = Duration::from_millis(700);
+
 const HELP_ARGS: [(&[&str], Duration); 5] = [
     (&["--help"], HELP_TIMEOUT),
     (&["-h"], EXTRA_HELP_TIMEOUT),
@@ -564,16 +590,38 @@ const DELEGATING: &[&str] = &[
 ///
 /// Only installed binaries are probed, and each is probed once. A binary whose
 /// help is unreadable is left alone: silence is not evidence of a mismatch.
+/// The first argument that is a bare word, which for a CLI is its subcommand.
+///
+/// Taken only when it comes before any option, since `curl -s http://host` has a
+/// word after a flag and no subcommand at all.
+fn leading_subcommand(args: &[String]) -> Option<String> {
+    for arg in args {
+        if arg.starts_with('-') {
+            return None;
+        }
+        if !arg.contains("://") && !arg.contains('/') && !arg.contains('.') {
+            return Some(arg.clone());
+        }
+        return None;
+    }
+    None
+}
+
 pub fn flag_mismatches(catalog: &Catalog) -> Vec<FlagMismatch> {
     // Probing is a subprocess per provider, so it is bounded rather than run
     // across every core: a host scanning 350 providers should stay responsive,
     // and the result is cached per binary either way.
-    let jobs: Vec<(String, PathBuf, Vec<String>)> = {
-        let mut needed: BTreeMap<&str, BTreeSet<String>> = BTreeMap::new();
+    let jobs: Vec<(String, PathBuf, Vec<String>, Option<String>)> = {
+        // One entry per (binary, subcommand), because a tool that puts its
+        // options on a subcommand documents them there and nowhere else.
+        let mut needed: BTreeMap<(&str, Option<String>), BTreeSet<String>> = BTreeMap::new();
         for cap in catalog.capabilities() {
             for binding in &cap.providers {
-                let entry = needed.entry(binding.binary.as_str()).or_default();
                 for op in &binding.operations {
+                    let sub = leading_subcommand(&op.args);
+                    let entry = needed
+                        .entry((binding.binary.as_str(), sub.clone()))
+                        .or_default();
                     entry.extend(flags_used(&op.args));
                 }
             }
@@ -581,13 +629,14 @@ pub fn flag_mismatches(catalog: &Catalog) -> Vec<FlagMismatch> {
         needed
             .into_iter()
             .filter(|(_, flags)| !flags.is_empty())
-            .filter(|(binary, _)| !DELEGATING.contains(binary))
-            .filter_map(|(binary, flags)| {
+            .filter(|((binary, _), _)| !DELEGATING.contains(binary))
+            .filter_map(|((binary, sub), flags)| {
                 crate::provider::find_in_path(binary).map(|path| {
                     (
                         binary.to_string(),
                         path,
                         flags.into_iter().collect::<Vec<_>>(),
+                        sub,
                     )
                 })
             })
@@ -595,8 +644,8 @@ pub fn flag_mismatches(catalog: &Catalog) -> Vec<FlagMismatch> {
     };
 
     let found: Vec<Option<FlagMismatch>> = run_bounded(jobs.len(), |i| {
-        let (binary, path, flags) = &jobs[i];
-        let documented = documented_flags(path);
+        let (binary, path, flags, sub) = &jobs[i];
+        let documented = documented_flags_for(path, sub.as_deref());
         if documented.len() < 3 {
             // The binary would not describe itself; that is not a mismatch.
             return None;
