@@ -138,7 +138,6 @@ pkg_info() {
         cat|chmod|comm|cp|cut|sha1sum|size|sort|type) echo "coreutils|coreutils" ;;
         cdncheck) echo "cdncheck|cdncheck" ;;
         certipy) echo "certipy-ad|certipy-ad" ;;
-        certutil) echo "adfind|adfind" ;;
         cewl) echo "cewl|cewl" ;;
         checksec) echo "checksec|checksec" ;;
         chisel) echo "chisel|chisel" ;;

