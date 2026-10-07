@@ -286,6 +286,36 @@ pub fn asset_root(catalog_path: &Path) -> PathBuf {
     }
 }
 
+/// Resolve a bare script name against the bundled `scripts/` directory.
+///
+/// Several capabilities are `python3 some_tool.py --flag value`: a macro
+/// builder, a browser credential reader, a pivot reporter, the wireless
+/// analysers. Writing the bare filename means the interpreter resolves it
+/// against whatever directory the process happens to have, which is the run
+/// directory and is not where it lives, so the tool is not found and the
+/// operation fails with "No such file or directory" — a message that names the
+/// file rather than the missing path, and so looks like the tool is broken.
+///
+/// A bare name that matches a bundled script is resolved to it. An explicit
+/// `{asset:…}` still wins, an absolute path is left alone, and a bare name that
+/// is not bundled is passed through untouched: a capability may legitimately
+/// name a script from a tool it installed, and guessing at those would be worse
+/// than leaving them to `PATH`.
+fn resolve_script(token: &str, root: &Path, operation: &str) -> Result<String> {
+    if !token.ends_with(".py") || token.contains('/') {
+        return Ok(token.to_string());
+    }
+    let candidate = root.join("scripts").join(token);
+    if candidate.is_file() {
+        return Ok(candidate.display().to_string());
+    }
+    Err(TsecError::catalog(format!(
+        "operation `{operation}` names script `{token}`, which is not present at {}. Bundled \
+         scripts are found here; name one with {{asset:scripts/{token}}} to use a specific path",
+        candidate.display()
+    )))
+}
+
 /// Replace every `{asset:rel}` in a token with its path under `root`.
 fn expand_assets(token: &str, root: &Path, operation: &str) -> Result<String> {
     let mut out = String::with_capacity(token.len());
@@ -478,7 +508,9 @@ impl Operation {
                     })?;
                     token.replace(ARTIFACTS_PLACEHOLDER, &dir.display().to_string())
                 } else {
-                    expand_wordlists(token, catalog_path, &self.name)?
+                    let dir = asset_root(catalog_path);
+                    let token = expand_wordlists(token, catalog_path, &self.name)?;
+                    resolve_script(&token, &dir, &self.name)?
                 };
                 args.push(expand(&token, specs, values, &self.name)?);
             }
