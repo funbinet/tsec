@@ -719,7 +719,13 @@ fn run_capability(
         RunnerConfig {
             kill_grace: Duration::from_millis(cfg.execution.kill_grace_ms),
             env: Vec::new(),
-            cwd: None,
+            // A tool given a bare output filename writes it to its working
+            // directory. Left alone that is the operator's shell — and for a run
+            // started from a checkout, the checkout: scanner reports and
+            // harvested hostnames end up as untracked changes in the repository.
+            // Running the child inside the run's own directory means anything
+            // it writes lands with the manifest that describes the run.
+            cwd: Some(store.root().to_path_buf()),
         },
     );
 

@@ -181,6 +181,15 @@ every command is the thing this design removes.
 └── raw/<stem>.out|.err
 ```
 
+Every child process is launched in the run's own directory, never in the
+operator's. A tool given a bare output filename writes it wherever it was
+launched, and a run started from a checkout would otherwise leave its scanner
+reports and harvested hostnames in the repository as untracked changes. Eleven
+such files were committed once. The working directory is what makes that
+impossible rather than merely unlikely, and it covers the outputs the catalog
+does not know about — a scanner that reports to `./names.txt` because that is its
+default has nowhere else to write.
+
 A generated payload belongs to the run that made it. `msfvenom -o rev.elf`
 given a bare filename writes to the working directory the tool happened to be
 launched from, which is the operator's shell: the file is still there several runs

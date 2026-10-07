@@ -63,6 +63,11 @@ pub struct RunnerConfig {
     /// Environment additions for every child.
     pub env: Vec<(String, String)>,
     /// Working directory for children.
+    ///
+    /// Set to the run's own directory, never left as the operator's. A tool given
+    /// a bare output filename writes it wherever it was launched, so this is what
+    /// stops a run from writing its results into the repository it was started
+    /// from.
     pub cwd: Option<PathBuf>,
 }
 
@@ -592,4 +597,66 @@ fn signal_of(status: &std::process::ExitStatus) -> Option<i32> {
 #[cfg(not(unix))]
 fn signal_of(_: &std::process::ExitStatus) -> Option<i32> {
     None
+}
+
+#[cfg(test)]
+mod cwd_tests {
+    use super::*;
+    use crate::domain::command::Command;
+
+    /// The guarantee that stops a capability run from writing into the
+    /// repository it was started from: whatever a tool writes with a bare
+    /// filename lands in the run's directory, because that is the directory the
+    /// child is launched in.
+    ///
+    /// Eleven files of run output were committed once because nothing enforced
+    /// this. The catalogue's `{artifacts}` placeholder routes the outputs it
+    /// knows about; this covers the ones it does not.
+    #[test]
+    fn a_child_writes_into_the_run_directory_not_the_caller() {
+        let run = std::env::temp_dir().join(format!("tsec-cwd-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&run);
+        std::fs::create_dir_all(&run).expect("run dir");
+
+        let spec = TaskSpec {
+            id: TaskId(0),
+            provider: "sh".into(),
+            operation: "probe".into(),
+            label: "probe".into(),
+            timeout: Duration::from_secs(10),
+            artifacts: RawArtifact {
+                primary: run.join("probe.out"),
+                stderr: run.join("probe.err"),
+            },
+            sensitive_args: vec![],
+        };
+        let runner = Runner::new(
+            Launcher::new(OniuxBackend::new("/bin/true")),
+            RunnerConfig {
+                cwd: Some(run.clone()),
+                ..RunnerConfig::default()
+            },
+        );
+        // A tool writing a bare relative filename, exactly as most scanners do
+        // when the catalogue does not name an output path.
+        let cmd = Command::new(
+            "/bin/sh",
+            vec!["-c".into(), "printf leak > bare_output.txt".into()],
+        )
+        .network(false);
+
+        let rt = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .expect("runtime");
+        let done =
+            rt.block_on(runner.run(&spec, &cmd, "recon", "recon.probe", &Cancellation::new()));
+
+        assert_eq!(done.record.status, TaskStatus::Complete);
+        assert!(
+            run.join("bare_output.txt").is_file(),
+            "the file must land in the run directory, not the caller"
+        );
+        let _ = std::fs::remove_dir_all(&run);
+    }
 }
