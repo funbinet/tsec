@@ -42,3 +42,40 @@
 /wordlists/users/top-1m.txt
 /wordlists/web/dirbuster-big.txt
 /wordlists/**/*.part
+
+# ── run output ────────────────────────────────────────────────────────────
+# Nothing a capability run produces belongs in version control, whatever wrote
+# it. These are the shapes the catalog's tools actually emit when an operation
+# writes to a bare filename and therefore lands in the working directory it was
+# launched from — which, for a run, is this repository. Eleven such files were
+# committed once; the rules below exist so a run cannot leave a tracked change
+# behind even when everything else it does is right.
+#
+# Scanner default reports.
+admin.txt
+cookies.txt
+dirb_out.txt
+endpoints.txt
+urls.txt
+archive_urls.txt
+results.txt
+report.txt
+/ferox_content.json
+/ferox_dirs.json
+/sslscan_out.xml
+/sslscan_*.xml
+/nmap_output.xml
+/gitleaks_report.json
+/gitleaks-report.json
+/trivy-report.json
+/grype-report.json
+/zgrab2_out.csv
+/subfinder_output.txt
+/hakrawler_urls.txt
+/katana.txt
+/gospider.json
+
+# A tool handed a bare name and told to create a file by that name, e.g. a
+# scanner writing example.com.txt after the host it was pointed at.
+example.com.txt
+*.${TARGET}.txt
