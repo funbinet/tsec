@@ -731,6 +731,59 @@ resolve_phase() {
     fi
 }
 
+# Report anything in the working tree that is a run product rather than source.
+#
+# `.gitignore` already refuses to stage these, and `.gitignore` is a habit. This
+# is the part that notices. Thirty-six generated files — a harvested CMS report,
+# two encrypted payloads, a webshell, a dozen ffuf result files, a `.spec` left
+# by a build — reached the remote twice, once because a cleanup pass listed the
+# files that existed that day and once because `git add -A` ran afterwards. A
+# pattern cannot stop a file nobody predicted, but a check over what is actually
+# tracked can, and it is the check that runs before a commit rather than after
+# someone notices.
+verify_clean() {
+    local rc=0
+    local junk
+
+    # Tracked files at the root that are not part of the project.
+    junk=$(git ls-files 2>/dev/null | grep -vE "^(src|catalog|config|docs|assets|wordlists|packaging|scripts|build|help|yara|logs|reports)/" \
+        | grep -vE "^(\.gitignore|Cargo\.(toml|lock)|README\.md|REQUIREMENTS\.TXT|install\.sh|tools\.sh)$" || true)
+    if [ -n "$junk" ]; then
+        echo -e "${RED}Tracked files that are not source:${RESET}"
+        echo "$junk" | sed 's/^/  /'
+        rc=1
+    fi
+
+    # Run directories that exist but are not tracked is fine; tracked ones are
+    # not, and `.gitignore` cannot express that difference on its own.
+    junk=$(git ls-files 2>/dev/null | grep -E "^(output|dist|Result|tests)/" || true)
+    if [ -n "$junk" ]; then
+        echo -e "${RED}Run or build output is tracked:${RESET}"
+        echo "$junk" | sed 's/^/  /'
+        rc=1
+    fi
+
+    # Anything a run or a probe left at the root and nobody has added yet.
+    # Only `??` entries: a staged deletion is this script's own earlier work and
+    # a modification is a tracked source file, neither is an untracked leftover.
+    junk=$(git status --porcelain 2>/dev/null | awk '$1 == "??" {print $2}' \
+        | grep -vE "^(src|catalog|config|docs|assets|wordlists|packaging|scripts|build|help|yara|logs|reports|\.gitignore|Cargo\.|README\.md|REQUIREMENTS\.TXT|install\.sh|tools\.sh)" || true)
+    if [ -n "$junk" ]; then
+        echo -e "${RED}Untracked files at the tree root:${RESET}"
+        echo "$junk" | sed 's/^/  /'
+        rc=1
+    fi
+
+    if [ "$rc" -eq 0 ]; then
+        echo -e "${GREEN}Working tree is source only.${RESET}"
+    else
+        echo ""
+        echo "Remove them, or add a rule to .gitignore if one belongs:"
+        echo "  git rm --cached <file>"
+    fi
+    return "$rc"
+}
+
 usage() {
     echo -e "${BOLD}TSEC 3.0 tool dependency manager${RESET}"
     echo "Usage: $0 [-<phase> ...] [-c]"
@@ -751,17 +804,25 @@ usage() {
     echo "Options:"
     echo "  -c               Check only: report missing tools and their"
     echo "                   Arch + Kali install commands; install nothing"
+    echo ""
+    echo "Other:"
+    echo "  verify           Check the working tree for generated files that"
+    echo "                   should never be committed"
     exit 0
 }
 
 main() {
     [ $# -eq 0 ] && usage
+    case "$1" in
+        verify|clean) verify_clean; exit $? ;;
+    esac
 
     local phases=()
     for arg in "$@"; do
         case "$arg" in
             -c|--check) CHECK_ONLY=true ;;
             -h|--help) usage ;;
+            verify|clean) verify_clean; exit $? ;;
             -*) phases+=("$(echo "$arg" | sed 's/^--*//')") ;;
             *)  phases+=("$arg") ;;
         esac

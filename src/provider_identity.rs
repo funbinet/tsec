@@ -19,7 +19,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
-use std::sync::{Mutex, OnceLock};
+use std::sync::{Arc, Mutex, OnceLock};
 use std::time::{Duration, Instant};
 
 use crate::catalog::Catalog;
@@ -35,6 +35,9 @@ const HELP_TIMEOUT: Duration = Duration::from_secs(3);
 /// back thin — and a tool that does not answer one of them promptly is a tool
 /// that is doing something other than printing help.
 const EXTRA_HELP_TIMEOUT: Duration = Duration::from_millis(700);
+
+/// How long a drain is given to finish after its child has been killed.
+const DRAIN_GRACE: Duration = Duration::from_millis(250);
 
 /// Largest help text read. Flags appear in the first screen or not at all.
 const HELP_LIMIT: u64 = 256 * 1024;
@@ -336,6 +339,14 @@ fn run_capped(path: &Path, args: &[&str], timeout: Duration) -> Option<String> {
     // until end-of-file, and a tool asked for help that prints nothing and waits
     // — or that forks a scanner — never closes them, so the deadline below would
     // never be reached. Killing the child ends the read.
+    //
+    // Killing the child is not enough to end it: a tool that forks hands its
+    // pipes to the grandchild, so the write end stays open in a process that is
+    // not the one we signalled, and the read below would never see end-of-file
+    // either. The drain therefore accumulates into shared storage that outlives
+    // the thread, so the collector below can take what has arrived and walk away
+    // from a thread that is still blocked. Joining unconditionally turned a probe
+    // with a three-second budget into a hang with no budget at all.
     let stdout = child.stdout.take().map(drain);
     let stderr = child.stderr.take().map(drain);
 
@@ -359,22 +370,56 @@ fn run_capped(path: &Path, args: &[&str], timeout: Duration) -> Option<String> {
     }
 
     let mut out = String::new();
-    out.push_str(&stdout.map(join).unwrap_or_default());
-    out.push_str(&stderr.map(join).unwrap_or_default());
+    out.push_str(&collect(stdout));
+    out.push_str(&collect(stderr));
     Some(out)
 }
 
 /// Read a pipe to end-of-file, keeping at most [`HELP_LIMIT`] bytes.
-fn drain<R: Read + Send + 'static>(pipe: R) -> std::thread::JoinHandle<String> {
-    std::thread::spawn(move || {
-        let mut buf = Vec::new();
-        let _ = pipe.take(HELP_LIMIT).read_to_end(&mut buf);
-        String::from_utf8_lossy(&buf).into_owned()
-    })
+fn drain<R: Read + Send + 'static>(pipe: R) -> (Arc<Mutex<String>>, std::thread::JoinHandle<()>) {
+    let seen = Arc::new(Mutex::new(String::new()));
+    let sink = Arc::clone(&seen);
+    let mut pipe = pipe;
+    let handle = std::thread::spawn(move || {
+        let mut chunk = [0u8; 8192];
+        let mut held = 0usize;
+        loop {
+            let Ok(n) = pipe.read(&mut chunk) else { break };
+            if n == 0 {
+                break;
+            }
+            let room = (HELP_LIMIT as usize).saturating_sub(held);
+            let take = (n as usize).min(room);
+            if take == 0 {
+                break;
+            }
+            if let Ok(mut slot) = sink.lock() {
+                slot.push_str(&String::from_utf8_lossy(&chunk[..take]));
+            }
+            held += take;
+            if held >= HELP_LIMIT as usize {
+                break;
+            }
+        }
+    });
+    (seen, handle)
 }
 
-fn join(handle: std::thread::JoinHandle<String>) -> String {
-    handle.join().unwrap_or_default()
+/// Take whatever the drains have collected, giving them a brief grace period.
+///
+/// A thread still blocked on a pipe held open by a grandchild is detached, not
+/// waited for. The bytes already read are kept: a tool that prints its help and
+/// then hangs is exactly the case worth reporting on, so what it wrote is
+/// retained rather than discarded along with the thread.
+fn collect(drained: Option<(Arc<Mutex<String>>, std::thread::JoinHandle<()>)>) -> String {
+    let Some((seen, handle)) = drained else {
+        return String::new();
+    };
+    let grace = Instant::now() + DRAIN_GRACE;
+    while !handle.is_finished() && Instant::now() < grace {
+        std::thread::sleep(Duration::from_millis(10));
+    }
+    seen.lock().map(|s| s.clone()).unwrap_or_default()
 }
 
 fn parse_flags(help: &str) -> FlagSet {

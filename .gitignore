@@ -89,3 +89,103 @@ hits.txt
 # scanner writing example.com.txt after the host it was pointed at.
 example.com.txt
 *.${TARGET}.txt
+
+# Every run writes into its own directory under output/, and every build into
+# dist/. Neither is source. These are listed so that a file created by mistake
+# at the repository root — a scanner handed a bare output filename, a payload
+# builder run from the wrong directory, a tool that ignored its working
+# directory — is ignored by default instead of needing a new entry each time.
+#
+# The rule is deliberately blunt: anything that looks like a generated report,
+# a harvested result, a captured artefact or a build product is not source.
+# Adding a new entry per incident meant the same incident recurring, because
+# `git add -A` ran before anyone noticed what it was staging.
+/output/
+/dist/
+/build/
+/Result/
+/logs/
+/screenshots/
+/tmp/
+
+*.json_*
+/connect_timeout=*
+/nmap_segfault_*
+/sslscan_*.xml
+/_*/                       # PyInstaller extraction dirs left by msfvenom &c
+
+# Harvested and captured data. These are findings about someone else's host.
+*.har
+*.pcap
+*.pcapng
+*.cap
+*.22000
+*.hc22000
+*.22
+*.12
+*.kismet.csv
+*_content.json
+*_params.json
+*_vhost.json
+*_api.json
+*_param.json
+*_path.json
+*_out.json
+*_results.json
+*_report.json
+*_vuln.json
+*_exec.json
+*_*.json.example.com
+
+# Generated payloads and binaries. The catalog generates these into the run's
+# own directory; a copy at the root is a mistake, not a fixture.
+*.enc
+*.zip
+*.doc
+*.docm
+*.elf
+*.php
+*.jsp
+*.war
+*.dll
+*.exe
+*.bin
+*.raw
+*.sh_evil
+/cert.pem
+/key.pem
+/decrypted_*
+
+# A build product of the project's own packaging step, and anything else a
+# build leaves lying about. Packaging sources live under packaging/, so no
+# .spec file at the root is ever source.
+/*.spec
+*.spec.bak
+
+# A scanner handed a bare filename writes it into its working directory, and a
+# file named after the host it looked at is the common case: `curl example.com
+# > example.com`, `zgrab2 ... -o example.com`, a scan named for the target with
+# a timestamp. Anchored at the root so a real directory of the same name is not
+# swallowed.
+/example.com
+/example.com*
+/chuka.ac.ke*
+/target.*
+/live_hosts*
+/hosts.txt
+/subdomains.txt
+
+# Test and diagnostic harnesses belong in a scratch directory, not the source
+# tree. `cargo test` unit tests live inside src/ and are source; integration
+# suites and probe scripts belong under /tmp.
+/tests/
+/harness*.py
+/*_run.py
+/fixinputs.py
+/addinput.py
+/check_flags.py
+
+# The committed record of the audit is a real project artefact and is kept.
+# A harvested report written at the root. The committed record of the audit is
+# a real project artefact and stays; this is the loose file beside it.
+/reports.json
