@@ -288,6 +288,20 @@ impl Runner {
         if let Some(dir) = &self.config.cwd {
             command.current_dir(dir);
         }
+        // Point the tool's scratch space at the run's own directory, under a
+        // `tmp/` beside the artifacts. Tools that unpack themselves into a
+        // temporary directory — the PyInstaller-based ones do, at 99MB each —
+        // otherwise leave it in the system temp, where nothing ever sweeps it:
+        // 186 of those had accumulated on one host and filled a 7.7GB tmpfs,
+        // which is what stopped the work mid-run. Under the run directory they
+        // are swept with the run, and the path a tool does keep stays next to
+        // its output instead of in a place nobody looks.
+        if let Some(dir) = &self.config.cwd {
+            let scratch = dir.join("tmp");
+            if std::fs::create_dir_all(&scratch).is_ok() {
+                command.env("TMPDIR", &scratch);
+            }
+        }
         for (k, v) in self.config.env.iter().chain(cmd.env_pairs()) {
             command.env(k, v);
         }
