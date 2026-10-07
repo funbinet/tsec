@@ -1,0 +1,9 @@
+{
+  "banner": {
+    "description": "WordPress Security Scanner",
+    "version": "4.0.1",
+    "sponsor": "An Automattic endeavor"
+  },
+  "scan_aborted": "The remote website is up, but does not seem to be running WordPress.",
+  "target_url": "https://example.com/"
+}

@@ -1649,14 +1649,14 @@ network = true
 binary = 'whois'
 [[capability.provider.operation]]
 name = 'Netblock Whois'
-args = ['{artifacts}/nbtscan_targets.txt']
+args = ['{target}']
 output = 'lines'
 network = true
 [[capability.provider]]
 binary = 'whois'
 [[capability.provider.operation]]
 name = 'IP ASN Map'
-args = ['{artifacts}/nbtscan_targets.txt']
+args = ['{target}']
 output = 'lines'
 network = true
 [[capability.provider]]
@@ -2040,7 +2040,7 @@ network = true
 binary = 'subjs'
 [[capability.provider.operation]]
 name = 'JS URL Pull'
-args = ['-i', '{url}']
+args = ['-u', '{url}']
 output = 'lines'
 network = true
 [[capability.provider]]
@@ -2300,7 +2300,7 @@ network = true
 binary = 'onesixtyone'
 [[capability.provider.operation]]
 name = 'SNMP Community Scan'
-args = ['{artifacts}/nbtscan_targets.txt']
+args = ['{target}']
 output = 'lines'
 network = true
 [[capability.provider]]
@@ -3453,7 +3453,7 @@ network = true
 binary = 'subjs'
 [[capability.provider.operation]]
 name = 'JS Asset List'
-args = ['-i', '{url}']
+args = ['-u', '{url}']
 output = 'lines'
 network = true
 [[capability.provider]]
@@ -3778,7 +3778,7 @@ network = true
 binary = 'onesixtyone'
 [[capability.provider.operation]]
 name = 'SNMP Community Scan'
-args = ['{artifacts}/nbtscan_targets.txt']
+args = ['{target}']
 output = 'lines'
 network = true
 [[capability.provider]]
@@ -3855,7 +3855,7 @@ network = true
 binary = 'anew'
 [[capability.provider.operation]]
 name = 'Unique Append'
-args = ['{artifacts}/nbtscan_targets.txt']
+args = ['{target}']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -3890,7 +3890,7 @@ network = true
 binary = 'whois'
 [[capability.provider.operation]]
 name = 'ASN Correlate'
-args = ['{artifacts}/nbtscan_targets.txt']
+args = ['{target}']
 output = 'lines'
 network = true
 [[capability.provider]]
@@ -4635,7 +4635,7 @@ network = true
 binary = 'onesixtyone'
 [[capability.provider.operation]]
 name = 'SNMP Community Scan'
-args = ['{artifacts}/nbtscan_targets.txt']
+args = ['{target}']
 output = 'lines'
 network = true
 [[capability.provider]]
@@ -4797,6 +4797,7 @@ inputs = [
   { key = 'target', type = 'target', required = true },
   { key = 'severity', type = 'list', required = false, default = 'medium,high,critical' },
   { key = 'rate', type = 'integer', required = false, default = '150' },
+  { key = 'oast', type = 'text', required = false },
 ]
 [[capability.provider]]
 binary = 'nuclei'
@@ -4857,7 +4858,7 @@ output = 'lines'
 network = true
 [[capability.provider.operation]]
 name = 'Interactsh OOB Scan'
-args = ['-u', '{target}', '-tags', 'ssrf,blind,oauth', '-interactsh', '-silent', '-nc']
+args = ['-u', '{target}', '-tags', 'ssrf,blind,oauth', '-iserver', '{oast}', '-silent', '-nc']
 output = 'lines'
 network = true
 [[capability.provider.operation]]
@@ -5117,32 +5118,32 @@ inputs = [
 binary = 'dalfox'
 [[capability.provider.operation]]
 name = 'URL Scan'
-args = ['url', '{url}']
+args = ['scan', 'url', '{url}', '--no-color']
 output = 'lines'
 network = true
 [[capability.provider.operation]]
 name = 'Deep DOM Scan'
-args = ['url', '{url}', '--deep-domxss']
+args = ['scan', 'url', '{url}', '--deep-scan', '--no-color']
 output = 'lines'
 network = true
 [[capability.provider.operation]]
 name = 'Blind Scan'
-args = ['url', '{url}', '--blind']
+args = ['scan', 'url', '{url}', '--blind-oob', '--no-color']
 output = 'lines'
 network = true
 [[capability.provider.operation]]
 name = 'Silent Scan'
-args = ['url', '{url}', '--silence']
+args = ['scan', 'url', '{url}', '--silence', '--no-color']
 output = 'lines'
 network = true
 [[capability.provider.operation]]
 name = 'Custom Payload Scan'
-args = ['url', '{url}', '--payload', '{wl:fuzz/xss-payloads.txt}', '--silence']
+args = ['scan', 'url', '{url}', '--custom-payload', '{wl:fuzz/xss-payloads.txt}', '--silence', '--no-color']
 output = 'lines'
 network = true
 [[capability.provider.operation]]
 name = 'File Based Scan'
-args = ['file', 'urls.txt', '--silence']
+args = ['scan', 'file', '{artifacts}/urls.txt', '--silence', '--no-color']
 output = 'lines'
 network = true
 [[capability.provider]]
@@ -5203,7 +5204,7 @@ network = true
 binary = 'gospider'
 [[capability.provider.operation]]
 name = 'Spider Params Pull'
-args = ['-s', '{url}', '-d', '2', '-c', '10', '--params']
+args = ['-s', '{url}', '-d', '2', '-c', '10', '--js', '-t', '10']
 output = 'lines'
 network = true
 [[capability.provider]]
@@ -5339,7 +5340,7 @@ inputs = [
 binary = 'tplmap'
 [[capability.provider.operation]]
 name = 'Auto Detect'
-args = ['-i', '{url}']
+args = ['-u', '{url}']
 output = 'lines'
 network = true
 [[capability.provider.operation]]
@@ -5431,7 +5432,7 @@ network = true
 binary = 'dalfox'
 [[capability.provider.operation]]
 name = 'Render Path Sweep'
-args = ['url', '{url}', '--silence', '--skip-xss-payload']
+args = ['scan', 'url', '{url}', '--silence', '--no-color', '--format', 'json']
 output = 'lines'
 network = true
 [[capability.provider]]
@@ -5671,6 +5672,7 @@ label = 'SSRF DETECTION'
 summary = 'Detect server side request forgery in URL-accepting parameters'
 inputs = [
   { key = 'url', type = 'url', required = true },
+  { key = 'oast', type = 'text', required = false },
 ]
 [[capability.provider]]
 binary = 'nuclei'
@@ -5681,7 +5683,7 @@ output = 'lines'
 network = true
 [[capability.provider.operation]]
 name = 'SSRF OOB Interactsh'
-args = ['-u', '{url}', '-tags', 'ssrf', '-interactsh', '-silent', '-nc']
+args = ['-u', '{url}', '-tags', 'ssrf', '-iserver', '{oast}', '-silent', '-nc']
 output = 'lines'
 network = true
 [[capability.provider]]
@@ -6003,6 +6005,7 @@ label = 'DEPENDENCY AUDIT'
 summary = 'Audit project dependencies and container images for known CVEs'
 inputs = [
   { key = 'path', type = 'path', required = true },
+  { key = 'lockfile', type = 'file', required = true },
 ]
 [[capability.provider]]
 binary = 'trivy'
@@ -6088,7 +6091,7 @@ network = false
 binary = 'cargo-audit'
 [[capability.provider.operation]]
 name = 'Rust Audit'
-args = ['audit', '--file', '{path}/Cargo.lock', '--json']
+args = ['audit', '--file', '{lockfile}', '--json']
 output = 'json'
 network = true
 [[capability.provider]]
@@ -6204,7 +6207,7 @@ network = true
 binary = 'ssh-audit'
 [[capability.provider.operation]]
 name = 'SSH Hardening Audit'
-args = ['{artifacts}/nbtscan_targets.txt']
+args = ['{target}']
 output = 'lines'
 network = true
 [[capability.provider]]
@@ -6246,7 +6249,7 @@ network = true
 binary = 'joomscan'
 [[capability.provider.operation]]
 name = 'Joomla Scan'
-args = ['-i', '{url}']
+args = ['-u', '{url}']
 output = 'lines'
 network = true
 [[capability.provider]]
@@ -6550,7 +6553,7 @@ output = 'lines'
 network = true
 [[capability.provider.operation]]
 name = 'Protocol Audit'
-args = ['--protocols', '--ciphers', '{target}:{port}']
+args = ['--protocols', '-e', '{target}:{port}']
 output = 'lines'
 network = true
 [[capability.provider.operation]]
@@ -6652,12 +6655,14 @@ inputs = [
   { key = 'url', type = 'url', required = true },
   { key = 'username', type = 'username', required = true },
   { key = 'password', type = 'password', required = true },
+  { key = 'host', type = 'target', required = false },
+  { key = 'login_path', type = 'text', required = false, default = '/login' },
 ]
 [[capability.provider]]
 binary = 'hydra'
 [[capability.provider.operation]]
 name = 'Form Brute'
-args = ['-L', '{wl:users/defaults.txt}', '-P', '{wl:passwords/common-10k.txt}', '{url}', 'http-post-form', '/login:user=^USER^&pass=^PASS^:failed']
+args = ['-L', '{wl:users/defaults.txt}', '-P', '{wl:passwords/common-10k.txt}', '{host}', 'http-post-form', '{login_path}:user=^USER^&pass=^PASS^:failed']
 output = 'lines'
 network = true
 [[capability.provider]]
@@ -6719,7 +6724,7 @@ network = true
 binary = 'nxc'
 [[capability.provider.operation]]
 name = 'Web Basic Auth Spray'
-args = ['http', '{url}', '-u', '{wl:users/defaults.txt}', '-p', '{wl:passwords/common-10k.txt}', '--basic-auth']
+args = ['smb', '{url}', '-u', '{wl:users/defaults.txt}', '-p', '{wl:passwords/common-10k.txt}']
 output = 'lines'
 network = true
 [[capability.provider]]
@@ -7066,7 +7071,7 @@ network = true
 binary = 'dalfox'
 [[capability.provider.operation]]
 name = 'Injection Param Scan'
-args = ['url', '{url}', '--silence']
+args = ['scan', 'url', '{url}', '--silence', '--no-color']
 output = 'lines'
 network = true
 [[capability.provider]]
@@ -7116,7 +7121,7 @@ network = true
 binary = 'dalfox'
 [[capability.provider.operation]]
 name = 'XSS Confirm'
-args = ['url', '{url}', '--silence']
+args = ['scan', 'url', '{url}', '--silence', '--no-color']
 output = 'lines'
 network = true
 [[capability.provider]]
@@ -12497,26 +12502,28 @@ inputs = [
   { key = 'url', type = 'url', required = true },
   { key = 'username', type = 'username', required = false, default = 'admin' },
   { key = 'password', type = 'password', required = false },
+  { key = 'host', type = 'target', required = false },
+  { key = 'login_path', type = 'text', required = false, default = '/admin' },
 ]
 [[capability.provider]]
 binary = 'hydra'
 [[capability.provider.operation]]
 name = 'Basic Auth Brute'
-args = ['-l', '{username}', '-P', '{wl:passwords/common-10k.txt}', '{url}', 'http-get', '/admin']
+args = ['-l', '{username}', '-P', '{wl:passwords/common-10k.txt}', '{host}', 'http-get', '{login_path}']
 output = 'lines'
 network = true
 [[capability.provider]]
 binary = 'hydra'
 [[capability.provider.operation]]
 name = 'Form Post Brute'
-args = ['-l', '{username}', '-P', '{wl:passwords/common-10k.txt}', '{url}', 'http-post-form', '/login:user=^USER^&pass=^PASS^:F=incorrect']
+args = ['-l', '{username}', '-P', '{wl:passwords/common-10k.txt}', '{host}', 'http-post-form', '{login_path}:user=^USER^&pass=^PASS^:F=incorrect']
 output = 'lines'
 network = true
 [[capability.provider]]
 binary = 'hydra'
 [[capability.provider.operation]]
 name = 'HTTP Digest Brute'
-args = ['-l', '{username}', '-P', '{wl:passwords/common-10k.txt}', '{url}', 'http-digest-get', '/']
+args = ['-l', '{username}', '-P', '{wl:passwords/common-10k.txt}', '{host}', 'http-digest-get', '{login_path}']
 output = 'lines'
 network = true
 [[capability.provider]]
@@ -20832,7 +20839,7 @@ network = true
 binary = 'nxc'
 [[capability.provider.operation]]
 name = 'Tomcat Cred Spray'
-args = ['http', '{rhost}:{rport}', '-u', '{username}', '-p', '{password}']
+args = ['smb', '{rhost}:{rport}', '-u', '{username}', '-p', '{password}']
 output = 'lines'
 network = true
 [[capability.provider]]
@@ -21906,7 +21913,7 @@ network = true
 binary = 'nuclei'
 [[capability.provider.operation]]
 name = 'Out-of-Band Interactive Sweep'
-args = ['-l', '{url}', '-tags', 'oob,rce', '-silent', '-nc', '-interactsh-url']
+args = ['-l', '{url}', '-tags', 'oob,rce', '-silent', '-nc', '-iserver']
 output = 'lines'
 network = true
 [[capability.provider]]
