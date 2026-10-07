@@ -383,13 +383,12 @@ fn drain<R: Read + Send + 'static>(pipe: R) -> (Arc<Mutex<String>>, std::thread:
     let handle = std::thread::spawn(move || {
         let mut chunk = [0u8; 8192];
         let mut held = 0usize;
-        loop {
-            let Ok(n) = pipe.read(&mut chunk) else { break };
+        while let Ok(n) = pipe.read(&mut chunk) {
             if n == 0 {
                 break;
             }
             let room = (HELP_LIMIT as usize).saturating_sub(held);
-            let take = (n as usize).min(room);
+            let take = n.min(room);
             if take == 0 {
                 break;
             }
