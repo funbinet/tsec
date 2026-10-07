@@ -8,7 +8,9 @@
 // Copyright (c) funbinet. All rights reserved.
 // Part of TSEC terminal cybersecurity operations platform by funbinet.
 
+use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
+use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
 
@@ -187,6 +189,35 @@ pub struct Execution {
     pub kill_grace_ms: u64,
     /// Grace period for the whole process group.
     pub group_kill_grace_ms: u64,
+    /// Per-binary timeout overrides, in seconds, keyed by binary name.
+    ///
+    /// One timeout cannot serve every tool in this catalog. A DNS lookup answers
+    /// in milliseconds; `fierce` walking a zone, `sherlock` checking a handle
+    /// across four hundred sites, and `gobuster` running a hundred-thousand-line
+    /// wordlist are all doing the right thing when they are still running at
+    /// five minutes. Killing those is the framework deciding a tool is broken
+    /// because it is slow, so a tool listed here gets the time its job needs.
+    ///
+    /// An override always wins over `timeout_secs`, and a binary that is not
+    /// listed gets the default.
+    pub tool_timeout_secs: BTreeMap<String, u64>,
+}
+
+impl Execution {
+    /// How long a task running `binary` may take.
+    ///
+    /// A per-binary override wins. Otherwise the configured default, which
+    /// `0` reads as unbounded: a capability that is still producing results has
+    /// not failed, and the framework has no way to tell that apart from one that
+    /// has hung.
+    pub fn timeout_for(&self, binary: &str) -> Duration {
+        let secs = self
+            .tool_timeout_secs
+            .get(binary)
+            .copied()
+            .unwrap_or(self.timeout_secs);
+        Duration::from_secs(secs)
+    }
 }
 
 impl Default for Execution {
@@ -197,6 +228,7 @@ impl Default for Execution {
             oniux_binary: "oniux".to_string(),
             kill_grace_ms: 2_000,
             group_kill_grace_ms: 500,
+            tool_timeout_secs: BTreeMap::new(),
         }
     }
 }

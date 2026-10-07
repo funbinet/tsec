@@ -697,7 +697,7 @@ fn run_capability(
                     provider: binding.binary.clone(),
                     operation: operation.name.clone(),
                     label: format!("{} · {}", binding.binary, operation.name),
-                    timeout: Duration::from_secs(cfg.execution.timeout_secs),
+                    timeout: cfg.execution.timeout_for(&binding.binary),
                     artifacts: RawArtifact {
                         primary: store.raw_stdout(&stem),
                         stderr: store.raw_stderr(&stem),
@@ -783,7 +783,7 @@ fn run_capability(
                             "{} · {} (installed mid-run)",
                             binding.binary, operation.name
                         ),
-                        timeout: Duration::from_secs(cfg.execution.timeout_secs),
+                        timeout: cfg.execution.timeout_for(&binding.binary),
                         artifacts: RawArtifact {
                             primary: store.raw_stdout(&stem),
                             stderr: store.raw_stderr(&stem),

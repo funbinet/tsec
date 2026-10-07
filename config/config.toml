@@ -9,10 +9,74 @@ keep_raw = true
 
 [execution]
 max_concurrency = 6
-timeout_secs = 300
+# Generous by default. A capability still producing results has not failed, and
+# the framework cannot tell that apart from one that has hung.
+timeout_secs = 1800
 oniux_binary = "oniux"
 kill_grace_ms = 2000
 group_kill_grace_ms = 500
+
+# Per-binary budgets, for tools whose normal job outlives the default. These are
+# the tools that fan out across many hosts or query many sites, so they are slow
+# for as long as they are working.
+[execution.tool_timeout_secs]
+# Local readers. A directory handed to a single-file tool makes it walk, so
+# these are kept short: the work is a read, not a scan.
+file = 120
+exiftool = 180
+strings = 120
+mat2 = 120
+pdfinfo = 120
+exiv2 = 120
+mediainfo = 180
+binwalk = 600
+stat = 60
+sha256sum = 60
+jq = 60
+fierce = 3600
+dnsrecon = 3600
+amass = 5400
+subfinder = 5400
+theharvester = 3600
+sherlock = 3600
+maigret = 3600
+blackbird = 3600
+socialscan = 3600
+gobuster = 5400
+ffuf = 3600
+feroxbuster = 3600
+dirsearch = 3600
+wfuzz = 3600
+katana = 5400
+gospider = 3600
+hakrawler = 3600
+subzy = 3600
+dnsx = 3600
+httpx-pd = 3600
+tlsx = 3600
+naabu = 3600
+asnmap = 3600
+mapcidr = 3600
+nuclei = 7200
+interactsh-client = 5400
+sort = 3600
+anew = 3600
+uro = 3600
+waybackurls = 3600
+gau = 3600
+waymore = 3600
+paramspider = 3600
+gf = 3600
+crtndstry = 3600
+cloud-enum = 5400
+cloudbrute = 5400
+s3scanner = 5400
+msfvenom = 3600
+hashcat = 86400
+john = 86400
+aircrack-ng = 86400
+hcxpcapngtool = 86400
+hcxdumptool = 86400
 
 [tools]
 search_paths = []

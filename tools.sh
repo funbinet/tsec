@@ -117,7 +117,6 @@ pkg_info() {
         arping) echo "iputils|arping" ;;
         arpspoof) echo "arpspoof|arpspoof" ;;
         asleap) echo "wpa-supplicant|wpasupplicant" ;;
-        asnmap) echo "asnmap|asnmap" ;;
         assetfinder) echo "assetfinder|assetfinder" ;;
         at) echo "at|at" ;;
         atq) echo "at|at" ;;
@@ -146,7 +145,7 @@ pkg_info() {
         chkconfig) echo "chkconfig|init-system-helpers" ;;
         chpasswd) echo "shadow|passwd" ;;
         clamscan) echo "clamav|clamav" ;;
-        cloud_enum) echo "cloud-enum|cloud-enum" ;;
+        cloud-enum) echo "cloud_enum|enumcloud" ;;
         cloudbrute) echo "cloudbrute|cloudbrute" ;;
         cmseek) echo "cmseek|cmseek" ;;
         coercer) echo "impacket|python3-impacket" ;;
@@ -357,7 +356,7 @@ pkg_info() {
         redis-cli) echo "redis|redis-tools" ;;
         responder) echo "responder|responder" ;;
         rfkill) echo "util-linux|rfkill" ;;
-        rg|ripgrep) echo "ripgrep|ripgrep" ;;
+        rg) echo "ripgrep|ripgrep" ;;
         rm) echo "coreutils|coreutils" ;;
         rpcclient) echo "samba-common-bin|samba-common-bin" ;;
         rpcdump|rpcinfo) echo "rpcbind|rpcbind" ;;
