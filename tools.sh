@@ -464,6 +464,30 @@ pkg_info() {
         # Anything the catalog names that is not listed above falls back to a
         # same-name package, which is the right guess for most Go and Rust tools
         # and is still verified before anything is installed.
+        GetADUsers.py) echo "GetADUsers|GetADUsers" ;;
+        GetNPUsers.py) echo "GetNPUsers|GetNPUsers" ;;
+        GetUserSPNs.py) echo "GetUserSPNs|GetUserSPNs" ;;
+        addcomputer.py) echo "addcomputer|addcomputer" ;;
+        atexec.py) echo "atexec|atexec" ;;
+        btgatt-client) echo "btgatt-client|btgatt-client" ;;
+        dcomexec.py) echo "dcomexec|dcomexec" ;;
+        describeTicket.py) echo "describeTicket|describeTicket" ;;
+        findDelegation.py) echo "findDelegation|findDelegation" ;;
+        getArch.py) echo "getArch|getArch" ;;
+        getST.py) echo "getST|getST" ;;
+        getTGT.py) echo "getTGT|getTGT" ;;
+        lookupsid.py) echo "lookupsid|lookupsid" ;;
+        mssqlclient.py) echo "mssqlclient|mssqlclient" ;;
+        ntlmrelayx.py) echo "ntlmrelayx|ntlmrelayx" ;;
+        psexec.py) echo "psexec|psexec" ;;
+        reg.py) echo "reg|reg" ;;
+        rpcdump.py) echo "rpcdump|rpcdump" ;;
+        sdl-freerdp3) echo "sdl-freerdp3|sdl-freerdp3" ;;
+        secretsdump.py) echo "secretsdump|secretsdump" ;;
+        smbexec) echo "smbexec|smbexec" ;;
+        smbserver.py) echo "smbserver|smbserver" ;;
+        wmiexec.py) echo "wmiexec|wmiexec" ;;
+        net) echo "nmap|nmap" ;;
         *) echo "$tool|$tool" ;;
     esac
 }
