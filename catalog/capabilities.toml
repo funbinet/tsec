@@ -2479,7 +2479,7 @@ output = 'lines'
 network = true
 [[capability.provider.operation]]
 name = 'Port Range Scan'
-args = ['-a', '{target}', '-r', '1-65535', '--ulimit', '5000']
+args = ['-a', '{target}', '-r', '-', '--ulimit', '5000']
 output = 'lines'
 network = true
 [[capability.provider.operation]]
@@ -2496,7 +2496,7 @@ output = 'lines'
 network = true
 [[capability.provider.operation]]
 name = 'Full TCP SYN'
-args = ['-sS', '-p', '1-65535', '--min-rate', '2500', '{target}']
+args = ['-sS', '-p', '-', '--min-rate', '2500', '{target}']
 output = 'lines'
 network = true
 [[capability.provider.operation]]
@@ -2554,7 +2554,7 @@ output = 'lines'
 network = true
 [[capability.provider.operation]]
 name = 'Full TCP Sweep'
-args = ['-sV', '-p', '1-65535', '--min-rate', '1000', '{target}']
+args = ['-sV', '-p', '-', '--min-rate', '1000', '{target}']
 output = 'lines'
 network = true
 [[capability.provider.operation]]
