@@ -595,14 +595,12 @@ const DELEGATING: &[&str] = &[
 /// Taken only when it comes before any option, since `curl -s http://host` has a
 /// word after a flag and no subcommand at all.
 fn leading_subcommand(args: &[String]) -> Option<String> {
-    for arg in args {
-        if arg.starts_with('-') {
-            return None;
-        }
-        if !arg.contains("://") && !arg.contains('/') && !arg.contains('.') {
-            return Some(arg.clone());
-        }
+    let arg = args.first()?;
+    if arg.starts_with('-') {
         return None;
+    }
+    if !arg.contains("://") && !arg.contains('/') && !arg.contains('.') {
+        return Some(arg.clone());
     }
     None
 }
