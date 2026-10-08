@@ -7459,7 +7459,7 @@ summary = 'Generate macro enabled documents and script droppers for payload deli
 inputs = [
   { key = 'lhost', type = 'target', required = true },
   { key = 'lport', type = 'port', required = true },
-  { key = 'payload', type = 'path', required = false, default = 'macro_template.vba' },
+  { key = 'payload', type = 'path', required = false, default = '{artifacts}/macro.bas' },
 ]
 [[capability.provider]]
 binary = 'msfvenom'
@@ -7505,38 +7505,31 @@ args = ['-e', '{payload}']
 output = 'lines'
 network = false
 [[capability.provider]]
-binary = 'cat'
+binary = 'python3'
 [[capability.provider.operation]]
-name = 'Macro Template Read'
-args = ['macro_template.vba']
-output = 'lines'
-network = false
-[[capability.provider]]
-binary = 'sed'
-[[capability.provider.operation]]
-name = 'Macro Host Inject'
-args = ['-i', 's/HOSTNAME/{lhost}/g', 'macro_template.vba']
+name = 'Macro Mitigation Check'
+args = ['build_macro.py', '--explain']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'python3'
 [[capability.provider.operation]]
 name = 'Macro Assembler'
-args = ['build_macro.py', '--lhost', '{lhost}', '--lport', '{lport}', '--out', '{artifacts}/macro.doc']
+args = ['build_macro.py', '--lhost', '{lhost}', '--lport', '{lport}', '--format', 'vba', '--out', '{artifacts}/macro.bas']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'file'
 [[capability.provider.operation]]
 name = 'Document Verify'
-args = ['{artifacts}/macro.doc']
+args = ['{artifacts}/macro.bas']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'exiftool'
 [[capability.provider.operation]]
 name = 'Document Metadata Sweep'
-args = ['{artifacts}/macro.doc']
+args = ['{artifacts}/macro.bas']
 output = 'lines'
 network = false
 [[capability]]
@@ -13648,14 +13641,14 @@ network = false
 binary = 'python3'
 [[capability.provider.operation]]
 name = 'Chrome Decrypt Run'
-args = ['chrome_decrypt.py', '--db', '{path}/.config/google-chrome/Default/Login Data']
+args = ['chrome_decrypt.py', '--browser', 'chrome', '--json']
 output = 'json'
 network = false
 [[capability.provider]]
 binary = 'python3'
 [[capability.provider.operation]]
 name = 'Firefox Decrypt Run'
-args = ['firefox_decrypt.py', '{path}/.mozilla/firefox/']
+args = ['chrome_decrypt.py', '--browser', 'firefox', '--json']
 output = 'json'
 network = false
 [[capability.provider]]
@@ -16945,7 +16938,7 @@ network = false
 binary = 'python3'
 [[capability.provider.operation]]
 name = 'Pivot Graph Build'
-args = ['pivot_map.py', '--cidr', '{cidr}', '--out', '{artifacts}/lateral_map.json']
+args = ['pivot_map.py', '--in', '{artifacts}', '--out', '{artifacts}/lateral_map.json', '--probe']
 output = 'json'
 network = false
 [[capability.provider]]
@@ -18674,56 +18667,56 @@ network = false
 binary = 'file'
 [[capability.provider.operation]]
 name = 'Doc Artifact Verify'
-args = ['{artifacts}/macro.doc']
+args = ['{artifacts}/macro.bas']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'exiftool'
 [[capability.provider.operation]]
 name = 'Doc Metadata Verify'
-args = ['{artifacts}/macro.doc']
+args = ['{artifacts}/macro.bas']
 output = 'lines'
 network = false
 [[capability.provider]]
-binary = 'secretsdump.py'
+binary = 'oledump'
 [[capability.provider.operation]]
 name = 'Macro Stream Dump'
-args = ['-s', '4', '{artifacts}/macro.doc']
+args = ['-s', '4', '{artifacts}/macro.bas']
 output = 'lines'
 network = false
 [[capability.provider]]
-binary = 'secretsdump.py'
+binary = 'oledump'
 [[capability.provider.operation]]
 name = 'Macro Stream Analyze'
-args = ['-a', '{artifacts}/macro.doc']
+args = ['{artifacts}/macro.bas']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'olevba'
 [[capability.provider.operation]]
 name = 'VBA Analyze'
-args = ['{artifacts}/macro.doc']
+args = ['{artifacts}/macro.bas']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'python3'
 [[capability.provider.operation]]
 name = 'Doc Builder Rebuild'
-args = ['build_macro.py', '--lhost', '{lhost}', '--lport', '{lport}', '--out', 'macro_persist.doc']
+args = ['build_macro.py', '--lhost', '{lhost}', '--lport', '{lport}', '--format', 'vba', '--out', 'macro_persist.bas']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'sha256sum'
 [[capability.provider.operation]]
 name = 'Doc Hash Snapshot'
-args = ['macro_persist.doc']
+args = ['macro_persist.bas']
 output = 'lines'
 network = false
 [[capability.provider]]
 binary = 'strings'
 [[capability.provider.operation]]
 name = 'Doc String Check'
-args = ['-n', '8', 'macro_persist.doc']
+args = ['-n', '8', 'macro_persist.bas']
 output = 'lines'
 network = false
 [[capability.provider]]

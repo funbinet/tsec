@@ -26,13 +26,23 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import socket
+import struct
 import sys
 from collections import deque
 from pathlib import Path
 from typing import Any
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from tsec_engine import (  # noqa: E402
+    Finding, Report, State, check, check_eq, selftest as engine_selftest,
+)
+
 # Services worth treating as a way in, and the ports that mean the service is
 # probably real rather than a scan artefact.
+VERSION = "2.0.0"
+
+
 PIVOT_PORTS = {
     22: "ssh",
     445: "smb",
@@ -291,26 +301,194 @@ def to_dot(graph: dict[str, Any], chains: dict[str, list[dict[str, Any]]]) -> st
     return "\n".join(lines)
 
 
+# ── live edge verification ───────────────────────────────────────────────────
+
+# An edge in the graph is a hypothesis: a credential exists on one host and
+# the matching service is open on another. It only becomes a pivot when the
+# service answers the way that service answers -- so `--probe` tests each
+# candidate edge with the service's own handshake, never with ping.
+
+PROBE_TIMEOUT = 4.0
+
+
+def _tcp(host: str, port: int, timeout: float = PROBE_TIMEOUT) -> socket.socket | None:
+    try:
+        sock = socket.create_connection((host, port), timeout=timeout)
+        sock.settimeout(timeout)
+        return sock
+    except OSError:
+        return None
+
+
+def probe_service(host: str, port: int, service: str) -> tuple[str, str]:
+    """The service's own protocol answered: that is evidence, not an open port."""
+    sock = _tcp(host, port)
+    if sock is None:
+        return State.UNREACHABLE, f"no route to {host}:{port}"
+    try:
+        if service == "redis":
+            sock.sendall(b"PING\r\n")
+            reply = sock.recv(256)
+            if reply.startswith(b"+PONG"):
+                return State.CONFIRMED, f"redis answered PING with +PONG on {host}:{port}"
+            if b"NOAUTH" in reply or b"AUTH" in reply:
+                return State.CONFIRMED, f"redis is up but requires AUTH: {reply[:60]!r}"
+            return State.TESTED, f"redis-like port, unexpected reply {reply[:60]!r}"
+        if service == "ssh":
+            reply = sock.recv(256)
+            if reply.startswith(b"SSH-"):
+                return State.CONFIRMED, f"ssh banner {reply.splitlines()[0][:50]!r}"
+            return State.TESTED, "port answered but not with an ssh banner"
+        if service == "postgres":
+            user = b"tsec"
+            payload = b"user\x00" + user + b"\x00\x00"
+            sock.sendall(struct.pack("!II", 8 + len(payload), 196608) + payload)
+            reply = sock.recv(256)
+            if reply[:1] == b"R" and len(reply) >= 9:
+                auth = struct.unpack("!I", reply[5:9])[0]
+                return State.CONFIRMED, f"postgres answered a startup with auth type {auth}"
+            if reply[:1] == b"E":
+                return State.CONFIRMED, f"postgres answered an error: {reply[9:60]!r}"
+            return State.TESTED, f"postgres-like port, unexpected reply {reply[:60]!r}"
+        if service in ("mysql", "mariadb"):
+            reply = sock.recv(512)
+            if reply and (b"mysql" in reply.lower() or b"mariadb" in reply.lower()):
+                return State.CONFIRMED, f"mysql server greeting {reply[5:45].split(bytes([0]))[0]!r}"
+            if reply:
+                return State.TESTED, f"port answered: {reply[:60]!r}"
+            return State.TESTED, "mysql port open, empty greeting"
+        if service == "ftp":
+            reply = sock.recv(256)
+            if reply.startswith(b"220"):
+                return State.CONFIRMED, f"ftp banner {reply[:50]!r}"
+            return State.TESTED, f"ftp-like port, unexpected {reply[:50]!r}"
+        if service in ("smb", "netbios"):
+            import shutil
+            if shutil.which("smbclient"):
+                import subprocess
+                proc = subprocess.run(
+                    ["smbclient", "-L", f"//{host}", "-N"],
+                    capture_output=True, text=True, timeout=PROBE_TIMEOUT * 2,
+                )
+                if "NT_STATUS" in proc.stdout + proc.stderr:
+                    return State.CONFIRMED, f"smbclient reached the server: {(proc.stdout + proc.stderr)[:60]!r}"
+            return State.TESTED, "smb port open; smbclient not available for a real handshake"
+        return State.TESTED, f"{service}:{port} accepted a TCP connection; no service-specific check ran"
+    except (socket.timeout, OSError) as exc:
+        return State.FAILED, f"probe of {service}:{port} failed: {exc}"
+    finally:
+        sock.close()
+
+
+def verify_edges(graph: dict[str, Any]) -> list[Finding]:
+    findings: list[Finding] = []
+    for edge in graph["edges"]:
+        state, evidence = probe_service(edge["to"], edge["port"], edge["service"])
+        edge["state"] = state
+        edge["evidence"] = evidence
+        findings.append(Finding(
+            f"edge {edge['from']} -> {edge['to']} {edge['service']}:{edge['port']}",
+            state, "high" if state == State.CONFIRMED else "info", evidence,
+        ))
+    return findings
+
+
+def _local_server(respond: bytes) -> tuple[int, socket.socket]:
+    import threading
+    listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    listener.bind(("127.0.0.1", 0))
+    listener.listen(4)
+    port = listener.getsockname()[1]
+
+    def serve() -> None:
+        try:
+            while True:
+                conn, _ = listener.accept()
+                try:
+                    if respond.startswith(b"SSH-"):
+                        conn.sendall(respond)
+                    else:
+                        conn.recv(256)
+                        conn.sendall(respond)
+                finally:
+                    conn.close()
+        except OSError:
+            return
+
+    thread = threading.Thread(target=serve, daemon=True)
+    thread.start()
+    return port, listener
+
+
+def selftest_fn() -> None:
+    records = [
+        {"host": "10.0.0.1", "ports": [22, 445], "credentials": [{"username": "ops", "password": "x"}]},
+        {"host": "10.0.0.2", "ports": [22], "credentials": []},
+        {"host": "10.0.0.3", "ports": [5432], "credentials": []},
+    ]
+    graph = build_graph(records)
+    check(len(graph["hosts"]) == 3, "graph dropped a host")
+    check(len(graph["edges"]) == 2, f"expected 2 edges, got {len(graph['edges'])}")
+    paths = breadth_first(graph, "10.0.0.1")
+    check("10.0.0.2" in paths, "no path to the ssh host")
+    check("10.0.0.3" in paths, "no path to the postgres host")
+    ranked = chokepoints(graph)
+    check(ranked and ranked[0][0].startswith("ops"), "credential ranking lost the shared credential")
+
+    redis_port, redis_listener = _local_server(b"+PONG\r\n")
+    try:
+        state, _ = probe_service("127.0.0.1", redis_port, "redis")
+        check_eq(state, State.CONFIRMED, "redis probe did not confirm a +PONG")
+    finally:
+        redis_listener.close()
+
+    ssh_port, ssh_listener = _local_server(b"SSH-2.0-OpenSSH_9.0\r\n")
+    try:
+        state, _ = probe_service("127.0.0.1", ssh_port, "ssh")
+        check_eq(state, State.CONFIRMED, "ssh probe did not confirm a banner")
+    finally:
+        ssh_listener.close()
+
+    closed = socket.socket()
+    closed.bind(("127.0.0.1", 0))
+    closed_port = closed.getsockname()[1]
+    closed.close()
+    state, _ = probe_service("127.0.0.1", closed_port, "redis")
+    check_eq(state, State.UNREACHABLE, "closed port must be UNREACHABLE")
+
+
+def selftest() -> None:
+    selftest_fn()
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description=__doc__.split("\n")[0],
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="examples:\n"
-               "  pivot_map.py --in output/2026-10-07-nmap/*.json\n"
-               "  pivot_map.py --in scans/ --out pivot.json --dot pivots.dot\n",
+               "  pivot_map.py --in output/2026-10-07-nmap/\n"
+               "  pivot_map.py --in scans/ --out pivot.json --dot pivots.dot --probe\n"
+               "  pivot_map.py --selftest\n",
     )
-    parser.add_argument(
-        "--in",
-        dest="inputs",
-        nargs="+",
-        required=True,
-        help="result files or directories",
-    )
+    parser.add_argument("--in", dest="inputs", nargs="+",
+                        help="result files or directories")
     parser.add_argument("--out", help="write the graph as JSON here")
     parser.add_argument("--dot", help="write a Graphviz file here")
     parser.add_argument("--entry", help="start from this host rather than inferring")
+    parser.add_argument("--probe", action="store_true",
+                        help="test every edge with the service's real handshake")
     parser.add_argument("--quiet", action="store_true", help="suppress the report, write only")
+    parser.add_argument("--json", action="store_true")
+    parser.add_argument("--output", help="write the JSON report here")
+    parser.add_argument("--selftest", action="store_true")
     args = parser.parse_args(argv)
+
+    if args.selftest:
+        return engine_selftest(selftest_fn)
+
+    if not args.inputs:
+        parser.error("--in is required unless --selftest is given")
 
     records = load_records(args.inputs)
     graph = build_graph(records)
@@ -324,6 +502,27 @@ def main(argv: list[str] | None = None) -> int:
     for entry in entries:
         chains.update(breadth_first(graph, entry))
 
+    report = Report("pivot_map", VERSION)
+    report.context = {
+        "hosts": len(graph["hosts"]),
+        "edges": len(graph["edges"]),
+        "entry_points": entries,
+    }
+    if args.probe:
+        for finding in verify_edges(graph):
+            report.add(finding)
+    else:
+        for edge in graph["edges"]:
+            edge["state"] = State.INFERRED
+            edge["evidence"] = (
+                f"credential {edge['via']} found on {edge['from']}; "
+                f"{edge['service']} open on {edge['to']}; not yet attempted"
+            )
+            report.note(
+                f"edge {edge['from']} -> {edge['to']} {edge['service']}:{edge['port']}",
+                State.INFERRED, "info", edge["evidence"],
+            )
+
     if not args.quiet:
         print(f"hosts        {len(graph['hosts'])}")
         print(f"edges        {len(graph['edges'])}")
@@ -334,9 +533,7 @@ def main(argv: list[str] | None = None) -> int:
             for host, path in sorted(chains.items(), key=lambda kv: len(kv[1])):
                 if not path:
                     continue
-                steps = " -> ".join(
-                    f"{e['service']}:{e['port']}" for e in path
-                )
+                steps = " -> ".join(f"{e['service']}:{e['port']}" for e in path)
                 print(f"{len(path):>3}  {host:<26} {steps}")
         print()
         ranked = chokepoints(graph)
@@ -361,16 +558,25 @@ def main(argv: list[str] | None = None) -> int:
             {"credential": c, "hosts": h, "services": s} for c, h, s in chokepoints(graph)
         ],
         "caveat": "An edge means a credential was found and the matching service is "
-        "open on the target. It does not mean the credential was accepted there.",
+        "open on the target. It does not mean the credential was accepted there; "
+        "that is what --probe establishes.",
     }
     if args.out:
         Path(args.out).write_text(json.dumps(payload, indent=2), encoding="utf-8")
+        report.record(args.out, "graph")
         if not args.quiet:
             print(f"\nwrote {args.out}")
     if args.dot:
         Path(args.dot).write_text(to_dot(graph, chains), encoding="utf-8")
+        report.record(args.dot, "graphviz")
         if not args.quiet:
             print(f"wrote {args.dot}")
+
+    if args.json or args.output:
+        from tsec_engine import emit
+        emit(report, args.json, args.output)
+    elif not args.quiet:
+        print(report.render())
     return 0
 
 

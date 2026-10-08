@@ -78,6 +78,19 @@ install -m 0644 catalog/capabilities.toml "$ROOT/catalog/capabilities.toml"
 echo "[..] creating the workspace at $ROOT"
 mkdir -p "$ROOT"/{config,output,logs,scripts,tools}
 
+# The bundled scripts are part of the product, not an optional extra. The catalog
+# names several capabilities whose provider is `python3 <script>`, and the loader
+# resolves a bare `*.py` name against `$ROOT/scripts`: an empty directory there
+# turns every one of those capabilities into a catalog error at run time. Ship
+# the scripts next to the catalog they belong to, without the bytecode caches
+# that importing them leaves behind.
+echo "[..] installing the bundled scripts to $ROOT/scripts"
+if [ -d scripts ]; then
+    cp -R scripts/. "$ROOT/scripts/"
+    rm -rf "$ROOT/scripts/__pycache__"
+    chmod -R a+rX "$ROOT/scripts"
+fi
+
 # The wordlists are part of the product, not an optional extra: the catalog
 # resolves `{wl:...}` against this directory, and an empty one leaves every
 # capability that needs a corpus unable to run. Copy the shipped lists and the

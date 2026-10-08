@@ -315,7 +315,7 @@ pkg_info() {
         nxc) echo "netexec|netexec" ;;
         # o
         objcopy|objdump) echo "binutils|binutils" ;;
-        oledump.py|olevba) echo "oletools|python3-oletools" ;;
+        oledump.py|oledump|olevba) echo "oletools|python3-oletools" ;;
         onesixtyone) echo "onesixtyone|onesixtyone" ;;
         openssl) echo "openssl|openssl" ;;
         openvpn) echo "openvpn|openvpn" ;;
