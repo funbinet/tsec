@@ -1,0 +1,3179 @@
+{
+  "framework": "TSEC 3.0",
+  "total_phases": 10,
+  "total_capabilities": 160,
+  "total_operations": 874,
+  "available_capabilities": 146,
+  "installed_providers": [
+    "adidnsdump",
+    "airbase-ng",
+    "aircrack-ng",
+    "airdecap-ng",
+    "aireplay-ng",
+    "airmon-ng",
+    "airodump-ng",
+    "arjun",
+    "arping",
+    "auditctl",
+    "ausearch",
+    "awk",
+    "aws",
+    "b2sum",
+    "base64",
+    "bash",
+    "bloodhound-python",
+    "capsh",
+    "cat",
+    "certipy",
+    "cksum",
+    "cpio",
+    "curl",
+    "dalfox",
+    "dd",
+    "diff",
+    "dig",
+    "dirb",
+    "dirsearch",
+    "dnsmasq",
+    "docker",
+    "donut",
+    "du",
+    "editcap",
+    "efibootmgr",
+    "egrep",
+    "enum4linux-ng",
+    "enumerate-iam",
+    "evil-winrm",
+    "fd",
+    "feroxbuster",
+    "file",
+    "find",
+    "getcap",
+    "getfacl",
+    "git",
+    "gospider",
+    "gpg",
+    "grep",
+    "hakrawler",
+    "hashcat",
+    "host",
+    "httpx",
+    "hydra",
+    "id",
+    "insmod",
+    "ip",
+    "iptables",
+    "iw",
+    "iwconfig",
+    "iwlist",
+    "john",
+    "journalctl",
+    "jq",
+    "kerbrute",
+    "kiterunner",
+    "ldapdomaindump",
+    "ldconfig",
+    "locate",
+    "lsmod",
+    "maigret",
+    "md5sum",
+    "medusa",
+    "mergecap",
+    "modprobe",
+    "msfconsole",
+    "msfvenom",
+    "naabu",
+    "namei",
+    "nc",
+    "ncat",
+    "nikto",
+    "nmap",
+    "nmcli",
+    "nsenter",
+    "nuclei",
+    "nxc",
+    "objdump",
+    "openssl",
+    "pcregrep",
+    "pdfinfo",
+    "pg_dump",
+    "php",
+    "ping",
+    "printenv",
+    "ps",
+    "psql",
+    "pwncat-cs",
+    "pyinstaller",
+    "pypykatz",
+    "python3",
+    "readelf",
+    "responder",
+    "rfkill",
+    "rg",
+    "rpcclient",
+    "rsync",
+    "scapy",
+    "script",
+    "sed",
+    "sftp",
+    "sha1sum",
+    "sha256sum",
+    "sha512sum",
+    "sherlock",
+    "shodan",
+    "shred",
+    "smbclient",
+    "socat",
+    "sort",
+    "split",
+    "sqlite3",
+    "sqlmap",
+    "ss",
+    "ssh",
+    "ssh-keyscan",
+    "sslyze",
+    "stat",
+    "strings",
+    "sudo",
+    "systemctl",
+    "systemd-run",
+    "tar",
+    "tcpdump",
+    "tee",
+    "theharvester",
+    "touch",
+    "tree",
+    "truncate",
+    "tshark",
+    "uname",
+    "upx",
+    "wafw00f",
+    "wapiti",
+    "wc",
+    "wget",
+    "whatweb",
+    "whoami",
+    "whois",
+    "windapsearch",
+    "xsstrike",
+    "yara",
+    "zip"
+  ],
+  "missing_providers": [
+    "7z",
+    "accesschk",
+    "aide",
+    "amass",
+    "anew",
+    "arp-scan",
+    "asleap",
+    "asnmap",
+    "assetfinder",
+    "at",
+    "az",
+    "azcopy",
+    "bash-obfuscate",
+    "bcdedit",
+    "bkhive",
+    "bully",
+    "cdncheck",
+    "chisel",
+    "cloud_enum",
+    "cloudbrute",
+    "cloudsplaining",
+    "cmseek",
+    "commix",
+    "crontab",
+    "ctfr",
+    "cypher-shell",
+    "datamash",
+    "dc3dd",
+    "debsums",
+    "defendercheck",
+    "detect-secrets",
+    "dnscat2",
+    "dnsx",
+    "droopescan",
+    "dumpzilla",
+    "eaphammer",
+    "enscript",
+    "exiftool",
+    "ffuf",
+    "findomain",
+    "fltmc",
+    "fping",
+    "freeradius-wpe",
+    "garble",
+    "gau",
+    "gcloud",
+    "ghauri",
+    "gitleaks",
+    "gobuster",
+    "gost",
+    "gowitness",
+    "gpsd",
+    "gpxlogger",
+    "grype",
+    "hack-browser-data",
+    "handlekatz",
+    "havoc",
+    "hcxdumptool",
+    "hcxhashtool",
+    "hcxpcapngtool",
+    "hivexget",
+    "horst",
+    "hostapd-mana",
+    "hostapd-wpe",
+    "hping3",
+    "impacket-GetNPUsers",
+    "impacket-GetUserSPNs",
+    "impacket-dcomexec",
+    "impacket-dpapi",
+    "impacket-mssqlclient",
+    "impacket-psexec",
+    "impacket-secretsdump",
+    "impacket-smbexec",
+    "impacket-ticketer",
+    "impacket-wmiexec",
+    "iodined",
+    "ipmitool",
+    "joomscan",
+    "jwt_tool",
+    "katana",
+    "kismet",
+    "kismet_server",
+    "kr",
+    "kubectl",
+    "lazagne",
+    "les2",
+    "ligolo",
+    "linkfinder",
+    "linpeas",
+    "linux-exploit-suggester",
+    "lxc",
+    "lynis",
+    "macropack",
+    "maskprocessor",
+    "masscan",
+    "mat2",
+    "mdk4",
+    "mimikatz",
+    "mimipenguin",
+    "mongodump",
+    "mpack",
+    "mysql",
+    "mysqldump",
+    "nanodump",
+    "nbtscan",
+    "netdiscover",
+    "nltest",
+    "nssm",
+    "osv-scanner",
+    "p0f",
+    "packetspammer",
+    "pandoc",
+    "paramspider",
+    "pcapfix",
+    "pixiewps",
+    "pmapper",
+    "procdump",
+    "prowler",
+    "proxychains4",
+    "pspy",
+    "pwsh",
+    "pyarmor",
+    "pywerview",
+    "qwinsta",
+    "racadm",
+    "radamsa",
+    "rclone",
+    "reaver",
+    "recon-ng",
+    "reg",
+    "rip-secrets",
+    "rpm",
+    "rubeus",
+    "rustscan",
+    "s3cmd",
+    "samdump2",
+    "sc",
+    "scarecrow",
+    "schtasks",
+    "scout",
+    "scoutsuite",
+    "searchsploit",
+    "seatbelt",
+    "semgrep",
+    "sendemail",
+    "shc",
+    "sliver",
+    "snmpwalk",
+    "socialscan",
+    "spiderfoot",
+    "sqlcmd",
+    "sqldumper",
+    "sqsh",
+    "sshpass",
+    "sshuttle",
+    "sslscan",
+    "step",
+    "strace",
+    "subfinder",
+    "subzy",
+    "swaks",
+    "tasklist",
+    "testssl.sh",
+    "tlsx",
+    "tplmap",
+    "traceroute",
+    "trivy",
+    "trufflehog",
+    "ts",
+    "unicorn",
+    "update-grub",
+    "update-initramfs",
+    "wash",
+    "wavemon",
+    "waybackurls",
+    "waymore",
+    "webanalyze",
+    "wevtutil",
+    "wfuzz",
+    "winpeas",
+    "wlanhcx2john",
+    "wpscan",
+    "x8",
+    "xxd",
+    "ysoserial",
+    "zgrab2"
+  ],
+  "errors": [],
+  "matrix": [
+    {
+      "phase": "recon",
+      "id": "recon.subdomain-discovery",
+      "label": "SUBDOMAIN DISCOVERY",
+      "summary": "Passive and permutation subdomain enumeration across public sources",
+      "input_keys": [
+        "domain"
+      ],
+      "providers": [
+        "subfinder",
+        "assetfinder",
+        "findomain"
+      ],
+      "operations_count": 5,
+      "available": false
+    },
+    {
+      "phase": "recon",
+      "id": "recon.dns-mapping",
+      "label": "DNS MAPPING",
+      "summary": "Full record extraction, brute force and zone transfer attempts",
+      "input_keys": [
+        "domain",
+        "nameserver"
+      ],
+      "providers": [
+        "dig",
+        "dnsx",
+        "host"
+      ],
+      "operations_count": 8,
+      "available": true
+    },
+    {
+      "phase": "recon",
+      "id": "recon.email-harvesting",
+      "label": "EMAIL HARVESTING",
+      "summary": "Collect email addresses tied to a domain from public sources",
+      "input_keys": [
+        "domain",
+        "limit"
+      ],
+      "providers": [
+        "theharvester"
+      ],
+      "operations_count": 3,
+      "available": true
+    },
+    {
+      "phase": "recon",
+      "id": "recon.whois-intelligence",
+      "label": "WHOIS INTELLIGENCE",
+      "summary": "Registrant, registrar and infrastructure ownership records",
+      "input_keys": [
+        "domain"
+      ],
+      "providers": [
+        "whois",
+        "amass"
+      ],
+      "operations_count": 2,
+      "available": true
+    },
+    {
+      "phase": "recon",
+      "id": "recon.certificate-intel",
+      "label": "CERTIFICATE INTEL",
+      "summary": "Certificate transparency and TLS certificate metadata collection",
+      "input_keys": [
+        "domain",
+        "port"
+      ],
+      "providers": [
+        "tlsx",
+        "openssl",
+        "ctfr"
+      ],
+      "operations_count": 6,
+      "available": true
+    },
+    {
+      "phase": "recon",
+      "id": "recon.asn-mapping",
+      "label": "ASN MAPPING",
+      "summary": "Map a domain or organisation to its autonomous systems and prefixes",
+      "input_keys": [
+        "domain"
+      ],
+      "providers": [
+        "asnmap",
+        "amass"
+      ],
+      "operations_count": 2,
+      "available": false
+    },
+    {
+      "phase": "recon",
+      "id": "recon.cloud-exposure",
+      "label": "CLOUD EXPOSURE",
+      "summary": "Enumerate public cloud storage and hosting assets of a domain",
+      "input_keys": [
+        "domain",
+        "keyword"
+      ],
+      "providers": [
+        "cloud_enum",
+        "cloudbrute",
+        "aws"
+      ],
+      "operations_count": 3,
+      "available": true
+    },
+    {
+      "phase": "recon",
+      "id": "recon.username-discovery",
+      "label": "USERNAME DISCOVERY",
+      "summary": "Locate accounts carrying a target username across platforms",
+      "input_keys": [
+        "username"
+      ],
+      "providers": [
+        "sherlock",
+        "maigret",
+        "socialscan"
+      ],
+      "operations_count": 3,
+      "available": true
+    },
+    {
+      "phase": "recon",
+      "id": "recon.tech-fingerprint",
+      "label": "TECH FINGERPRINT",
+      "summary": "Fingerprint web technologies, frameworks and WAF presence",
+      "input_keys": [
+        "url"
+      ],
+      "providers": [
+        "whatweb",
+        "webanalyze",
+        "wafw00f"
+      ],
+      "operations_count": 3,
+      "available": true
+    },
+    {
+      "phase": "recon",
+      "id": "recon.web-crawling",
+      "label": "WEB CRAWLING",
+      "summary": "Crawl a target and extract linked endpoints and resources",
+      "input_keys": [
+        "depth",
+        "url"
+      ],
+      "providers": [
+        "katana",
+        "gospider",
+        "hakrawler"
+      ],
+      "operations_count": 5,
+      "available": true
+    },
+    {
+      "phase": "recon",
+      "id": "recon.archive-mining",
+      "label": "ARCHIVE MINING",
+      "summary": "Mine historical URL archives for forgotten endpoints and parameters",
+      "input_keys": [
+        "domain"
+      ],
+      "providers": [
+        "waybackurls",
+        "gau",
+        "waymore"
+      ],
+      "operations_count": 4,
+      "available": false
+    },
+    {
+      "phase": "recon",
+      "id": "recon.metadata-extraction",
+      "label": "METADATA EXTRACTION",
+      "summary": "Extract document and image metadata from files or a directory",
+      "input_keys": [
+        "path"
+      ],
+      "providers": [
+        "exiftool",
+        "mat2",
+        "pdfinfo"
+      ],
+      "operations_count": 5,
+      "available": true
+    },
+    {
+      "phase": "recon",
+      "id": "recon.network-mapping",
+      "label": "NETWORK MAPPING",
+      "summary": "Discover live hosts and network paths across a range",
+      "input_keys": [
+        "target"
+      ],
+      "providers": [
+        "nmap",
+        "masscan",
+        "arp-scan"
+      ],
+      "operations_count": 6,
+      "available": true
+    },
+    {
+      "phase": "recon",
+      "id": "recon.osint-gathering",
+      "label": "OSINT GATHERING",
+      "summary": "Broad open source intelligence collection for a target",
+      "input_keys": [
+        "domain"
+      ],
+      "providers": [
+        "shodan",
+        "spiderfoot",
+        "recon-ng"
+      ],
+      "operations_count": 4,
+      "available": true
+    },
+    {
+      "phase": "recon",
+      "id": "recon.infra-profiling",
+      "label": "INFRA PROFILING",
+      "summary": "Profile network infrastructure: ports, CDN status and HTTP surface",
+      "input_keys": [
+        "target"
+      ],
+      "providers": [
+        "nmap",
+        "rustscan",
+        "naabu",
+        "cdncheck"
+      ],
+      "operations_count": 5,
+      "available": true
+    },
+    {
+      "phase": "recon",
+      "id": "recon.code-leakage",
+      "label": "CODE LEAKAGE",
+      "summary": "Detect exposed secrets in repositories and dumped source trees",
+      "input_keys": [
+        "path"
+      ],
+      "providers": [
+        "gitleaks",
+        "trufflehog"
+      ],
+      "operations_count": 3,
+      "available": false
+    },
+    {
+      "phase": "surface",
+      "id": "surface.port-discovery",
+      "label": "PORT DISCOVERY",
+      "summary": "Fast SYN port discovery across a target host or range",
+      "input_keys": [
+        "rate",
+        "target"
+      ],
+      "providers": [
+        "naabu",
+        "masscan",
+        "rustscan"
+      ],
+      "operations_count": 7,
+      "available": true
+    },
+    {
+      "phase": "surface",
+      "id": "surface.service-fingerprint",
+      "label": "SERVICE FINGERPRINT",
+      "summary": "Identify the service and version behind each open port",
+      "input_keys": [
+        "ports",
+        "target"
+      ],
+      "providers": [
+        "nmap",
+        "zgrab2"
+      ],
+      "operations_count": 7,
+      "available": true
+    },
+    {
+      "phase": "surface",
+      "id": "surface.host-discovery",
+      "label": "HOST DISCOVERY",
+      "summary": "Find live hosts on a network using ICMP, ARP and TCP probes",
+      "input_keys": [
+        "interface",
+        "target"
+      ],
+      "providers": [
+        "nmap",
+        "fping",
+        "netdiscover",
+        "arping"
+      ],
+      "operations_count": 6,
+      "available": true
+    },
+    {
+      "phase": "surface",
+      "id": "surface.web-profiling",
+      "label": "WEB PROFILING",
+      "summary": "Probe live web services for titles, servers and response metadata",
+      "input_keys": [
+        "target"
+      ],
+      "providers": [
+        "httpx",
+        "gowitness"
+      ],
+      "operations_count": 7,
+      "available": true
+    },
+    {
+      "phase": "surface",
+      "id": "surface.api-discovery",
+      "label": "API DISCOVERY",
+      "summary": "Brute force and enumerate API routes and endpoint definitions",
+      "input_keys": [
+        "url",
+        "wordlist"
+      ],
+      "providers": [
+        "kiterunner",
+        "ffuf",
+        "gobuster",
+        "arjun"
+      ],
+      "operations_count": 6,
+      "available": true
+    },
+    {
+      "phase": "surface",
+      "id": "surface.vhost-enumeration",
+      "label": "VHOST ENUMERATION",
+      "summary": "Enumerate virtual hosts routed to the same address",
+      "input_keys": [
+        "domain",
+        "target",
+        "wordlist"
+      ],
+      "providers": [
+        "gobuster",
+        "ffuf",
+        "nmap"
+      ],
+      "operations_count": 4,
+      "available": true
+    },
+    {
+      "phase": "surface",
+      "id": "surface.content-discovery",
+      "label": "CONTENT DISCOVERY",
+      "summary": "Brute force directories, files and backup artifacts on a web root",
+      "input_keys": [
+        "url",
+        "wordlist"
+      ],
+      "providers": [
+        "feroxbuster",
+        "gobuster",
+        "ffuf",
+        "dirsearch"
+      ],
+      "operations_count": 6,
+      "available": true
+    },
+    {
+      "phase": "surface",
+      "id": "surface.parameter-discovery",
+      "label": "PARAMETER DISCOVERY",
+      "summary": "Discover hidden HTTP parameters on an endpoint",
+      "input_keys": [
+        "url",
+        "wordlist"
+      ],
+      "providers": [
+        "arjun",
+        "paramspider",
+        "ffuf",
+        "x8"
+      ],
+      "operations_count": 6,
+      "available": true
+    },
+    {
+      "phase": "surface",
+      "id": "surface.tls-analysis",
+      "label": "TLS ANALYSIS",
+      "summary": "Assess TLS protocols, ciphers and certificate configuration",
+      "input_keys": [
+        "port",
+        "target"
+      ],
+      "providers": [
+        "testssl.sh",
+        "sslscan",
+        "sslyze",
+        "nmap",
+        "tlsx"
+      ],
+      "operations_count": 6,
+      "available": true
+    },
+    {
+      "phase": "surface",
+      "id": "surface.endpoint-mapping",
+      "label": "ENDPOINT MAPPING",
+      "summary": "Extract endpoints from JavaScript and crawled application surface",
+      "input_keys": [
+        "url"
+      ],
+      "providers": [
+        "katana",
+        "linkfinder",
+        "gospider",
+        "gau"
+      ],
+      "operations_count": 5,
+      "available": true
+    },
+    {
+      "phase": "surface",
+      "id": "surface.container-exposure",
+      "label": "CONTAINER EXPOSURE",
+      "summary": "Detect exposed container, registry and orchestration services",
+      "input_keys": [
+        "target"
+      ],
+      "providers": [
+        "nmap",
+        "trivy",
+        "grype",
+        "nuclei"
+      ],
+      "operations_count": 6,
+      "available": true
+    },
+    {
+      "phase": "surface",
+      "id": "surface.database-exposure",
+      "label": "DATABASE EXPOSURE",
+      "summary": "Detect exposed database services and default configurations",
+      "input_keys": [
+        "target"
+      ],
+      "providers": [
+        "nmap",
+        "nuclei"
+      ],
+      "operations_count": 6,
+      "available": true
+    },
+    {
+      "phase": "surface",
+      "id": "surface.network-profiling",
+      "label": "NETWORK PROFILING",
+      "summary": "Profile network services, OS signatures and local broadcast surface",
+      "input_keys": [
+        "interface",
+        "target"
+      ],
+      "providers": [
+        "nmap",
+        "p0f",
+        "nbtscan",
+        "responder"
+      ],
+      "operations_count": 6,
+      "available": true
+    },
+    {
+      "phase": "surface",
+      "id": "surface.asset-correlation",
+      "label": "ASSET CORRELATION",
+      "summary": "Merge, resolve and deduplicate discovered assets into one inventory",
+      "input_keys": [
+        "target"
+      ],
+      "providers": [
+        "httpx",
+        "dnsx",
+        "anew"
+      ],
+      "operations_count": 4,
+      "available": true
+    },
+    {
+      "phase": "surface",
+      "id": "surface.directory-bruteforce",
+      "label": "DIRECTORY BRUTEFORCE",
+      "summary": "Enumerate directories and files on web servers",
+      "input_keys": [
+        "extensions",
+        "threads",
+        "url",
+        "wordlist"
+      ],
+      "providers": [
+        "feroxbuster",
+        "gobuster",
+        "ffuf",
+        "dirsearch",
+        "dirb"
+      ],
+      "operations_count": 6,
+      "available": true
+    },
+    {
+      "phase": "surface",
+      "id": "surface.cloud-exposure",
+      "label": "CLOUD EXPOSURE",
+      "summary": "Audit cloud accounts for public buckets, snapshots and over-broad roles",
+      "input_keys": [
+        "access_key",
+        "bucket",
+        "provider",
+        "region",
+        "secret_key"
+      ],
+      "providers": [
+        "prowler",
+        "scout",
+        "aws",
+        "pmapper",
+        "enumerate-iam"
+      ],
+      "operations_count": 10,
+      "available": true
+    },
+    {
+      "phase": "vulnerability",
+      "id": "vulnerability.template-scan",
+      "label": "TEMPLATE SCAN",
+      "summary": "Run curated nuclei templates against targets, filtered by severity",
+      "input_keys": [
+        "rate",
+        "severity",
+        "target"
+      ],
+      "providers": [
+        "nuclei"
+      ],
+      "operations_count": 4,
+      "available": true
+    },
+    {
+      "phase": "vulnerability",
+      "id": "vulnerability.web-assessment",
+      "label": "WEB ASSESSMENT",
+      "summary": "Audit a web application for vulnerabilities across common classes",
+      "input_keys": [
+        "url"
+      ],
+      "providers": [
+        "nikto",
+        "wapiti",
+        "nuclei"
+      ],
+      "operations_count": 6,
+      "available": true
+    },
+    {
+      "phase": "vulnerability",
+      "id": "vulnerability.sql-injection",
+      "label": "SQL INJECTION",
+      "summary": "Detect and characterise SQL injection in parameters and forms",
+      "input_keys": [
+        "url"
+      ],
+      "providers": [
+        "sqlmap",
+        "ghauri",
+        "nmap"
+      ],
+      "operations_count": 7,
+      "available": true
+    },
+    {
+      "phase": "vulnerability",
+      "id": "vulnerability.xss-detection",
+      "label": "XSS DETECTION",
+      "summary": "Detect reflected, stored and DOM cross site scripting",
+      "input_keys": [
+        "url"
+      ],
+      "providers": [
+        "dalfox",
+        "xsstrike",
+        "nuclei"
+      ],
+      "operations_count": 5,
+      "available": true
+    },
+    {
+      "phase": "vulnerability",
+      "id": "vulnerability.command-injection",
+      "label": "COMMAND INJECTION",
+      "summary": "Detect operating system command injection in parameters",
+      "input_keys": [
+        "url"
+      ],
+      "providers": [
+        "commix",
+        "nuclei",
+        "wapiti"
+      ],
+      "operations_count": 5,
+      "available": true
+    },
+    {
+      "phase": "vulnerability",
+      "id": "vulnerability.dependency-audit",
+      "label": "DEPENDENCY AUDIT",
+      "summary": "Audit project dependencies and container images for known CVEs",
+      "input_keys": [
+        "path"
+      ],
+      "providers": [
+        "trivy",
+        "grype",
+        "osv-scanner",
+        "semgrep"
+      ],
+      "operations_count": 6,
+      "available": false
+    },
+    {
+      "phase": "vulnerability",
+      "id": "vulnerability.config-audit",
+      "label": "CONFIG AUDIT",
+      "summary": "Audit system and service configuration against hardening baselines",
+      "input_keys": [
+        "target"
+      ],
+      "providers": [
+        "lynis",
+        "nuclei",
+        "nmap"
+      ],
+      "operations_count": 7,
+      "available": true
+    },
+    {
+      "phase": "vulnerability",
+      "id": "vulnerability.cms-assessment",
+      "label": "CMS ASSESSMENT",
+      "summary": "Assess content management systems for vulnerable components",
+      "input_keys": [
+        "url"
+      ],
+      "providers": [
+        "wpscan",
+        "droopescan",
+        "joomscan",
+        "cmseek",
+        "nuclei"
+      ],
+      "operations_count": 5,
+      "available": true
+    },
+    {
+      "phase": "vulnerability",
+      "id": "vulnerability.cloud-audit",
+      "label": "CLOUD AUDIT",
+      "summary": "Audit cloud accounts for misconfiguration and excessive exposure",
+      "input_keys": [
+        "provider"
+      ],
+      "providers": [
+        "prowler",
+        "scoutsuite",
+        "cloudsplaining"
+      ],
+      "operations_count": 4,
+      "available": false
+    },
+    {
+      "phase": "vulnerability",
+      "id": "vulnerability.tls-assessment",
+      "label": "TLS ASSESSMENT",
+      "summary": "Assess TLS deployment for protocol and cipher weaknesses",
+      "input_keys": [
+        "port",
+        "target"
+      ],
+      "providers": [
+        "testssl.sh",
+        "sslyze",
+        "nmap",
+        "tlsx"
+      ],
+      "operations_count": 6,
+      "available": true
+    },
+    {
+      "phase": "vulnerability",
+      "id": "vulnerability.api-testing",
+      "label": "API TESTING",
+      "summary": "Test API endpoints for broken objects, methods and schemas",
+      "input_keys": [
+        "token",
+        "url"
+      ],
+      "providers": [
+        "nuclei",
+        "ffuf",
+        "kr"
+      ],
+      "operations_count": 5,
+      "available": true
+    },
+    {
+      "phase": "vulnerability",
+      "id": "vulnerability.template-injection",
+      "label": "TEMPLATE INJECTION",
+      "summary": "Detect server side template injection and engine fingerprint",
+      "input_keys": [
+        "url"
+      ],
+      "providers": [
+        "tplmap",
+        "nuclei",
+        "ffuf"
+      ],
+      "operations_count": 5,
+      "available": true
+    },
+    {
+      "phase": "vulnerability",
+      "id": "vulnerability.deserialization-test",
+      "label": "DESERIALIZATION TEST",
+      "summary": "Probe endpoints and Java services for deserialization flaws",
+      "input_keys": [
+        "url"
+      ],
+      "providers": [
+        "ysoserial",
+        "nuclei",
+        "nmap"
+      ],
+      "operations_count": 5,
+      "available": true
+    },
+    {
+      "phase": "vulnerability",
+      "id": "vulnerability.fuzz-testing",
+      "label": "FUZZ TESTING",
+      "summary": "Fuzz parameters, paths and headers for abnormal behaviour",
+      "input_keys": [
+        "url",
+        "wordlist"
+      ],
+      "providers": [
+        "ffuf",
+        "wfuzz",
+        "radamsa"
+      ],
+      "operations_count": 5,
+      "available": false
+    },
+    {
+      "phase": "vulnerability",
+      "id": "vulnerability.takeover-check",
+      "label": "TAKEOVER CHECK",
+      "summary": "Detect dangling DNS records and takeover-able services",
+      "input_keys": [
+        "domain"
+      ],
+      "providers": [
+        "nuclei",
+        "subzy"
+      ],
+      "operations_count": 4,
+      "available": true
+    },
+    {
+      "phase": "vulnerability",
+      "id": "vulnerability.finding-validation",
+      "label": "FINDING VALIDATION",
+      "summary": "Re-verify automated findings with focused second-pass probes",
+      "input_keys": [
+        "template",
+        "url"
+      ],
+      "providers": [
+        "nuclei",
+        "httpx",
+        "sqlmap"
+      ],
+      "operations_count": 4,
+      "available": true
+    },
+    {
+      "phase": "payload",
+      "id": "payload.shellcode-generation",
+      "label": "SHELLCODE GENERATION",
+      "summary": "Multi platform shellcode and executable payload generation",
+      "input_keys": [
+        "lhost",
+        "lport"
+      ],
+      "providers": [
+        "msfvenom",
+        "donut"
+      ],
+      "operations_count": 7,
+      "available": true
+    },
+    {
+      "phase": "payload",
+      "id": "payload.payload-encoding",
+      "label": "PAYLOAD ENCODING",
+      "summary": "Encode and obfuscate payloads against signature detection",
+      "input_keys": [
+        "lhost",
+        "lport"
+      ],
+      "providers": [
+        "msfvenom",
+        "base64",
+        "xxd"
+      ],
+      "operations_count": 5,
+      "available": true
+    },
+    {
+      "phase": "payload",
+      "id": "payload.binary-weaponization",
+      "label": "BINARY WEAPONIZATION",
+      "summary": "Bind payloads into legitimate binaries and pack artifacts",
+      "input_keys": [
+        "lhost",
+        "lport",
+        "template"
+      ],
+      "providers": [
+        "msfvenom",
+        "upx",
+        "scarecrow"
+      ],
+      "operations_count": 4,
+      "available": true
+    },
+    {
+      "phase": "payload",
+      "id": "payload.macro-crafting",
+      "label": "MACRO CRAFTING",
+      "summary": "Generate macro enabled documents that deliver a payload",
+      "input_keys": [
+        "lhost",
+        "lport"
+      ],
+      "providers": [
+        "msfvenom",
+        "unicorn",
+        "macropack"
+      ],
+      "operations_count": 5,
+      "available": true
+    },
+    {
+      "phase": "payload",
+      "id": "payload.implant-building",
+      "label": "IMPLANT BUILDING",
+      "summary": "Compile C2 implants with configurable transport and format",
+      "input_keys": [
+        "c2host",
+        "c2port"
+      ],
+      "providers": [
+        "sliver",
+        "havoc"
+      ],
+      "operations_count": 5,
+      "available": false
+    },
+    {
+      "phase": "payload",
+      "id": "payload.stager-creation",
+      "label": "STAGER CREATION",
+      "summary": "Produce staged loaders that fetch and execute a second stage",
+      "input_keys": [
+        "lhost",
+        "lport"
+      ],
+      "providers": [
+        "msfvenom",
+        "donut"
+      ],
+      "operations_count": 6,
+      "available": true
+    },
+    {
+      "phase": "payload",
+      "id": "payload.dropper-packaging",
+      "label": "DROPPER PACKAGING",
+      "summary": "Package payloads into droppers and self extracting wrappers",
+      "input_keys": [
+        "lhost",
+        "lport",
+        "payload"
+      ],
+      "providers": [
+        "msfvenom",
+        "pyinstaller",
+        "shc"
+      ],
+      "operations_count": 5,
+      "available": true
+    },
+    {
+      "phase": "payload",
+      "id": "payload.artifact-obfuscation",
+      "label": "ARTIFACT OBFUSCATION",
+      "summary": "Obfuscate compiled artifacts to resist static analysis",
+      "input_keys": [
+        "payload"
+      ],
+      "providers": [
+        "garble",
+        "pyarmor",
+        "scarecrow",
+        "bash-obfuscate"
+      ],
+      "operations_count": 4,
+      "available": false
+    },
+    {
+      "phase": "payload",
+      "id": "payload.binary-analysis",
+      "label": "BINARY ANALYSIS",
+      "summary": "Inspect compiled artifacts: format, imports, strings and traces",
+      "input_keys": [
+        "binary"
+      ],
+      "providers": [
+        "file",
+        "strings",
+        "objdump",
+        "readelf",
+        "strace"
+      ],
+      "operations_count": 8,
+      "available": true
+    },
+    {
+      "phase": "payload",
+      "id": "payload.c2-configuration",
+      "label": "C2 CONFIGURATION",
+      "summary": "Configure listeners and handlers for implant callbacks",
+      "input_keys": [
+        "lhost",
+        "lport"
+      ],
+      "providers": [
+        "msfconsole",
+        "sliver",
+        "ncat",
+        "socat"
+      ],
+      "operations_count": 8,
+      "available": true
+    },
+    {
+      "phase": "payload",
+      "id": "payload.evasion-testing",
+      "label": "EVASION TESTING",
+      "summary": "Test artifacts against signatures and heuristic detection",
+      "input_keys": [
+        "binary"
+      ],
+      "providers": [
+        "yara",
+        "strings",
+        "objdump",
+        "defendercheck"
+      ],
+      "operations_count": 4,
+      "available": true
+    },
+    {
+      "phase": "payload",
+      "id": "payload.staging-server",
+      "label": "STAGING SERVER",
+      "summary": "Serve payloads over HTTP for staged delivery",
+      "input_keys": [
+        "path",
+        "port"
+      ],
+      "providers": [
+        "python3",
+        "php",
+        "curl",
+        "wget"
+      ],
+      "operations_count": 4,
+      "available": true
+    },
+    {
+      "phase": "payload",
+      "id": "payload.delivery-preparation",
+      "label": "DELIVERY PREPARATION",
+      "summary": "Prepare and test delivery of payload artifacts to targets",
+      "input_keys": [
+        "payload",
+        "rhost",
+        "rport"
+      ],
+      "providers": [
+        "swaks",
+        "sendemail",
+        "zip",
+        "mpack"
+      ],
+      "operations_count": 4,
+      "available": true
+    },
+    {
+      "phase": "payload",
+      "id": "payload.payload-validation",
+      "label": "PAYLOAD VALIDATION",
+      "summary": "Validate payload integrity, format and runtime behaviour",
+      "input_keys": [
+        "binary"
+      ],
+      "providers": [
+        "sha256sum",
+        "file",
+        "strings",
+        "strace",
+        "md5sum"
+      ],
+      "operations_count": 6,
+      "available": true
+    },
+    {
+      "phase": "payload",
+      "id": "payload.payload-testing",
+      "label": "PAYLOAD TESTING",
+      "summary": "Exercise a built payload against static and rule-based inspection",
+      "input_keys": [
+        "payload",
+        "rules"
+      ],
+      "providers": [
+        "file",
+        "strings",
+        "objdump",
+        "readelf",
+        "yara",
+        "sha256sum"
+      ],
+      "operations_count": 11,
+      "available": true
+    },
+    {
+      "phase": "payload",
+      "id": "payload.listener-deployment",
+      "label": "LISTENER DEPLOYMENT",
+      "summary": "Stand up handlers and listeners that receive implant callbacks",
+      "input_keys": [
+        "bind",
+        "cert",
+        "key",
+        "port"
+      ],
+      "providers": [
+        "sliver",
+        "msfconsole",
+        "ncat",
+        "socat",
+        "pwncat-cs"
+      ],
+      "operations_count": 10,
+      "available": true
+    },
+    {
+      "phase": "escalation",
+      "id": "escalation.suid-discovery",
+      "label": "SUID DISCOVERY",
+      "summary": "Locate SUID and SGID binaries and flag exploitable ones",
+      "input_keys": [
+        "path"
+      ],
+      "providers": [
+        "find",
+        "linpeas"
+      ],
+      "operations_count": 4,
+      "available": true
+    },
+    {
+      "phase": "escalation",
+      "id": "escalation.kernel-probing",
+      "label": "KERNEL PROBING",
+      "summary": "Collect kernel and OS details and suggest matching exploits",
+      "input_keys": [
+        "kernel"
+      ],
+      "providers": [
+        "uname",
+        "linux-exploit-suggester",
+        "searchsploit",
+        "les2"
+      ],
+      "operations_count": 4,
+      "available": true
+    },
+    {
+      "phase": "escalation",
+      "id": "escalation.credential-hunting",
+      "label": "CREDENTIAL HUNTING",
+      "summary": "Hunt configuration files, histories and keys for credentials",
+      "input_keys": [
+        "path"
+      ],
+      "providers": [
+        "find",
+        "grep",
+        "mimipenguin"
+      ],
+      "operations_count": 5,
+      "available": true
+    },
+    {
+      "phase": "escalation",
+      "id": "escalation.service-audit",
+      "label": "SERVICE AUDIT",
+      "summary": "Enumerate running services and their writable configurations",
+      "input_keys": [],
+      "providers": [
+        "systemctl",
+        "ss",
+        "nmap",
+        "searchsploit"
+      ],
+      "operations_count": 5,
+      "available": true
+    },
+    {
+      "phase": "escalation",
+      "id": "escalation.sudo-abuse",
+      "label": "SUDO ABUSE",
+      "summary": "Enumerate sudo rights and flag GTFOBins style escalation",
+      "input_keys": [],
+      "providers": [
+        "sudo",
+        "linpeas",
+        "pspy"
+      ],
+      "operations_count": 3,
+      "available": true
+    },
+    {
+      "phase": "escalation",
+      "id": "escalation.capability-audit",
+      "label": "CAPABILITY AUDIT",
+      "summary": "Enumerate file capabilities that grant elevated operations",
+      "input_keys": [],
+      "providers": [
+        "getcap",
+        "capsh",
+        "linpeas"
+      ],
+      "operations_count": 3,
+      "available": true
+    },
+    {
+      "phase": "escalation",
+      "id": "escalation.cron-audit",
+      "label": "CRON AUDIT",
+      "summary": "Enumerate cron jobs and writable scripts they execute",
+      "input_keys": [],
+      "providers": [
+        "crontab",
+        "find",
+        "pspy"
+      ],
+      "operations_count": 4,
+      "available": true
+    },
+    {
+      "phase": "escalation",
+      "id": "escalation.path-hijack",
+      "label": "PATH HIJACK",
+      "summary": "Find writable PATH directories and relative-call abuse",
+      "input_keys": [],
+      "providers": [
+        "printenv",
+        "find",
+        "strings",
+        "strace"
+      ],
+      "operations_count": 4,
+      "available": true
+    },
+    {
+      "phase": "escalation",
+      "id": "escalation.token-abuse",
+      "label": "TOKEN ABUSE",
+      "summary": "Enumerate Windows token privileges for impersonation paths",
+      "input_keys": [],
+      "providers": [
+        "whoami",
+        "winpeas",
+        "seatbelt"
+      ],
+      "operations_count": 3,
+      "available": true
+    },
+    {
+      "phase": "escalation",
+      "id": "escalation.registry-audit",
+      "label": "REGISTRY AUDIT",
+      "summary": "Audit Windows registry keys that enable privilege escalation",
+      "input_keys": [],
+      "providers": [
+        "reg",
+        "winpeas",
+        "accesschk"
+      ],
+      "operations_count": 5,
+      "available": false
+    },
+    {
+      "phase": "escalation",
+      "id": "escalation.dll-hijack",
+      "label": "DLL HIJACK",
+      "summary": "Identify missing DLLs and writable directories to plant them",
+      "input_keys": [],
+      "providers": [
+        "winpeas",
+        "accesschk",
+        "msfvenom"
+      ],
+      "operations_count": 3,
+      "available": true
+    },
+    {
+      "phase": "escalation",
+      "id": "escalation.container-escape",
+      "label": "CONTAINER ESCAPE",
+      "summary": "Enumerate container misconfiguration enabling host escape",
+      "input_keys": [],
+      "providers": [
+        "docker",
+        "capsh",
+        "nsenter",
+        "linpeas"
+      ],
+      "operations_count": 6,
+      "available": true
+    },
+    {
+      "phase": "escalation",
+      "id": "escalation.cloud-escalation",
+      "label": "CLOUD ESCALATION",
+      "summary": "Map cloud IAM privileges and metadata service exposure",
+      "input_keys": [
+        "provider"
+      ],
+      "providers": [
+        "curl",
+        "aws",
+        "pmapper",
+        "enumerate-iam"
+      ],
+      "operations_count": 6,
+      "available": true
+    },
+    {
+      "phase": "escalation",
+      "id": "escalation.group-abuse",
+      "label": "GROUP ABUSE",
+      "summary": "Exploit privileged group membership for host takeover",
+      "input_keys": [],
+      "providers": [
+        "id",
+        "docker",
+        "lxc",
+        "find"
+      ],
+      "operations_count": 5,
+      "available": true
+    },
+    {
+      "phase": "escalation",
+      "id": "escalation.permission-audit",
+      "label": "PERMISSION AUDIT",
+      "summary": "Audit world writable files and ACL misconfiguration",
+      "input_keys": [
+        "path"
+      ],
+      "providers": [
+        "find",
+        "stat",
+        "getfacl",
+        "namei"
+      ],
+      "operations_count": 6,
+      "available": true
+    },
+    {
+      "phase": "escalation",
+      "id": "escalation.escalation-validation",
+      "label": "ESCALATION VALIDATION",
+      "summary": "Prove and record elevated privilege with audit evidence",
+      "input_keys": [],
+      "providers": [
+        "id",
+        "whoami",
+        "cat",
+        "ss",
+        "uname"
+      ],
+      "operations_count": 5,
+      "available": true
+    },
+    {
+      "phase": "credentials",
+      "id": "credentials.local-dumping",
+      "label": "LOCAL DUMPING",
+      "summary": "Parse LSASS minidumps and live LSA for credential material",
+      "input_keys": [
+        "dump"
+      ],
+      "providers": [
+        "pypykatz",
+        "lazagne"
+      ],
+      "operations_count": 4,
+      "available": true
+    },
+    {
+      "phase": "credentials",
+      "id": "credentials.hash-extraction",
+      "label": "HASH EXTRACTION",
+      "summary": "Extract NTLM hashes from directory services and local hives",
+      "input_keys": [
+        "domain",
+        "password",
+        "target",
+        "username"
+      ],
+      "providers": [
+        "impacket-secretsdump",
+        "nxc"
+      ],
+      "operations_count": 5,
+      "available": true
+    },
+    {
+      "phase": "credentials",
+      "id": "credentials.password-cracking",
+      "label": "PASSWORD CRACKING",
+      "summary": "Offline dictionary and mask attacks against captured hashes",
+      "input_keys": [
+        "hash",
+        "wordlist"
+      ],
+      "providers": [
+        "hashcat",
+        "john",
+        "maskprocessor"
+      ],
+      "operations_count": 8,
+      "available": true
+    },
+    {
+      "phase": "credentials",
+      "id": "credentials.kerberos-attacks",
+      "label": "KERBEROS ATTACKS",
+      "summary": "Kerberoasting, AS-REP roasting and ticket forgery",
+      "input_keys": [
+        "domain",
+        "password",
+        "target",
+        "username"
+      ],
+      "providers": [
+        "impacket-GetUserSPNs",
+        "impacket-GetNPUsers",
+        "kerbrute",
+        "impacket-ticketer"
+      ],
+      "operations_count": 6,
+      "available": true
+    },
+    {
+      "phase": "credentials",
+      "id": "credentials.memory-extraction",
+      "label": "MEMORY EXTRACTION",
+      "summary": "Dump process memory for offline credential recovery",
+      "input_keys": [
+        "pid"
+      ],
+      "providers": [
+        "procdump",
+        "nanodump",
+        "handlekatz",
+        "sqldumper"
+      ],
+      "operations_count": 5,
+      "available": false
+    },
+    {
+      "phase": "credentials",
+      "id": "credentials.secret-discovery",
+      "label": "SECRET DISCOVERY",
+      "summary": "Scan filesystems and repositories for embedded secrets",
+      "input_keys": [
+        "path"
+      ],
+      "providers": [
+        "trufflehog",
+        "gitleaks",
+        "detect-secrets",
+        "rip-secrets",
+        "grep"
+      ],
+      "operations_count": 6,
+      "available": true
+    },
+    {
+      "phase": "credentials",
+      "id": "credentials.browser-extraction",
+      "label": "BROWSER EXTRACTION",
+      "summary": "Extract saved browser credentials, cookies and history",
+      "input_keys": [
+        "profile"
+      ],
+      "providers": [
+        "hack-browser-data",
+        "dumpzilla",
+        "sqlite3"
+      ],
+      "operations_count": 6,
+      "available": true
+    },
+    {
+      "phase": "credentials",
+      "id": "credentials.adcs-abuse",
+      "label": "ADCS ABUSE",
+      "summary": "Enumerate and abuse Active Directory Certificate Services",
+      "input_keys": [
+        "domain",
+        "password",
+        "target",
+        "username"
+      ],
+      "providers": [
+        "certipy",
+        "openssl"
+      ],
+      "operations_count": 7,
+      "available": true
+    },
+    {
+      "phase": "credentials",
+      "id": "credentials.password-spraying",
+      "label": "PASSWORD SPRAYING",
+      "summary": "Low and slow password spraying across authentication services",
+      "input_keys": [
+        "password",
+        "target",
+        "username"
+      ],
+      "providers": [
+        "nxc",
+        "hydra",
+        "medusa"
+      ],
+      "operations_count": 6,
+      "available": true
+    },
+    {
+      "phase": "credentials",
+      "id": "credentials.token-manipulation",
+      "label": "TOKEN MANIPULATION",
+      "summary": "Analyse and tamper with JWTs and secret tokens",
+      "input_keys": [
+        "token"
+      ],
+      "providers": [
+        "jwt_tool",
+        "step",
+        "jq"
+      ],
+      "operations_count": 6,
+      "available": true
+    },
+    {
+      "phase": "credentials",
+      "id": "credentials.dcsync",
+      "label": "DCSYNC REPLICATION",
+      "summary": "Perform targeted directory replication of credential material",
+      "input_keys": [
+        "domain",
+        "password",
+        "target",
+        "username"
+      ],
+      "providers": [
+        "impacket-secretsdump",
+        "nxc",
+        "pywerview"
+      ],
+      "operations_count": 4,
+      "available": true
+    },
+    {
+      "phase": "credentials",
+      "id": "credentials.dpapi-extraction",
+      "label": "DPAPI EXTRACTION",
+      "summary": "Recover DPAPI masterkeys and decrypt protected blobs",
+      "input_keys": [
+        "blob"
+      ],
+      "providers": [
+        "pypykatz",
+        "impacket-dpapi"
+      ],
+      "operations_count": 4,
+      "available": true
+    },
+    {
+      "phase": "credentials",
+      "id": "credentials.policy-enum",
+      "label": "POLICY ENUMERATION",
+      "summary": "Enumerate password and lockout policy before spraying",
+      "input_keys": [
+        "domain",
+        "password",
+        "target",
+        "username"
+      ],
+      "providers": [
+        "nxc",
+        "rpcclient",
+        "enum4linux-ng"
+      ],
+      "operations_count": 5,
+      "available": true
+    },
+    {
+      "phase": "credentials",
+      "id": "credentials.artifact-extraction",
+      "label": "ARTIFACT EXTRACTION",
+      "summary": "Extract credential artifacts from hives and shadow copies",
+      "input_keys": [
+        "hive"
+      ],
+      "providers": [
+        "bkhive",
+        "samdump2",
+        "hivexget",
+        "reg"
+      ],
+      "operations_count": 4,
+      "available": false
+    },
+    {
+      "phase": "credentials",
+      "id": "credentials.graph-mapping",
+      "label": "GRAPH MAPPING",
+      "summary": "Collect identity graph data for credential privilege mapping",
+      "input_keys": [
+        "domain",
+        "password",
+        "target",
+        "username"
+      ],
+      "providers": [
+        "bloodhound-python",
+        "adidnsdump"
+      ],
+      "operations_count": 4,
+      "available": true
+    },
+    {
+      "phase": "credentials",
+      "id": "credentials.posture-report",
+      "label": "POSTURE REPORT",
+      "summary": "Summarise cracked credentials and exposure posture",
+      "input_keys": [
+        "hash"
+      ],
+      "providers": [
+        "hashcat",
+        "john",
+        "gitleaks",
+        "wc"
+      ],
+      "operations_count": 4,
+      "available": true
+    },
+    {
+      "phase": "lateral",
+      "id": "lateral.service-discovery",
+      "label": "SERVICE DISCOVERY",
+      "summary": "Rapid internal sweep for administrative ports and live hosts",
+      "input_keys": [
+        "target"
+      ],
+      "providers": [
+        "nmap",
+        "masscan",
+        "naabu",
+        "fping",
+        "nc"
+      ],
+      "operations_count": 8,
+      "available": true
+    },
+    {
+      "phase": "lateral",
+      "id": "lateral.remote-access",
+      "label": "REMOTE ACCESS",
+      "summary": "Check remote service access with supplied credentials",
+      "input_keys": [
+        "password",
+        "share",
+        "target",
+        "username"
+      ],
+      "providers": [
+        "nxc",
+        "smbclient",
+        "enum4linux-ng"
+      ],
+      "operations_count": 7,
+      "available": true
+    },
+    {
+      "phase": "lateral",
+      "id": "lateral.trust-mapping",
+      "label": "TRUST MAPPING",
+      "summary": "Discover domain and forest trust relationships",
+      "input_keys": [
+        "domain",
+        "password",
+        "target",
+        "username"
+      ],
+      "providers": [
+        "nltest",
+        "nxc",
+        "bloodhound-python",
+        "pywerview"
+      ],
+      "operations_count": 4,
+      "available": true
+    },
+    {
+      "phase": "lateral",
+      "id": "lateral.directory-graph",
+      "label": "DIRECTORY GRAPH",
+      "summary": "Collect Active Directory graph data for path analysis",
+      "input_keys": [
+        "domain",
+        "password",
+        "target",
+        "username"
+      ],
+      "providers": [
+        "bloodhound-python",
+        "adidnsdump",
+        "ldapdomaindump",
+        "windapsearch"
+      ],
+      "operations_count": 5,
+      "available": true
+    },
+    {
+      "phase": "lateral",
+      "id": "lateral.session-discovery",
+      "label": "SESSION DISCOVERY",
+      "summary": "Locate active user sessions across the estate",
+      "input_keys": [
+        "domain",
+        "password",
+        "target",
+        "username"
+      ],
+      "providers": [
+        "nxc",
+        "qwinsta",
+        "bloodhound-python"
+      ],
+      "operations_count": 4,
+      "available": true
+    },
+    {
+      "phase": "lateral",
+      "id": "lateral.remote-execution",
+      "label": "REMOTE EXECUTION",
+      "summary": "Execute commands over SMB, WMI and DCOM channels",
+      "input_keys": [
+        "command",
+        "domain",
+        "password",
+        "target",
+        "username"
+      ],
+      "providers": [
+        "impacket-wmiexec",
+        "impacket-smbexec",
+        "impacket-psexec",
+        "impacket-dcomexec",
+        "nxc"
+      ],
+      "operations_count": 6,
+      "available": true
+    },
+    {
+      "phase": "lateral",
+      "id": "lateral.network-pivoting",
+      "label": "NETWORK PIVOTING",
+      "summary": "Establish tunnels and proxies through compromised hosts",
+      "input_keys": [
+        "pivot",
+        "port"
+      ],
+      "providers": [
+        "chisel",
+        "sshuttle",
+        "ligolo",
+        "gost",
+        "socat"
+      ],
+      "operations_count": 7,
+      "available": true
+    },
+    {
+      "phase": "lateral",
+      "id": "lateral.traffic-redirect",
+      "label": "TRAFFIC REDIRECT",
+      "summary": "Route tooling and traffic through pivot infrastructure",
+      "input_keys": [
+        "pivot",
+        "port",
+        "target"
+      ],
+      "providers": [
+        "proxychains4",
+        "ssh",
+        "iptables",
+        "ip"
+      ],
+      "operations_count": 9,
+      "available": true
+    },
+    {
+      "phase": "lateral",
+      "id": "lateral.winrm-remoting",
+      "label": "WINRM REMOTING",
+      "summary": "Operate over WinRM and PowerShell remoting channels",
+      "input_keys": [
+        "command",
+        "password",
+        "target",
+        "username"
+      ],
+      "providers": [
+        "evil-winrm",
+        "nxc",
+        "pwsh"
+      ],
+      "operations_count": 6,
+      "available": true
+    },
+    {
+      "phase": "lateral",
+      "id": "lateral.share-hunting",
+      "label": "SHARE HUNTING",
+      "summary": "Enumerate shares and hunt sensitive files across them",
+      "input_keys": [
+        "domain",
+        "password",
+        "share",
+        "target",
+        "username"
+      ],
+      "providers": [
+        "nxc",
+        "smbclient",
+        "find"
+      ],
+      "operations_count": 5,
+      "available": true
+    },
+    {
+      "phase": "lateral",
+      "id": "lateral.database-access",
+      "label": "DATABASE ACCESS",
+      "summary": "Reach lateral databases and execute SQL through clients",
+      "input_keys": [
+        "domain",
+        "password",
+        "query",
+        "target",
+        "username"
+      ],
+      "providers": [
+        "impacket-mssqlclient",
+        "sqsh",
+        "psql",
+        "mysql",
+        "sqlcmd"
+      ],
+      "operations_count": 6,
+      "available": true
+    },
+    {
+      "phase": "lateral",
+      "id": "lateral.ssh-propagation",
+      "label": "SSH PROPAGATION",
+      "summary": "Harvest SSH keys and propagate access across hosts",
+      "input_keys": [
+        "keyfile",
+        "target",
+        "username"
+      ],
+      "providers": [
+        "find",
+        "grep",
+        "ssh-keyscan",
+        "ssh",
+        "sshpass"
+      ],
+      "operations_count": 6,
+      "available": true
+    },
+    {
+      "phase": "lateral",
+      "id": "lateral.oob-management",
+      "label": "OOB MANAGEMENT",
+      "summary": "Audit out-of-band controllers and hardware management",
+      "input_keys": [
+        "password",
+        "target",
+        "username"
+      ],
+      "providers": [
+        "ipmitool",
+        "racadm",
+        "snmpwalk",
+        "nmap"
+      ],
+      "operations_count": 6,
+      "available": true
+    },
+    {
+      "phase": "lateral",
+      "id": "lateral.path-analysis",
+      "label": "PATH ANALYSIS",
+      "summary": "Compute shortest privilege paths in the identity graph",
+      "input_keys": [
+        "password",
+        "target",
+        "username"
+      ],
+      "providers": [
+        "cypher-shell",
+        "pywerview",
+        "jq"
+      ],
+      "operations_count": 5,
+      "available": true
+    },
+    {
+      "phase": "lateral",
+      "id": "lateral.path-validation",
+      "label": "PATH VALIDATION",
+      "summary": "Validate pivot reachability before movement",
+      "input_keys": [
+        "port",
+        "target"
+      ],
+      "providers": [
+        "nc",
+        "smbclient",
+        "curl"
+      ],
+      "operations_count": 5,
+      "available": true
+    },
+    {
+      "phase": "lateral",
+      "id": "lateral.movement-logging",
+      "label": "MOVEMENT LOGGING",
+      "summary": "Record lateral actions with timestamps and hashes",
+      "input_keys": [
+        "target"
+      ],
+      "providers": [
+        "script",
+        "sha256sum",
+        "journalctl",
+        "wevtutil"
+      ],
+      "operations_count": 4,
+      "available": true
+    },
+    {
+      "phase": "persistence",
+      "id": "persistence.surface-discovery",
+      "label": "SURFACE DISCOVERY",
+      "summary": "Enumerate auto-start locations across the host",
+      "input_keys": [],
+      "providers": [
+        "systemctl",
+        "systemctl",
+        "crontab",
+        "schtasks",
+        "reg"
+      ],
+      "operations_count": 6,
+      "available": true
+    },
+    {
+      "phase": "persistence",
+      "id": "persistence.startup-keys",
+      "label": "STARTUP KEYS",
+      "summary": "Install startup folder and run key persistence",
+      "input_keys": [
+        "payload"
+      ],
+      "providers": [
+        "reg",
+        "tee"
+      ],
+      "operations_count": 5,
+      "available": true
+    },
+    {
+      "phase": "persistence",
+      "id": "persistence.service-backdoor",
+      "label": "SERVICE BACKDOOR",
+      "summary": "Deploy or modify services for durable execution",
+      "input_keys": [
+        "name",
+        "payload"
+      ],
+      "providers": [
+        "sc",
+        "nssm",
+        "systemctl"
+      ],
+      "operations_count": 9,
+      "available": true
+    },
+    {
+      "phase": "persistence",
+      "id": "persistence.scheduled-tasks",
+      "label": "SCHEDULED TASKS",
+      "summary": "Create scheduled execution for repeated payload delivery",
+      "input_keys": [
+        "name",
+        "payload"
+      ],
+      "providers": [
+        "schtasks",
+        "crontab",
+        "at",
+        "systemd-run"
+      ],
+      "operations_count": 7,
+      "available": true
+    },
+    {
+      "phase": "persistence",
+      "id": "persistence.ticket-forgery",
+      "label": "TICKET FORGERY",
+      "summary": "Forge identity tickets for durable domain access",
+      "input_keys": [
+        "domain"
+      ],
+      "providers": [
+        "impacket-ticketer",
+        "rubeus",
+        "mimikatz",
+        "certipy"
+      ],
+      "operations_count": 6,
+      "available": true
+    },
+    {
+      "phase": "persistence",
+      "id": "persistence.c2-channels",
+      "label": "C2 CHANNELS",
+      "summary": "Establish resilient command and control channels",
+      "input_keys": [
+        "c2host",
+        "c2port"
+      ],
+      "providers": [
+        "sliver",
+        "dnscat2",
+        "iodined",
+        "chisel"
+      ],
+      "operations_count": 7,
+      "available": false
+    },
+    {
+      "phase": "persistence",
+      "id": "persistence.defense-discovery",
+      "label": "DEFENSE DISCOVERY",
+      "summary": "Enumerate EDR agents and security controls",
+      "input_keys": [],
+      "providers": [
+        "fltmc",
+        "tasklist",
+        "sc",
+        "ps",
+        "lsmod"
+      ],
+      "operations_count": 8,
+      "available": true
+    },
+    {
+      "phase": "persistence",
+      "id": "persistence.telemetry-audit",
+      "label": "TELEMETRY AUDIT",
+      "summary": "Audit log channels and audit rules for telemetry coverage",
+      "input_keys": [],
+      "providers": [
+        "wevtutil",
+        "auditctl",
+        "ausearch",
+        "journalctl"
+      ],
+      "operations_count": 6,
+      "available": true
+    },
+    {
+      "phase": "persistence",
+      "id": "persistence.log-evasion",
+      "label": "LOG EVASION",
+      "summary": "Blend artifacts and reduce forensic traceability",
+      "input_keys": [
+        "target"
+      ],
+      "providers": [
+        "shred",
+        "touch",
+        "sed",
+        "truncate"
+      ],
+      "operations_count": 4,
+      "available": true
+    },
+    {
+      "phase": "persistence",
+      "id": "persistence.amsi-bypass",
+      "label": "AMSI BYPASS",
+      "summary": "Patch script hosts to evade content inspection",
+      "input_keys": [],
+      "providers": [
+        "pwsh",
+        "python3",
+        "openssl"
+      ],
+      "operations_count": 4,
+      "available": true
+    },
+    {
+      "phase": "persistence",
+      "id": "persistence.integrity-baseline",
+      "label": "INTEGRITY BASELINE",
+      "summary": "Verify system file integrity against package baselines",
+      "input_keys": [],
+      "providers": [
+        "debsums",
+        "rpm",
+        "aide",
+        "find",
+        "sha256sum"
+      ],
+      "operations_count": 5,
+      "available": true
+    },
+    {
+      "phase": "persistence",
+      "id": "persistence.boot-hooking",
+      "label": "BOOT HOOKING",
+      "summary": "Hook boot and init processes for pre-launch execution",
+      "input_keys": [
+        "payload"
+      ],
+      "providers": [
+        "update-grub",
+        "update-initramfs",
+        "bcdedit",
+        "efibootmgr",
+        "tee"
+      ],
+      "operations_count": 5,
+      "available": true
+    },
+    {
+      "phase": "persistence",
+      "id": "persistence.library-hooks",
+      "label": "LIBRARY HOOKS",
+      "summary": "Persist through shared library and kernel module hooks",
+      "input_keys": [
+        "module"
+      ],
+      "providers": [
+        "tee",
+        "insmod",
+        "modprobe",
+        "ldconfig"
+      ],
+      "operations_count": 6,
+      "available": true
+    },
+    {
+      "phase": "persistence",
+      "id": "persistence.cloud-backdoor",
+      "label": "CLOUD BACKDOOR",
+      "summary": "Create durable cloud identity and role access",
+      "input_keys": [
+        "provider",
+        "user"
+      ],
+      "providers": [
+        "aws",
+        "az",
+        "gcloud",
+        "kubectl"
+      ],
+      "operations_count": 7,
+      "available": true
+    },
+    {
+      "phase": "persistence",
+      "id": "persistence.foothold-validation",
+      "label": "FOOTHOLD VALIDATION",
+      "summary": "Verify persistence channels remain alive and stable",
+      "input_keys": [
+        "port"
+      ],
+      "providers": [
+        "ss",
+        "curl",
+        "systemctl",
+        "crontab"
+      ],
+      "operations_count": 6,
+      "available": true
+    },
+    {
+      "phase": "persistence",
+      "id": "persistence.cleanup-playbook",
+      "label": "CLEANUP PLAYBOOK",
+      "summary": "Catalog deployed artifacts and generate rollback steps",
+      "input_keys": [
+        "path"
+      ],
+      "providers": [
+        "sha256sum",
+        "diff",
+        "debsums",
+        "bash",
+        "git"
+      ],
+      "operations_count": 5,
+      "available": true
+    },
+    {
+      "phase": "objectives",
+      "id": "objectives.objective-discovery",
+      "label": "OBJECTIVE DISCOVERY",
+      "summary": "Locate the files named by the mission objective",
+      "input_keys": [
+        "keyword",
+        "path"
+      ],
+      "providers": [
+        "rg",
+        "fd",
+        "find",
+        "locate",
+        "grep"
+      ],
+      "operations_count": 10,
+      "available": true
+    },
+    {
+      "phase": "objectives",
+      "id": "objectives.data-discovery",
+      "label": "DATA DISCOVERY",
+      "summary": "Map structured data stores and their schemas",
+      "input_keys": [
+        "path"
+      ],
+      "providers": [
+        "rg",
+        "jq",
+        "tree",
+        "du",
+        "stat"
+      ],
+      "operations_count": 7,
+      "available": true
+    },
+    {
+      "phase": "objectives",
+      "id": "objectives.data-staging",
+      "label": "DATA STAGING",
+      "summary": "Collect objective data into a controlled staging directory",
+      "input_keys": [
+        "bandwidth",
+        "source",
+        "staging"
+      ],
+      "providers": [
+        "rsync",
+        "tar",
+        "zip",
+        "cpio",
+        "7z"
+      ],
+      "operations_count": 5,
+      "available": true
+    },
+    {
+      "phase": "objectives",
+      "id": "objectives.secret-harvesting",
+      "label": "SECRET HARVESTING",
+      "summary": "Hunt credentials and API keys inside staged objective data",
+      "input_keys": [
+        "path",
+        "rules"
+      ],
+      "providers": [
+        "trufflehog",
+        "gitleaks",
+        "rip-secrets",
+        "yara",
+        "awk"
+      ],
+      "operations_count": 5,
+      "available": true
+    },
+    {
+      "phase": "objectives",
+      "id": "objectives.database-dumping",
+      "label": "DATABASE DUMPING",
+      "summary": "Dump objective databases to a portable archive",
+      "input_keys": [
+        "database",
+        "out",
+        "password",
+        "target",
+        "username"
+      ],
+      "providers": [
+        "mysqldump",
+        "pg_dump",
+        "sqlite3",
+        "impacket-mssqlclient",
+        "mongodump"
+      ],
+      "operations_count": 5,
+      "available": true
+    },
+    {
+      "phase": "objectives",
+      "id": "objectives.archive-preparation",
+      "label": "ARCHIVE PREPARATION",
+      "summary": "Encrypt and split staged data for transfer",
+      "input_keys": [
+        "out",
+        "passphrase",
+        "split",
+        "staging"
+      ],
+      "providers": [
+        "7z",
+        "openssl",
+        "gpg",
+        "split",
+        "zip"
+      ],
+      "operations_count": 5,
+      "available": true
+    },
+    {
+      "phase": "objectives",
+      "id": "objectives.transfer-integrity",
+      "label": "TRANSFER INTEGRITY",
+      "summary": "Prove transferred artifacts are byte identical to the source",
+      "input_keys": [
+        "manifest",
+        "path"
+      ],
+      "providers": [
+        "sha256sum",
+        "b2sum",
+        "md5sum",
+        "cksum",
+        "sha1sum"
+      ],
+      "operations_count": 6,
+      "available": true
+    },
+    {
+      "phase": "objectives",
+      "id": "objectives.exfiltration-path",
+      "label": "EXFILTRATION PATH",
+      "summary": "Move staged data out through approved egress channels",
+      "input_keys": [
+        "endpoint",
+        "limit",
+        "payload"
+      ],
+      "providers": [
+        "curl",
+        "rsync",
+        "sftp",
+        "ncat",
+        "openssl"
+      ],
+      "operations_count": 5,
+      "available": true
+    },
+    {
+      "phase": "objectives",
+      "id": "objectives.covert-exfiltration",
+      "label": "COVERT EXFILTRATION",
+      "summary": "Exfiltrate over DNS and ICMP where egress filtering is strict",
+      "input_keys": [
+        "domain",
+        "payload",
+        "target"
+      ],
+      "providers": [
+        "dnscat2",
+        "iodined",
+        "ping",
+        "dig",
+        "scapy"
+      ],
+      "operations_count": 5,
+      "available": true
+    },
+    {
+      "phase": "objectives",
+      "id": "objectives.evidence-preservation",
+      "label": "EVIDENCE PRESERVATION",
+      "summary": "Capture forensically sound copies of objective evidence",
+      "input_keys": [
+        "device",
+        "directory",
+        "operator"
+      ],
+      "providers": [
+        "script",
+        "dc3dd",
+        "dd",
+        "tar",
+        "sha256sum"
+      ],
+      "operations_count": 5,
+      "available": true
+    },
+    {
+      "phase": "objectives",
+      "id": "objectives.regex-matching",
+      "label": "REGEX MATCHING",
+      "summary": "Match high-value patterns across the raw text corpus",
+      "input_keys": [
+        "path",
+        "pattern"
+      ],
+      "providers": [
+        "rg",
+        "pcregrep",
+        "egrep",
+        "sed",
+        "awk"
+      ],
+      "operations_count": 7,
+      "available": true
+    },
+    {
+      "phase": "objectives",
+      "id": "objectives.event-collection",
+      "label": "EVENT COLLECTION",
+      "summary": "Collect system and audit events relevant to the objective",
+      "input_keys": [
+        "directory",
+        "since",
+        "unit"
+      ],
+      "providers": [
+        "journalctl",
+        "wevtutil",
+        "ausearch",
+        "auditctl",
+        "tar"
+      ],
+      "operations_count": 6,
+      "available": true
+    },
+    {
+      "phase": "objectives",
+      "id": "objectives.storage-harvesting",
+      "label": "STORAGE HARVESTING",
+      "summary": "Harvest objective data from cloud object storage",
+      "input_keys": [
+        "bucket",
+        "directory"
+      ],
+      "providers": [
+        "aws",
+        "azcopy",
+        "gcloud",
+        "rclone",
+        "s3cmd"
+      ],
+      "operations_count": 5,
+      "available": true
+    },
+    {
+      "phase": "objectives",
+      "id": "objectives.impact-correlation",
+      "label": "IMPACT CORRELATION",
+      "summary": "Correlate harvested records into a measurable impact figure",
+      "input_keys": [
+        "key",
+        "path"
+      ],
+      "providers": [
+        "jq",
+        "sqlite3",
+        "datamash",
+        "sort",
+        "awk"
+      ],
+      "operations_count": 5,
+      "available": true
+    },
+    {
+      "phase": "objectives",
+      "id": "objectives.custody-chain",
+      "label": "CUSTODY CHAIN",
+      "summary": "Sign and ledger every evidence transfer",
+      "input_keys": [
+        "artifact",
+        "log",
+        "operator"
+      ],
+      "providers": [
+        "sha512sum",
+        "openssl",
+        "gpg",
+        "ts",
+        "git"
+      ],
+      "operations_count": 5,
+      "available": true
+    },
+    {
+      "phase": "objectives",
+      "id": "objectives.objective-reporting",
+      "label": "OBJECTIVE REPORTING",
+      "summary": "Report objective achievement and measured impact",
+      "input_keys": [
+        "checklist",
+        "metrics",
+        "report"
+      ],
+      "providers": [
+        "python3",
+        "wc",
+        "du",
+        "pandoc",
+        "enscript"
+      ],
+      "operations_count": 5,
+      "available": true
+    },
+    {
+      "phase": "wireless",
+      "id": "wireless.interface-setup",
+      "label": "INTERFACE SETUP",
+      "summary": "Bring a radio into monitor mode with predictable parameters",
+      "input_keys": [
+        "interface",
+        "monitor"
+      ],
+      "providers": [
+        "rfkill",
+        "airmon-ng",
+        "iw",
+        "ip",
+        "iwconfig"
+      ],
+      "operations_count": 15,
+      "available": true
+    },
+    {
+      "phase": "wireless",
+      "id": "wireless.spectrum-reconnaissance",
+      "label": "SPECTRUM RECONNAISSANCE",
+      "summary": "Sweep the spectrum and log every visible network",
+      "input_keys": [
+        "band",
+        "monitor",
+        "prefix"
+      ],
+      "providers": [
+        "airodump-ng",
+        "kismet_server",
+        "nmcli",
+        "wavemon",
+        "iwlist"
+      ],
+      "operations_count": 8,
+      "available": true
+    },
+    {
+      "phase": "wireless",
+      "id": "wireless.target-enumeration",
+      "label": "TARGET ENUMERATION",
+      "summary": "Lock onto a chosen access point and enumerate it",
+      "input_keys": [
+        "bssid",
+        "channel",
+        "monitor",
+        "prefix"
+      ],
+      "providers": [
+        "airodump-ng",
+        "wash",
+        "hcxdumptool",
+        "mdk4",
+        "iw"
+      ],
+      "operations_count": 5,
+      "available": true
+    },
+    {
+      "phase": "wireless",
+      "id": "wireless.handshake-capture",
+      "label": "HANDSHAKE CAPTURE",
+      "summary": "Capture a four-way handshake from the target network",
+      "input_keys": [
+        "bssid",
+        "channel",
+        "client",
+        "count",
+        "monitor",
+        "pcap"
+      ],
+      "providers": [
+        "airodump-ng",
+        "aireplay-ng",
+        "hcxdumptool",
+        "tshark",
+        "mdk4"
+      ],
+      "operations_count": 5,
+      "available": true
+    },
+    {
+      "phase": "wireless",
+      "id": "wireless.pmkid-harvesting",
+      "label": "PMKID HARVESTING",
+      "summary": "Extract RSN PMKID material and convert it to hash format",
+      "input_keys": [
+        "hashes",
+        "monitor",
+        "pcapng"
+      ],
+      "providers": [
+        "hcxdumptool",
+        "hcxpcapngtool",
+        "hcxhashtool",
+        "hashcat",
+        "wlanhcx2john"
+      ],
+      "operations_count": 5,
+      "available": true
+    },
+    {
+      "phase": "wireless",
+      "id": "wireless.enterprise-attacks",
+      "label": "ENTERPRISE ATTACKS",
+      "summary": "Attack 802.1X enterprise authentication and capture identities",
+      "input_keys": [
+        "capture",
+        "monitor",
+        "ssid"
+      ],
+      "providers": [
+        "hostapd-wpe",
+        "eaphammer",
+        "asleap",
+        "freeradius-wpe",
+        "tshark"
+      ],
+      "operations_count": 5,
+      "available": true
+    },
+    {
+      "phase": "wireless",
+      "id": "wireless.probe-snooping",
+      "label": "PROBE SNOOPING",
+      "summary": "Log client probe requests and identify unassociated devices",
+      "input_keys": [
+        "bssid",
+        "capture",
+        "monitor"
+      ],
+      "providers": [
+        "airodump-ng",
+        "tshark",
+        "tcpdump",
+        "kismet_server",
+        "mdk4"
+      ],
+      "operations_count": 5,
+      "available": true
+    },
+    {
+      "phase": "wireless",
+      "id": "wireless.packet-injection",
+      "label": "PACKET INJECTION",
+      "summary": "Verify card injection capability and analyse decrypted traffic",
+      "input_keys": [
+        "bssid",
+        "key",
+        "monitor",
+        "pcap"
+      ],
+      "providers": [
+        "aireplay-ng",
+        "airdecap-ng",
+        "tshark",
+        "tcpdump",
+        "packetspammer"
+      ],
+      "operations_count": 6,
+      "available": true
+    },
+    {
+      "phase": "wireless",
+      "id": "wireless.evil-twin",
+      "label": "EVIL TWIN",
+      "summary": "Stand up a rogue access point and captive portal",
+      "input_keys": [
+        "monitor",
+        "range",
+        "spoof",
+        "ssid",
+        "upstream"
+      ],
+      "providers": [
+        "airbase-ng",
+        "dnsmasq",
+        "iptables",
+        "hostapd-mana",
+        "eaphammer"
+      ],
+      "operations_count": 5,
+      "available": true
+    },
+    {
+      "phase": "wireless",
+      "id": "wireless.segmentation-audit",
+      "label": "SEGMENTATION AUDIT",
+      "summary": "Test whether wireless clients reach protected internal segments",
+      "input_keys": [
+        "interface",
+        "subnet",
+        "target"
+      ],
+      "providers": [
+        "nmap",
+        "arping",
+        "ip",
+        "traceroute",
+        "scapy"
+      ],
+      "operations_count": 5,
+      "available": true
+    },
+    {
+      "phase": "wireless",
+      "id": "wireless.pixie-dust",
+      "label": "PIXIE DUST",
+      "summary": "Recover the WPS PIN offline from captured frames",
+      "input_keys": [
+        "bssid",
+        "channel",
+        "monitor",
+        "timeout"
+      ],
+      "providers": [
+        "wash",
+        "reaver",
+        "bully",
+        "pixiewps",
+        "hcxdumptool"
+      ],
+      "operations_count": 5,
+      "available": false
+    },
+    {
+      "phase": "wireless",
+      "id": "wireless.channel-hopping",
+      "label": "CHANNEL HOPPING",
+      "summary": "Profile channel utilisation and RF characteristics",
+      "input_keys": [
+        "channels",
+        "dwell",
+        "monitor"
+      ],
+      "providers": [
+        "horst",
+        "airodump-ng",
+        "iw",
+        "wavemon",
+        "kismet_server"
+      ],
+      "operations_count": 5,
+      "available": true
+    },
+    {
+      "phase": "wireless",
+      "id": "wireless.pcap-capture",
+      "label": "PCAP CAPTURE",
+      "summary": "Filter, repair and convert wireless captures",
+      "input_keys": [
+        "capture",
+        "filter",
+        "output"
+      ],
+      "providers": [
+        "hcxpcapngtool",
+        "tshark",
+        "mergecap",
+        "editcap",
+        "pcapfix"
+      ],
+      "operations_count": 5,
+      "available": true
+    },
+    {
+      "phase": "wireless",
+      "id": "wireless.geolocation-correlation",
+      "label": "GEOLOCATION CORRELATION",
+      "summary": "Correlate observed networks with physical coordinates",
+      "input_keys": [
+        "bssid",
+        "output",
+        "surveys"
+      ],
+      "providers": [
+        "gpsd",
+        "gpxlogger",
+        "kismet",
+        "curl",
+        "jq",
+        "python3"
+      ],
+      "operations_count": 6,
+      "available": true
+    },
+    {
+      "phase": "wireless",
+      "id": "wireless.isolation-testing",
+      "label": "ISOLATION TESTING",
+      "summary": "Prove or break client isolation between wireless peers",
+      "input_keys": [
+        "gateway",
+        "interface",
+        "peer",
+        "subnet"
+      ],
+      "providers": [
+        "arping",
+        "fping",
+        "nmap",
+        "hping3",
+        "scapy"
+      ],
+      "operations_count": 5,
+      "available": true
+    },
+    {
+      "phase": "wireless",
+      "id": "wireless.audit-reporting",
+      "label": "AUDIT REPORTING",
+      "summary": "Report wireless findings with cryptographic proof",
+      "input_keys": [
+        "hashes",
+        "inventory",
+        "report"
+      ],
+      "providers": [
+        "aircrack-ng",
+        "hashcat",
+        "airdecap-ng",
+        "tshark",
+        "python3"
+      ],
+      "operations_count": 5,
+      "available": true
+    }
+  ]
+}

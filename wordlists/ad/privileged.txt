@@ -1,0 +1,85 @@
+Administrator
+administrator
+admin
+Admin
+guest
+Guest
+krbtgt
+Domain Admins
+Enterprise Admins
+Schema Admins
+Domain Controllers
+Domain Guests
+Authenticated Users
+Backup Operators
+Account Operators
+Server Operators
+Print Operators
+Service Accounts
+svc
+svc-backup
+svc_sql
+svc_iis
+svc_ldap
+svc_backup
+svc_admin
+sa
+sqladmin
+sqlagent
+svc_mssql
+exchange
+exadmin
+vcenter
+esx
+root
+toor
+admin_backup
+da_admin
+vc_admin
+CAAdmin
+adm
+ldapadmin
+svc_web
+svc_app
+svc_deploy
+svc_monitor
+svc_audit
+helpdesk
+helpdesk_admin
+netadmin
+oracle
+oracle_admin
+tivoli
+websphere
+wasadmin
+dbadmin
+db2inst1
+Informix
+winadmin
+winboxadmin
+bamboo
+jenkins
+gitlab
+sonar
+nexus
+artifactory
+deploy
+svc_ci
+sso
+sso_admin
+adfs
+azuread
+o365
+office365
+sharepoint
+lync
+skype
+intune
+defender
+sentinel
+pim
+pam
+sundown
+zabbix
+nagios
+nagiosadmin

