@@ -49,17 +49,24 @@ Important operation keys:
 - `confirm` — optional, default `false`. Gates the operation behind an explicit
   operator go-ahead before it dispatches. Only valid on stages 2 and 3; setting
   it on a baseline operation is a load failure.
-- `timeout` — optional, 1-86400 seconds. The operation's own time budget; a run
-  that exceeds it is stopped and its raw output is still harvested. When absent,
-  the per-binary configuration override applies, then the configured default.
-  Every CTF operation declares one, and the operator's SPEED choice at the start
-  of a CTF run scales it (fast = a third, never under 10 s; deep = double).
+- `confirm` — optional, default `false`. Gates the operation behind an explicit
+  operator go-ahead before it dispatches. Only valid on stages 2 and 3; setting
+  it on a baseline operation is a load failure.
 - `probe` — optional, default `false`. Marks an operation whose non-zero exit is
   an *answer*, not a failure: a decoder handed non-base64, an extractor handed a
   non-archive, a grep that found nothing. Such a run completes as
   `PROBE_NEGATIVE` with its raw output preserved as evidence. Only a
   process-level failure to launch still counts as a failure. Every CTF
   operation is a probe — in a hunt, a negative answer is a result.
+
+**No timeouts.** The framework runs every operation to completion. No
+operation is killed for running long — a deep scan takes as long as it takes,
+and the live monitor plus `Esc`/`Ctrl+C` put the stop decision in the
+operator's hands, where it belongs. A cancelled run still harvests everything
+the finished tools found. (The loader still accepts an optional `timeout`
+key per operation, 1-86400 seconds, but no shipped operation declares one;
+the same for the per-binary configuration override — both are currently
+unused.)
 
 ## How templates become commands
 
@@ -204,10 +211,10 @@ Two things are deliberately not findings:
 The `ctf` phase adds one input type and one output artefact that the other phases
 do not have.
 
-## CTF runs: flag formats, speed and the sidecar
+## CTF runs: flag formats and the sidecar
 
-The `ctf` phase adds one input type, a speed choice, and one output artefact
-that the other phases do not have.
+The `ctf` phase adds one input type and one output artefact that the other
+phases do not have.
 
 **The `ctf_flag_format` input.** Inputs of this type compile through
 `src/ctf.rs` before the run starts; a pattern that will not compile, or one with
@@ -240,13 +247,6 @@ A pattern that matches the empty string, or matches ordinary text everywhere,
 is refused: a pattern that matches everything turns every artifact into
 thousands of false candidates. Reports and documents always show the real
 matched value — the flag itself, never the pattern.
-
-**The SPEED choice.** Every CTF run opens by asking `SPEED [fast / normal /
-deep]`. The answer scales every operation's time budget for that run: `fast`
-cuts each budget to a third (never below 10 seconds, so every tool still gets a
-real attempt), `normal` keeps the declared budgets, `deep` doubles them for a
-patient target. `Esc` at the prompt withdraws the capability, like every other
-prompt.
 
 **Extraction and classification.** Every raw artifact is scanned line by line
 against the compiled pattern; each match is recorded with up to 250 characters

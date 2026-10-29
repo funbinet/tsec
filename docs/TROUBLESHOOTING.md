@@ -121,9 +121,11 @@ target rejected — read the stderr before concluding the target was unreachable
 
 ### `TIMEOUT`
 
-The tool exceeded `execution.timeout_secs` and its process group was terminated
-(`SIGTERM`, then `SIGKILL` after `kill_grace_ms`). Partial output is kept, and is
-usually worth reading before raising the timeout.
+Only possible if the operator explicitly configured one (`execution.timeout_secs`
+or a per-binary override in `tool_timeout_secs`) — the shipped default is no
+timeout: every tool runs to completion. When a timeout *is* configured and hit,
+the process group is terminated (`SIGTERM`, then `SIGKILL` after
+`kill_grace_ms`) and partial output is kept, and is usually worth reading.
 
 ### `INTERRUPTED`
 

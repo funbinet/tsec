@@ -24717,7 +24717,6 @@ args = ['dir', '-u', '{target}', '-w', '{wl:web/common.txt}', '-q', '-o', '{arti
 output = 'lines'
 network = true
 probe = true
-timeout = 180
 [[capability.provider.operation]]
 name = 'Big Wordlist Discovery'
 args = ['dir', '-u', '{target}', '-w', '{wl:web/big.txt}', '-q']
@@ -24725,7 +24724,6 @@ output = 'lines'
 network = true
 stage = 2
 probe = true
-timeout = 180
 [[capability.provider.operation]]
 name = 'Virtual Host Enum'
 args = ['vhost', '-u', '{target}', '-w', '{wl:dns/hostnames.txt}', '-q']
@@ -24733,7 +24731,6 @@ output = 'lines'
 network = true
 stage = 2
 probe = true
-timeout = 180
 [[capability.provider]]
 binary = 'ffuf'
 [[capability.provider.operation]]
@@ -24742,7 +24739,6 @@ args = ['-u', '{target}/FUZZ', '-w', '{wl:web/common.txt}', '-mc', '200,301,302,
 output = 'lines'
 network = true
 probe = true
-timeout = 120
 [[capability.provider.operation]]
 name = 'Parameter Fuzz'
 args = ['-u', '{target}', '-w', '{wl:web/burp-parameter-names.txt}', '-mc', '200', '-s']
@@ -24750,7 +24746,6 @@ output = 'lines'
 network = true
 stage = 2
 probe = true
-timeout = 120
 [[capability.provider]]
 binary = 'feroxbuster'
 [[capability.provider.operation]]
@@ -24760,7 +24755,6 @@ output = 'lines'
 network = true
 stage = 2
 probe = true
-timeout = 300
 [[capability.provider]]
 binary = 'dirb'
 [[capability.provider.operation]]
@@ -24769,7 +24763,6 @@ args = ['{target}', '{wl:web/common.txt}', '-S']
 output = 'lines'
 network = true
 probe = true
-timeout = 180
 [[capability.provider]]
 binary = 'dirsearch'
 [[capability.provider.operation]]
@@ -24778,7 +24771,6 @@ args = ['-u', '{target}', '-w', '{wl:web/common.txt}', '-q']
 output = 'lines'
 network = true
 probe = true
-timeout = 180
 [[capability.provider.operation]]
 name = 'Extension Sweep'
 args = ['-u', '{target}', '-w', '{wl:web/common.txt}', '-q', '-e', 'php,html,txt,bak']
@@ -24786,7 +24778,6 @@ output = 'lines'
 network = true
 stage = 2
 probe = true
-timeout = 180
 [[capability.provider]]
 binary = 'nikto'
 [[capability.provider.operation]]
@@ -24796,7 +24787,6 @@ output = 'lines'
 network = true
 stage = 2
 probe = true
-timeout = 300
 [[capability.provider]]
 binary = 'whatweb'
 [[capability.provider.operation]]
@@ -24805,7 +24795,6 @@ args = ['{target}']
 output = 'lines'
 network = true
 probe = true
-timeout = 60
 [[capability.provider]]
 binary = 'wpscan'
 [[capability.provider.operation]]
@@ -24815,7 +24804,6 @@ output = 'lines'
 network = true
 stage = 2
 probe = true
-timeout = 300
 [[capability.provider]]
 binary = 'nuclei'
 [[capability.provider.operation]]
@@ -24825,7 +24813,6 @@ output = 'lines'
 network = true
 stage = 2
 probe = true
-timeout = 300
 [[capability.provider]]
 binary = 'arjun'
 [[capability.provider.operation]]
@@ -24834,7 +24821,6 @@ args = ['-u', '{target}']
 output = 'lines'
 network = true
 probe = true
-timeout = 180
 [[capability.provider]]
 binary = 'wafw00f'
 [[capability.provider.operation]]
@@ -24843,7 +24829,6 @@ args = ['{target}']
 output = 'lines'
 network = true
 probe = true
-timeout = 30
 [[capability.provider]]
 binary = 'wfuzz'
 [[capability.provider.operation]]
@@ -24853,7 +24838,6 @@ output = 'lines'
 network = true
 stage = 2
 probe = true
-timeout = 300
 [[capability.provider]]
 binary = 'x8'
 [[capability.provider.operation]]
@@ -24863,7 +24847,6 @@ output = 'lines'
 network = true
 stage = 2
 probe = true
-timeout = 180
 [[capability.provider]]
 binary = 'wapiti'
 [[capability.provider.operation]]
@@ -24873,7 +24856,6 @@ output = 'lines'
 network = true
 stage = 2
 probe = true
-timeout = 300
 [[capability.provider]]
 binary = 'httpx-pd'
 [[capability.provider.operation]]
@@ -24882,7 +24864,6 @@ args = ['-u', '{target}', '-silent', '-tech-detect', '-status-code']
 output = 'lines'
 network = true
 probe = true
-timeout = 60
 [[capability.provider.operation]]
 name = 'Discovered Path Probe'
 args = ['-l', '{artifacts}/gobuster_dirs.txt', '-silent']
@@ -24890,7 +24871,6 @@ output = 'lines'
 network = true
 stage = 2
 probe = true
-timeout = 120
 [[capability.provider]]
 binary = 'curl'
 [[capability.provider.operation]]
@@ -24899,14 +24879,12 @@ args = ['-sSI', '{target}']
 output = 'lines'
 network = true
 probe = true
-timeout = 60
 [[capability.provider.operation]]
 name = 'Robots And Sitemap'
 args = ['-sS', '{target}/robots.txt']
 output = 'lines'
 network = true
 probe = true
-timeout = 60
 [[capability.provider]]
 binary = 'sqlmap'
 [[capability.provider.operation]]
@@ -24916,7 +24894,6 @@ output = 'lines'
 network = true
 stage = 2
 probe = true
-timeout = 300
 [[capability.provider]]
 binary = 'commix'
 [[capability.provider.operation]]
@@ -24926,7 +24903,6 @@ output = 'lines'
 network = true
 stage = 3
 probe = true
-timeout = 300
 [[capability.provider]]
 binary = 'xsstrike'
 [[capability.provider.operation]]
@@ -24936,7 +24912,6 @@ output = 'lines'
 network = true
 stage = 3
 probe = true
-timeout = 300
 [[capability.provider]]
 binary = 'grep'
 [[capability.provider.operation]]
@@ -24946,7 +24921,6 @@ output = 'lines'
 network = false
 stage = 2
 probe = true
-timeout = 60
 [[capability.provider.operation]]
 name = 'Backup Path Sweep'
 args = ['-oE', '[^ ]*(backup|bak|old|conf|env|git|sql|zip|tar)[^ ]*', '{artifacts}/gobuster_dirs.txt']
@@ -24954,7 +24928,6 @@ output = 'lines'
 network = false
 stage = 2
 probe = true
-timeout = 60
 [[capability]]
 id = 'ctf.network-recon-service'
 phase = 'ctf'
@@ -24975,7 +24948,6 @@ args = ['-sV', '-Pn', '--top-ports', '1000', '{target}', '-oN', '{artifacts}/nma
 output = 'nmap'
 network = true
 probe = true
-timeout = 240
 [[capability.provider.operation]]
 name = 'Full Range Service Scan'
 args = ['-sV', '-Pn', '-p-', '{target}']
@@ -24983,7 +24955,6 @@ output = 'nmap'
 network = true
 stage = 2
 probe = true
-timeout = 240
 [[capability.provider.operation]]
 name = 'Default Script Scan'
 args = ['-sV', '-sC', '-Pn', '--top-ports', '100', '{target}']
@@ -24991,7 +24962,6 @@ output = 'nmap'
 network = true
 stage = 2
 probe = true
-timeout = 240
 [[capability.provider.operation]]
 name = 'Udp Top Ports'
 args = ['-sU', '-Pn', '--top-ports', '100', '{target}']
@@ -24999,7 +24969,6 @@ output = 'nmap'
 network = true
 stage = 2
 probe = true
-timeout = 240
 [[capability.provider]]
 binary = 'masscan'
 [[capability.provider.operation]]
@@ -25008,7 +24977,6 @@ args = ['-p', '{ports}', '{target}', '--rate', '1000']
 output = 'lines'
 network = true
 probe = true
-timeout = 180
 [[capability.provider]]
 binary = 'rustscan'
 [[capability.provider.operation]]
@@ -25017,7 +24985,6 @@ args = ['-a', '{target}', '--ulimit', '5000', '-q']
 output = 'lines'
 network = true
 probe = true
-timeout = 120
 [[capability.provider]]
 binary = 'naabu'
 [[capability.provider.operation]]
@@ -25026,7 +24993,6 @@ args = ['-host', '{target}', '-silent', '-nc']
 output = 'lines'
 network = true
 probe = true
-timeout = 180
 [[capability.provider]]
 binary = 'amap'
 [[capability.provider.operation]]
@@ -25035,7 +25001,6 @@ args = ['-bq', '{target}', '{port}']
 output = 'lines'
 network = true
 probe = true
-timeout = 60
 [[capability.provider]]
 binary = 'smbmap'
 [[capability.provider.operation]]
@@ -25044,7 +25009,6 @@ args = ['-H', '{target}']
 output = 'lines'
 network = true
 probe = true
-timeout = 60
 [[capability.provider]]
 binary = 'enum4linux-ng'
 [[capability.provider.operation]]
@@ -25053,7 +25017,6 @@ args = ['-A', '{target}']
 output = 'lines'
 network = true
 probe = true
-timeout = 180
 [[capability.provider]]
 binary = 'smbclient'
 [[capability.provider.operation]]
@@ -25062,7 +25025,6 @@ args = ['-L', '//{target}', '-N', '-g']
 output = 'lines'
 network = true
 probe = true
-timeout = 60
 [[capability.provider]]
 binary = 'rpcclient'
 [[capability.provider.operation]]
@@ -25071,7 +25033,6 @@ args = ['-U', '%', '-c', 'enumdomusers', '{target}']
 output = 'lines'
 network = true
 probe = true
-timeout = 60
 [[capability.provider]]
 binary = 'onesixtyone'
 [[capability.provider.operation]]
@@ -25080,7 +25041,6 @@ args = ['-c', '{wl:users/defaults.txt}', '{target}']
 output = 'lines'
 network = true
 probe = true
-timeout = 60
 [[capability.provider]]
 binary = 'snmpwalk'
 [[capability.provider.operation]]
@@ -25090,7 +25050,6 @@ output = 'lines'
 network = true
 stage = 2
 probe = true
-timeout = 60
 [[capability.provider]]
 binary = 'dig'
 [[capability.provider.operation]]
@@ -25099,7 +25058,6 @@ args = ['-x', '{target}', '+short']
 output = 'lines'
 network = true
 probe = true
-timeout = 30
 [[capability.provider]]
 binary = 'testssl'
 [[capability.provider.operation]]
@@ -25109,7 +25067,6 @@ output = 'lines'
 network = true
 stage = 2
 probe = true
-timeout = 300
 [[capability.provider]]
 binary = 'sslscan'
 [[capability.provider.operation]]
@@ -25118,7 +25075,6 @@ args = ['{target}']
 output = 'lines'
 network = true
 probe = true
-timeout = 60
 [[capability.provider]]
 binary = 'hping3'
 [[capability.provider.operation]]
@@ -25128,7 +25084,6 @@ output = 'lines'
 network = true
 stage = 2
 probe = true
-timeout = 120
 [[capability.provider]]
 binary = 'ncat'
 [[capability.provider.operation]]
@@ -25137,7 +25092,6 @@ args = ['-v', '--recv-only', '{target}', '{port}']
 output = 'lines'
 network = true
 probe = true
-timeout = 30
 [[capability.provider]]
 binary = 'httpx-pd'
 [[capability.provider.operation]]
@@ -25146,7 +25100,6 @@ args = ['-u', 'http://{target}', '-silent', '-status-code', '-title']
 output = 'lines'
 network = true
 probe = true
-timeout = 60
 [[capability.provider]]
 binary = 'curl'
 [[capability.provider.operation]]
@@ -25155,7 +25108,6 @@ args = ['-sSI', 'http://{target}']
 output = 'lines'
 network = true
 probe = true
-timeout = 60
 [[capability.provider]]
 binary = 'whatweb'
 [[capability.provider.operation]]
@@ -25164,7 +25116,6 @@ args = ['{target}']
 output = 'lines'
 network = true
 probe = true
-timeout = 60
 [[capability.provider]]
 binary = 'grep'
 [[capability.provider.operation]]
@@ -25174,7 +25125,6 @@ output = 'lines'
 network = false
 stage = 2
 probe = true
-timeout = 30
 [[capability.provider.operation]]
 name = 'Version Banner Extract'
 args = ['-iE', 'version|banner|product info|service info', '{artifacts}/nmap_top.txt']
@@ -25182,7 +25132,6 @@ output = 'lines'
 network = false
 stage = 2
 probe = true
-timeout = 30
 [[capability]]
 id = 'ctf.active-directory'
 phase = 'ctf'
@@ -25204,21 +25153,18 @@ args = ['smb', '{target}', '-d', '{domain}']
 output = 'lines'
 network = true
 probe = true
-timeout = 120
 [[capability.provider.operation]]
 name = 'Share Enum'
 args = ['smb', '{target}', '--shares']
 output = 'lines'
 network = true
 probe = true
-timeout = 120
 [[capability.provider.operation]]
 name = 'User Enum'
 args = ['smb', '{target}', '--users']
 output = 'lines'
 network = true
 probe = true
-timeout = 120
 [[capability.provider.operation]]
 name = 'Rid Cycling'
 args = ['smb', '{target}', '--rid-brute', '5000']
@@ -25226,7 +25172,6 @@ output = 'lines'
 network = true
 stage = 2
 probe = true
-timeout = 120
 [[capability.provider.operation]]
 name = 'Password Spray'
 args = ['smb', '{target}', '-u', '{wl:ad/users.txt}', '-p', '{wl:ad/passwords.txt}', '--continue-on-success']
@@ -25234,7 +25179,6 @@ output = 'lines'
 network = true
 stage = 3
 probe = true
-timeout = 120
 [[capability.provider]]
 binary = 'enum4linux-ng'
 [[capability.provider.operation]]
@@ -25243,7 +25187,6 @@ args = ['-A', '{target}']
 output = 'lines'
 network = true
 probe = true
-timeout = 180
 [[capability.provider]]
 binary = 'smbmap'
 [[capability.provider.operation]]
@@ -25252,7 +25195,6 @@ args = ['-H', '{target}', '-d', '{domain}']
 output = 'lines'
 network = true
 probe = true
-timeout = 60
 [[capability.provider]]
 binary = 'smbclient'
 [[capability.provider.operation]]
@@ -25261,7 +25203,6 @@ args = ['-L', '//{target}', '-N', '-g']
 output = 'lines'
 network = true
 probe = true
-timeout = 60
 [[capability.provider]]
 binary = 'rpcclient'
 [[capability.provider.operation]]
@@ -25270,7 +25211,6 @@ args = ['-U', '%', '-c', 'enumdomusers', '{target}']
 output = 'lines'
 network = true
 probe = true
-timeout = 60
 [[capability.provider]]
 binary = 'rpcdump.py'
 [[capability.provider.operation]]
@@ -25279,7 +25219,6 @@ args = ['{target}']
 output = 'lines'
 network = true
 probe = true
-timeout = 60
 [[capability.provider]]
 binary = 'GetADUsers.py'
 [[capability.provider.operation]]
@@ -25289,7 +25228,6 @@ output = 'lines'
 network = true
 stage = 2
 probe = true
-timeout = 60
 [[capability.provider]]
 binary = 'lookupsid.py'
 [[capability.provider.operation]]
@@ -25299,7 +25237,6 @@ output = 'lines'
 network = true
 stage = 2
 probe = true
-timeout = 60
 [[capability.provider]]
 binary = 'GetNPUsers.py'
 [[capability.provider.operation]]
@@ -25309,7 +25246,6 @@ output = 'lines'
 network = true
 stage = 2
 probe = true
-timeout = 120
 [[capability.provider]]
 binary = 'GetUserSPNs.py'
 [[capability.provider.operation]]
@@ -25319,7 +25255,6 @@ output = 'lines'
 network = true
 stage = 3
 probe = true
-timeout = 120
 [[capability.provider]]
 binary = 'secretsdump.py'
 [[capability.provider.operation]]
@@ -25329,7 +25264,6 @@ output = 'lines'
 network = true
 stage = 3
 probe = true
-timeout = 180
 [[capability.provider]]
 binary = 'certipy'
 [[capability.provider.operation]]
@@ -25339,7 +25273,6 @@ output = 'lines'
 network = true
 stage = 2
 probe = true
-timeout = 120
 [[capability.provider.operation]]
 name = 'Certificate Auth'
 args = ['auth', '-pfx', '{pfx_file}', '-dc-ip', '{target}']
@@ -25347,7 +25280,6 @@ output = 'lines'
 network = true
 stage = 3
 probe = true
-timeout = 120
 [[capability.provider]]
 binary = 'evil-winrm'
 [[capability.provider.operation]]
@@ -25357,7 +25289,6 @@ output = 'lines'
 network = true
 stage = 3
 probe = true
-timeout = 60
 [[capability.provider]]
 binary = 'psexec.py'
 [[capability.provider.operation]]
@@ -25367,7 +25298,6 @@ output = 'lines'
 network = true
 stage = 3
 probe = true
-timeout = 60
 [[capability.provider]]
 binary = 'wmiexec.py'
 [[capability.provider.operation]]
@@ -25377,7 +25307,6 @@ output = 'lines'
 network = true
 stage = 3
 probe = true
-timeout = 60
 [[capability.provider]]
 binary = 'grep'
 [[capability.provider.operation]]
@@ -25387,7 +25316,6 @@ output = 'lines'
 network = false
 stage = 2
 probe = true
-timeout = 60
 [[capability]]
 id = 'ctf.mobile-app-security'
 phase = 'ctf'
@@ -25405,7 +25333,6 @@ args = ['-d', '{artifacts}/jadx_src', '{apk_file}']
 output = 'lines'
 network = false
 probe = true
-timeout = 120
 [[capability.provider]]
 binary = 'apktool'
 [[capability.provider.operation]]
@@ -25414,7 +25341,6 @@ args = ['d', '-f', '-o', '{artifacts}/apktool_out', '{apk_file}']
 output = 'lines'
 network = false
 probe = true
-timeout = 120
 [[capability.provider]]
 binary = 'aapt'
 [[capability.provider.operation]]
@@ -25423,14 +25349,12 @@ args = ['dump', 'badging', '{apk_file}']
 output = 'lines'
 network = false
 probe = true
-timeout = 30
 [[capability.provider.operation]]
 name = 'Manifest Xml'
 args = ['dump', 'xmltree', '{apk_file}', 'AndroidManifest.xml']
 output = 'lines'
 network = false
 probe = true
-timeout = 30
 [[capability.provider]]
 binary = 'apkid'
 [[capability.provider.operation]]
@@ -25439,7 +25363,6 @@ args = ['{apk_file}']
 output = 'lines'
 network = false
 probe = true
-timeout = 60
 [[capability.provider]]
 binary = 'androguard'
 [[capability.provider.operation]]
@@ -25448,7 +25371,6 @@ args = ['apk', 'permissions', '{apk_file}']
 output = 'lines'
 network = false
 probe = true
-timeout = 60
 [[capability.provider.operation]]
 name = 'Class List'
 args = ['apk', 'list', 'classes', '{apk_file}']
@@ -25456,7 +25378,6 @@ output = 'lines'
 network = false
 stage = 2
 probe = true
-timeout = 60
 [[capability.provider]]
 binary = 'd2j-dex2jar'
 [[capability.provider.operation]]
@@ -25466,7 +25387,6 @@ output = 'lines'
 network = false
 stage = 2
 probe = true
-timeout = 60
 [[capability.provider]]
 binary = 'apksigner'
 [[capability.provider.operation]]
@@ -25475,7 +25395,6 @@ args = ['verify', '--print-certs', '{apk_file}']
 output = 'lines'
 network = false
 probe = true
-timeout = 30
 [[capability.provider]]
 binary = 'keytool'
 [[capability.provider.operation]]
@@ -25484,7 +25403,6 @@ args = ['-printcert', '-jarfile', '{apk_file}']
 output = 'lines'
 network = false
 probe = true
-timeout = 30
 [[capability.provider]]
 binary = 'unzip'
 [[capability.provider.operation]]
@@ -25493,7 +25411,6 @@ args = ['-l', '{apk_file}']
 output = 'lines'
 network = false
 probe = true
-timeout = 60
 [[capability.provider.operation]]
 name = 'Assets Extract'
 args = ['-o', '{apk_file}', 'assets/*', '-d', '{artifacts}/apk_assets']
@@ -25501,7 +25418,6 @@ output = 'lines'
 network = false
 stage = 2
 probe = true
-timeout = 60
 [[capability.provider]]
 binary = 'strings'
 [[capability.provider.operation]]
@@ -25510,7 +25426,6 @@ args = ['{apk_file}']
 output = 'lines'
 network = false
 probe = true
-timeout = 60
 [[capability.provider]]
 binary = 'exiftool'
 [[capability.provider.operation]]
@@ -25519,7 +25434,6 @@ args = ['{apk_file}']
 output = 'lines'
 network = false
 probe = true
-timeout = 60
 [[capability.provider.operation]]
 name = 'Extracted Metadata Sweep'
 args = ['-r', '{artifacts}/zip_extract/']
@@ -25527,7 +25441,6 @@ output = 'lines'
 network = false
 stage = 2
 probe = true
-timeout = 120
 [[capability.provider]]
 binary = 'objection'
 [[capability.provider.operation]]
@@ -25537,7 +25450,6 @@ output = 'lines'
 network = false
 stage = 3
 probe = true
-timeout = 120
 [[capability.provider]]
 binary = 'frida-ps'
 [[capability.provider.operation]]
@@ -25547,7 +25459,6 @@ output = 'lines'
 network = false
 stage = 2
 probe = true
-timeout = 30
 [[capability.provider]]
 binary = 'adb'
 [[capability.provider.operation]]
@@ -25556,7 +25467,6 @@ args = ['devices', '-l']
 output = 'lines'
 network = false
 probe = true
-timeout = 60
 [[capability.provider.operation]]
 name = 'Install Challenge Apk'
 args = ['install', '-r', '{apk_file}']
@@ -25564,7 +25474,6 @@ output = 'lines'
 network = false
 stage = 3
 probe = true
-timeout = 60
 [[capability.provider]]
 binary = '7z'
 [[capability.provider.operation]]
@@ -25573,7 +25482,6 @@ args = ['l', '{apk_file}']
 output = 'lines'
 network = false
 probe = true
-timeout = 60
 [[capability.provider]]
 binary = 'binwalk'
 [[capability.provider.operation]]
@@ -25583,7 +25491,6 @@ output = 'lines'
 network = false
 stage = 2
 probe = true
-timeout = 120
 [[capability.provider]]
 binary = 'ls'
 [[capability.provider.operation]]
@@ -25593,7 +25500,6 @@ output = 'lines'
 network = false
 stage = 2
 probe = true
-timeout = 15
 [[capability.provider]]
 binary = 'grep'
 [[capability.provider.operation]]
@@ -25603,7 +25509,6 @@ output = 'lines'
 network = false
 stage = 2
 probe = true
-timeout = 60
 [[capability]]
 id = 'ctf.cloud-security'
 phase = 'ctf'
@@ -25624,14 +25529,12 @@ args = ['sts', 'get-caller-identity', '--output', 'json', '--profile', '{cloud_p
 output = 'json'
 network = true
 probe = true
-timeout = 60
 [[capability.provider.operation]]
 name = 'List S3 Buckets'
 args = ['s3api', 'list-buckets', '--output', 'json', '--profile', '{cloud_profile}']
 output = 'json'
 network = true
 probe = true
-timeout = 60
 [[capability.provider.operation]]
 name = 'List Iam Users'
 args = ['iam', 'list-users', '--output', 'json', '--profile', '{cloud_profile}']
@@ -25639,7 +25542,6 @@ output = 'json'
 network = true
 stage = 2
 probe = true
-timeout = 60
 [[capability.provider]]
 binary = 'az'
 [[capability.provider.operation]]
@@ -25648,21 +25550,18 @@ args = ['account', 'show', '--output', 'json']
 output = 'json'
 network = true
 probe = true
-timeout = 60
 [[capability.provider.operation]]
 name = 'Subscription Enum'
 args = ['account', 'list', '--output', 'json']
 output = 'json'
 network = true
 probe = true
-timeout = 60
 [[capability.provider.operation]]
 name = 'Resource Group List'
 args = ['group', 'list', '--output', 'json']
 output = 'json'
 network = true
 probe = true
-timeout = 60
 [[capability.provider]]
 binary = 'gcloud'
 [[capability.provider.operation]]
@@ -25671,7 +25570,6 @@ args = ['config', 'list', '--format', 'json']
 output = 'json'
 network = true
 probe = true
-timeout = 60
 [[capability.provider.operation]]
 name = 'Project List'
 args = ['projects', 'list', '--format', 'json']
@@ -25679,7 +25577,6 @@ output = 'json'
 network = true
 stage = 2
 probe = true
-timeout = 60
 [[capability.provider.operation]]
 name = 'Storage Buckets List'
 args = ['storage', 'buckets', 'list', '--format', 'json', '--project', '{target}']
@@ -25687,7 +25584,6 @@ output = 'json'
 network = true
 stage = 2
 probe = true
-timeout = 60
 [[capability.provider]]
 binary = 'scout'
 [[capability.provider.operation]]
@@ -25697,7 +25593,6 @@ output = 'lines'
 network = true
 stage = 2
 probe = true
-timeout = 300
 [[capability.provider]]
 binary = 'prowler'
 [[capability.provider.operation]]
@@ -25707,7 +25602,6 @@ output = 'lines'
 network = true
 stage = 2
 probe = true
-timeout = 300
 [[capability.provider]]
 binary = 'cloudsplaining'
 [[capability.provider.operation]]
@@ -25717,7 +25611,6 @@ output = 'lines'
 network = false
 stage = 2
 probe = true
-timeout = 60
 [[capability.provider.operation]]
 name = 'Report Create'
 args = ['create', '--input', '{policy_file}', '--output', '{artifacts}/cloudsplaining']
@@ -25725,7 +25618,6 @@ output = 'lines'
 network = false
 stage = 2
 probe = true
-timeout = 60
 [[capability.provider]]
 binary = 'kube-hunter'
 [[capability.provider.operation]]
@@ -25735,7 +25627,6 @@ output = 'json'
 network = true
 stage = 2
 probe = true
-timeout = 300
 [[capability.provider]]
 binary = 'checkov'
 [[capability.provider.operation]]
@@ -25744,7 +25635,6 @@ args = ['-d', '{iac_dir}', '--compact', '--output', 'cli']
 output = 'lines'
 network = false
 probe = true
-timeout = 240
 [[capability.provider]]
 binary = 'terrascan'
 [[capability.provider.operation]]
@@ -25753,7 +25643,6 @@ args = ['scan', '-d', '{iac_dir}', '-i', 'terraform']
 output = 'lines'
 network = false
 probe = true
-timeout = 60
 [[capability.provider]]
 binary = 'trivy'
 [[capability.provider.operation]]
@@ -25762,7 +25651,6 @@ args = ['config', '{iac_dir}', '--quiet']
 output = 'lines'
 network = false
 probe = true
-timeout = 300
 [[capability.provider]]
 binary = 'kubeletctl'
 [[capability.provider.operation]]
@@ -25772,7 +25660,6 @@ output = 'lines'
 network = true
 stage = 2
 probe = true
-timeout = 60
 [[capability.provider]]
 binary = 'grep'
 [[capability.provider.operation]]
@@ -25782,7 +25669,6 @@ output = 'lines'
 network = false
 stage = 2
 probe = true
-timeout = 60
 [[capability]]
 id = 'ctf.reverse-engineering'
 phase = 'ctf'
@@ -25800,7 +25686,6 @@ args = ['{challenge_file}']
 output = 'lines'
 network = false
 probe = true
-timeout = 15
 [[capability.provider]]
 binary = 'checksec'
 [[capability.provider.operation]]
@@ -25809,7 +25694,6 @@ args = ['--file={challenge_file}']
 output = 'lines'
 network = false
 probe = true
-timeout = 15
 [[capability.provider]]
 binary = 'readelf'
 [[capability.provider.operation]]
@@ -25818,14 +25702,12 @@ args = ['-a', '{challenge_file}']
 output = 'lines'
 network = false
 probe = true
-timeout = 15
 [[capability.provider.operation]]
 name = 'Symbol Table'
 args = ['-s', '{challenge_file}']
 output = 'lines'
 network = false
 probe = true
-timeout = 15
 [[capability.provider]]
 binary = 'objdump'
 [[capability.provider.operation]]
@@ -25835,7 +25717,6 @@ output = 'lines'
 network = false
 stage = 2
 probe = true
-timeout = 60
 [[capability.provider]]
 binary = 'nm'
 [[capability.provider.operation]]
@@ -25844,7 +25725,6 @@ args = ['-C', '{challenge_file}']
 output = 'lines'
 network = false
 probe = true
-timeout = 15
 [[capability.provider]]
 binary = 'strings'
 [[capability.provider.operation]]
@@ -25853,7 +25733,6 @@ args = ['-a', '-n', '6', '{challenge_file}']
 output = 'lines'
 network = false
 probe = true
-timeout = 60
 [[capability.provider.operation]]
 name = 'Unicode String Sweep'
 args = ['-el', '{challenge_file}']
@@ -25861,7 +25740,6 @@ output = 'lines'
 network = false
 stage = 2
 probe = true
-timeout = 60
 [[capability.provider]]
 binary = 'radare2'
 [[capability.provider.operation]]
@@ -25871,7 +25749,6 @@ output = 'lines'
 network = false
 stage = 2
 probe = true
-timeout = 60
 [[capability.provider.operation]]
 name = 'Function List'
 args = ['-q', '-c', 'aaa; afl', '{challenge_file}']
@@ -25879,7 +25756,6 @@ output = 'lines'
 network = false
 stage = 2
 probe = true
-timeout = 60
 [[capability.provider]]
 binary = 'rizin'
 [[capability.provider.operation]]
@@ -25889,7 +25765,6 @@ output = 'lines'
 network = false
 stage = 2
 probe = true
-timeout = 60
 [[capability.provider]]
 binary = 'ROPgadget'
 [[capability.provider.operation]]
@@ -25899,7 +25774,6 @@ output = 'lines'
 network = false
 stage = 2
 probe = true
-timeout = 60
 [[capability.provider]]
 binary = 'ropper'
 [[capability.provider.operation]]
@@ -25909,7 +25783,6 @@ output = 'lines'
 network = false
 stage = 2
 probe = true
-timeout = 60
 [[capability.provider]]
 binary = 'one_gadget'
 [[capability.provider.operation]]
@@ -25919,7 +25792,6 @@ output = 'lines'
 network = false
 stage = 2
 probe = true
-timeout = 60
 [[capability.provider]]
 binary = 'gdb'
 [[capability.provider.operation]]
@@ -25929,7 +25801,6 @@ output = 'lines'
 network = false
 stage = 2
 probe = true
-timeout = 120
 [[capability.provider]]
 binary = 'strace'
 [[capability.provider.operation]]
@@ -25939,7 +25810,6 @@ output = 'lines'
 network = false
 stage = 2
 probe = true
-timeout = 60
 [[capability.provider]]
 binary = 'ltrace'
 [[capability.provider.operation]]
@@ -25949,7 +25819,6 @@ output = 'lines'
 network = false
 stage = 2
 probe = true
-timeout = 60
 [[capability.provider]]
 binary = 'upx'
 [[capability.provider.operation]]
@@ -25958,7 +25827,6 @@ args = ['-l', '{challenge_file}']
 output = 'lines'
 network = false
 probe = true
-timeout = 60
 [[capability.provider.operation]]
 name = 'Unpack To Artifact'
 args = ['-d', '-o', '{artifacts}/unpacked.bin', '{challenge_file}']
@@ -25966,7 +25834,6 @@ output = 'lines'
 network = false
 stage = 2
 probe = true
-timeout = 60
 [[capability.provider]]
 binary = 'patchelf'
 [[capability.provider.operation]]
@@ -25975,7 +25842,6 @@ args = ['--print-interpreter', '{challenge_file}']
 output = 'lines'
 network = false
 probe = true
-timeout = 15
 [[capability.provider]]
 binary = 'xxd'
 [[capability.provider.operation]]
@@ -25984,7 +25850,6 @@ args = ['-l', '4096', '{challenge_file}']
 output = 'lines'
 network = false
 probe = true
-timeout = 30
 [[capability.provider]]
 binary = 'md5sum'
 [[capability.provider.operation]]
@@ -25993,7 +25858,6 @@ args = ['{challenge_file}']
 output = 'lines'
 network = false
 probe = true
-timeout = 30
 [[capability.provider]]
 binary = 'exiftool'
 [[capability.provider.operation]]
@@ -26002,7 +25866,6 @@ args = ['-a', '-u', '-g1', '{challenge_file}']
 output = 'lines'
 network = false
 probe = true
-timeout = 60
 [[capability.provider]]
 binary = 'grep'
 [[capability.provider.operation]]
@@ -26012,7 +25875,6 @@ output = 'lines'
 network = false
 stage = 2
 probe = true
-timeout = 60
 [[capability]]
 id = 'ctf.binary-exploitation'
 phase = 'ctf'
@@ -26032,7 +25894,6 @@ args = ['--file={challenge_file}']
 output = 'lines'
 network = false
 probe = true
-timeout = 15
 [[capability.provider]]
 binary = 'file'
 [[capability.provider.operation]]
@@ -26041,7 +25902,6 @@ args = ['{challenge_file}']
 output = 'lines'
 network = false
 probe = true
-timeout = 15
 [[capability.provider]]
 binary = 'readelf'
 [[capability.provider.operation]]
@@ -26050,14 +25910,12 @@ args = ['-l', '{challenge_file}']
 output = 'lines'
 network = false
 probe = true
-timeout = 15
 [[capability.provider.operation]]
 name = 'Dynamic Section'
 args = ['-d', '{challenge_file}']
 output = 'lines'
 network = false
 probe = true
-timeout = 15
 [[capability.provider]]
 binary = 'objdump'
 [[capability.provider.operation]]
@@ -26066,7 +25924,6 @@ args = ['-d', '-M', 'intel', '{challenge_file}']
 output = 'lines'
 network = false
 probe = true
-timeout = 60
 [[capability.provider]]
 binary = 'ROPgadget'
 [[capability.provider.operation]]
@@ -26076,7 +25933,6 @@ output = 'lines'
 network = false
 stage = 2
 probe = true
-timeout = 60
 [[capability.provider.operation]]
 name = 'Syscall Gadget Search'
 args = ['--binary', '{challenge_file}', '--only', 'syscall|ret']
@@ -26084,7 +25940,6 @@ output = 'lines'
 network = false
 stage = 2
 probe = true
-timeout = 60
 [[capability.provider]]
 binary = 'ropper'
 [[capability.provider.operation]]
@@ -26094,7 +25949,6 @@ output = 'lines'
 network = false
 stage = 2
 probe = true
-timeout = 60
 [[capability.provider]]
 binary = 'one_gadget'
 [[capability.provider.operation]]
@@ -26104,7 +25958,6 @@ output = 'lines'
 network = false
 stage = 2
 probe = true
-timeout = 60
 [[capability.provider]]
 binary = 'gdb'
 [[capability.provider.operation]]
@@ -26113,7 +25966,6 @@ args = ['-q', '-batch', '-ex', 'info functions', '{challenge_file}']
 output = 'lines'
 network = false
 probe = true
-timeout = 120
 [[capability.provider.operation]]
 name = 'Segfault Offset Probe'
 args = ['-q', '-batch', '-ex', 'run < /dev/null', '-ex', 'info registers', '{challenge_file}']
@@ -26121,7 +25973,6 @@ output = 'lines'
 network = false
 stage = 2
 probe = true
-timeout = 120
 [[capability.provider]]
 binary = 'strace'
 [[capability.provider.operation]]
@@ -26131,7 +25982,6 @@ output = 'lines'
 network = false
 stage = 2
 probe = true
-timeout = 60
 [[capability.provider]]
 binary = 'ltrace'
 [[capability.provider.operation]]
@@ -26141,7 +25991,6 @@ output = 'lines'
 network = false
 stage = 2
 probe = true
-timeout = 60
 [[capability.provider]]
 binary = 'nm'
 [[capability.provider.operation]]
@@ -26150,7 +25999,6 @@ args = ['-C', '{challenge_file}']
 output = 'lines'
 network = false
 probe = true
-timeout = 15
 [[capability.provider]]
 binary = 'strings'
 [[capability.provider.operation]]
@@ -26159,7 +26007,6 @@ args = ['-a', '{challenge_file}']
 output = 'lines'
 network = false
 probe = true
-timeout = 60
 [[capability.provider]]
 binary = 'upx'
 [[capability.provider.operation]]
@@ -26168,7 +26015,6 @@ args = ['-l', '{challenge_file}']
 output = 'lines'
 network = false
 probe = true
-timeout = 60
 [[capability.provider]]
 binary = 'python3'
 [[capability.provider.operation]]
@@ -26178,7 +26024,6 @@ output = 'lines'
 network = false
 stage = 2
 probe = true
-timeout = 60
 [[capability.provider]]
 binary = 'ncat'
 [[capability.provider.operation]]
@@ -26187,7 +26032,6 @@ args = ['-v', '--recv-only', '{target}', '{port}']
 output = 'lines'
 network = true
 probe = true
-timeout = 30
 [[capability.provider]]
 binary = 'patchelf'
 [[capability.provider.operation]]
@@ -26196,7 +26040,6 @@ args = ['--print-interpreter', '{challenge_file}']
 output = 'lines'
 network = false
 probe = true
-timeout = 15
 [[capability.provider]]
 binary = 'socat'
 [[capability.provider.operation]]
@@ -26206,7 +26049,6 @@ output = 'lines'
 network = false
 stage = 3
 probe = true
-timeout = 60
 [[capability]]
 id = 'ctf.network-forensics'
 phase = 'ctf'
@@ -26224,7 +26066,6 @@ args = ['{pcap_file}']
 output = 'lines'
 network = false
 probe = true
-timeout = 30
 [[capability.provider]]
 binary = 'tshark'
 [[capability.provider.operation]]
@@ -26233,14 +26074,12 @@ args = ['-r', '{pcap_file}', '-q', '-z', 'conv,tcp']
 output = 'lines'
 network = false
 probe = true
-timeout = 60
 [[capability.provider.operation]]
 name = 'Protocol Hierarchy'
 args = ['-r', '{pcap_file}', '-q', '-z', 'io,phs']
 output = 'lines'
 network = false
 probe = true
-timeout = 60
 [[capability.provider.operation]]
 name = 'Http Object Export'
 args = ['-r', '{pcap_file}', '--export-objects', 'http,{artifacts}/http_objects', '-q']
@@ -26248,7 +26087,6 @@ output = 'lines'
 network = false
 stage = 2
 probe = true
-timeout = 60
 [[capability.provider.operation]]
 name = 'Credentials Extract'
 args = ['-r', '{pcap_file}', '-Y', 'http.request || ftp || smtp', '-T', 'fields', '-e', 'http.request.full_uri', '-e', 'http.authbasic']
@@ -26256,14 +26094,12 @@ output = 'lines'
 network = false
 stage = 2
 probe = true
-timeout = 60
 [[capability.provider.operation]]
 name = 'Dns Query Timeline'
 args = ['-r', '{pcap_file}', '-Y', 'dns.flags.response == 0', '-T', 'fields', '-e', 'dns.qry.name']
 output = 'lines'
 network = false
 probe = true
-timeout = 60
 [[capability.provider.operation]]
 name = 'Ftp Data Extract'
 args = ['-r', '{pcap_file}', '--export-objects', 'ftp-data,{artifacts}/ftp_data', '-q']
@@ -26271,7 +26107,6 @@ output = 'lines'
 network = false
 stage = 2
 probe = true
-timeout = 60
 [[capability.provider]]
 binary = 'editcap'
 [[capability.provider.operation]]
@@ -26280,7 +26115,6 @@ args = ['-c', '1000', '{pcap_file}', '{artifacts}/split.pcap']
 output = 'lines'
 network = false
 probe = true
-timeout = 30
 [[capability.provider]]
 binary = 'mergecap'
 [[capability.provider.operation]]
@@ -26290,7 +26124,6 @@ output = 'lines'
 network = false
 stage = 2
 probe = true
-timeout = 30
 [[capability.provider]]
 binary = 'tcpflow'
 [[capability.provider.operation]]
@@ -26299,7 +26132,6 @@ args = ['-r', '{pcap_file}', '-o', '{artifacts}/tcpflow_out']
 output = 'lines'
 network = false
 probe = true
-timeout = 120
 [[capability.provider]]
 binary = 'ngrep'
 [[capability.provider.operation]]
@@ -26308,7 +26140,6 @@ args = ['-I', '{pcap_file}', '-q', '-W', 'byline', 'flag']
 output = 'lines'
 network = false
 probe = true
-timeout = 60
 [[capability.provider]]
 binary = 'tcpdump'
 [[capability.provider.operation]]
@@ -26317,7 +26148,6 @@ args = ['-nn', '-r', '{pcap_file}']
 output = 'lines'
 network = false
 probe = true
-timeout = 120
 [[capability.provider]]
 binary = 'zeek'
 [[capability.provider.operation]]
@@ -26327,7 +26157,6 @@ output = 'lines'
 network = false
 stage = 2
 probe = true
-timeout = 120
 [[capability.provider]]
 binary = 'argus'
 [[capability.provider.operation]]
@@ -26337,7 +26166,6 @@ output = 'lines'
 network = false
 stage = 2
 probe = true
-timeout = 60
 [[capability.provider]]
 binary = 'openssl'
 [[capability.provider.operation]]
@@ -26347,7 +26175,6 @@ output = 'lines'
 network = false
 stage = 2
 probe = true
-timeout = 60
 [[capability.provider]]
 binary = 'binwalk'
 [[capability.provider.operation]]
@@ -26357,7 +26184,6 @@ output = 'lines'
 network = false
 stage = 2
 probe = true
-timeout = 120
 [[capability.provider]]
 binary = 'grep'
 [[capability.provider.operation]]
@@ -26367,7 +26193,6 @@ output = 'lines'
 network = false
 stage = 2
 probe = true
-timeout = 60
 [[capability.provider]]
 binary = 'ls'
 [[capability.provider.operation]]
@@ -26377,7 +26202,6 @@ output = 'lines'
 network = false
 stage = 2
 probe = true
-timeout = 15
 [[capability]]
 id = 'ctf.digital-forensics'
 phase = 'ctf'
@@ -26395,7 +26219,6 @@ args = ['{evidence_file}']
 output = 'lines'
 network = false
 probe = true
-timeout = 15
 [[capability.provider]]
 binary = 'mmls'
 [[capability.provider.operation]]
@@ -26404,7 +26227,6 @@ args = ['{evidence_file}']
 output = 'lines'
 network = false
 probe = true
-timeout = 15
 [[capability.provider]]
 binary = 'fsstat'
 [[capability.provider.operation]]
@@ -26414,7 +26236,6 @@ output = 'lines'
 network = false
 stage = 2
 probe = true
-timeout = 30
 [[capability.provider]]
 binary = 'fls'
 [[capability.provider.operation]]
@@ -26424,7 +26245,6 @@ output = 'lines'
 network = false
 stage = 2
 probe = true
-timeout = 60
 [[capability.provider]]
 binary = 'icat'
 [[capability.provider.operation]]
@@ -26434,7 +26254,6 @@ output = 'lines'
 network = false
 stage = 2
 probe = true
-timeout = 60
 [[capability.provider]]
 binary = 'img_stat'
 [[capability.provider.operation]]
@@ -26443,7 +26262,6 @@ args = ['{evidence_file}']
 output = 'lines'
 network = false
 probe = true
-timeout = 30
 [[capability.provider]]
 binary = 'istat'
 [[capability.provider.operation]]
@@ -26453,7 +26271,6 @@ output = 'lines'
 network = false
 stage = 2
 probe = true
-timeout = 60
 [[capability.provider]]
 binary = 'tsk_recover'
 [[capability.provider.operation]]
@@ -26463,7 +26280,6 @@ output = 'lines'
 network = false
 stage = 2
 probe = true
-timeout = 300
 [[capability.provider]]
 binary = 'foremost'
 [[capability.provider.operation]]
@@ -26473,7 +26289,6 @@ output = 'lines'
 network = false
 stage = 2
 probe = true
-timeout = 240
 [[capability.provider]]
 binary = 'scalpel'
 [[capability.provider.operation]]
@@ -26483,7 +26298,6 @@ output = 'lines'
 network = false
 stage = 2
 probe = true
-timeout = 300
 [[capability.provider]]
 binary = 'photorec'
 [[capability.provider.operation]]
@@ -26493,7 +26307,6 @@ output = 'lines'
 network = false
 stage = 2
 probe = true
-timeout = 300
 [[capability.provider]]
 binary = 'bulk_extractor'
 [[capability.provider.operation]]
@@ -26503,7 +26316,6 @@ output = 'lines'
 network = false
 stage = 2
 probe = true
-timeout = 300
 [[capability.provider]]
 binary = 'reglookup'
 [[capability.provider.operation]]
@@ -26513,7 +26325,6 @@ output = 'lines'
 network = false
 stage = 2
 probe = true
-timeout = 60
 [[capability.provider]]
 binary = 'vol'
 [[capability.provider.operation]]
@@ -26523,7 +26334,6 @@ output = 'lines'
 network = false
 stage = 2
 probe = true
-timeout = 240
 [[capability.provider.operation]]
 name = 'Process List'
 args = ['-r', '{evidence_file}', 'pslist']
@@ -26531,7 +26341,6 @@ output = 'lines'
 network = false
 stage = 2
 probe = true
-timeout = 240
 [[capability.provider]]
 binary = 'binwalk'
 [[capability.provider.operation]]
@@ -26540,7 +26349,6 @@ args = ['{evidence_file}']
 output = 'lines'
 network = false
 probe = true
-timeout = 120
 [[capability.provider.operation]]
 name = 'Carve Extraction'
 args = ['-Me', '-C', '{artifacts}/binwalk_out', '{evidence_file}']
@@ -26548,7 +26356,6 @@ output = 'lines'
 network = false
 stage = 2
 probe = true
-timeout = 120
 [[capability.provider]]
 binary = 'sqlite3'
 [[capability.provider.operation]]
@@ -26557,7 +26364,6 @@ args = ['{evidence_file}', '.schema']
 output = 'lines'
 network = false
 probe = true
-timeout = 60
 [[capability.provider.operation]]
 name = 'Table Dump'
 args = ['{evidence_file}', '.dump']
@@ -26565,7 +26371,6 @@ output = 'lines'
 network = false
 stage = 2
 probe = true
-timeout = 60
 [[capability.provider]]
 binary = 'exiftool'
 [[capability.provider.operation]]
@@ -26574,7 +26379,6 @@ args = ['-a', '-u', '-g1', '{evidence_file}']
 output = 'lines'
 network = false
 probe = true
-timeout = 60
 [[capability.provider]]
 binary = 'exiv2'
 [[capability.provider.operation]]
@@ -26583,7 +26387,6 @@ args = ['-pa', '{evidence_file}']
 output = 'lines'
 network = false
 probe = true
-timeout = 30
 [[capability.provider]]
 binary = 'pdfinfo'
 [[capability.provider.operation]]
@@ -26592,7 +26395,6 @@ args = ['{evidence_file}']
 output = 'lines'
 network = false
 probe = true
-timeout = 30
 [[capability.provider]]
 binary = 'olevba'
 [[capability.provider.operation]]
@@ -26602,7 +26404,6 @@ output = 'lines'
 network = false
 stage = 2
 probe = true
-timeout = 60
 [[capability.provider]]
 binary = '7z'
 [[capability.provider.operation]]
@@ -26611,7 +26412,6 @@ args = ['l', '{evidence_file}']
 output = 'lines'
 network = false
 probe = true
-timeout = 60
 [[capability.provider.operation]]
 name = 'Archive Extract'
 args = ['x', '-y', '-o{artifacts}/evidence_extract', '{evidence_file}']
@@ -26619,7 +26419,6 @@ output = 'lines'
 network = false
 stage = 2
 probe = true
-timeout = 60
 [[capability.provider]]
 binary = 'strings'
 [[capability.provider.operation]]
@@ -26628,7 +26427,6 @@ args = ['-a', '{evidence_file}']
 output = 'lines'
 network = false
 probe = true
-timeout = 60
 [[capability.provider]]
 binary = 'md5sum'
 [[capability.provider.operation]]
@@ -26637,7 +26435,6 @@ args = ['{evidence_file}']
 output = 'lines'
 network = false
 probe = true
-timeout = 30
 [[capability.provider]]
 binary = 'grep'
 [[capability.provider.operation]]
@@ -26647,7 +26444,6 @@ output = 'lines'
 network = false
 stage = 2
 probe = true
-timeout = 120
 [[capability]]
 id = 'ctf.cryptography'
 phase = 'ctf'
@@ -26667,14 +26463,12 @@ args = ['enc', '-a', '-A', '-d', '-in', '{challenge_file}']
 output = 'lines'
 network = false
 probe = true
-timeout = 60
 [[capability.provider.operation]]
 name = 'X509 Inspect'
 args = ['x509', '-in', '{challenge_file}', '-text', '-noout']
 output = 'lines'
 network = false
 probe = true
-timeout = 60
 [[capability.provider.operation]]
 name = 'Rsa Private Dump'
 args = ['pkey', '-in', '{challenge_file}', '-text', '-noout']
@@ -26682,7 +26476,6 @@ output = 'lines'
 network = false
 stage = 2
 probe = true
-timeout = 60
 [[capability.provider.operation]]
 name = 'Rsa Factor Check'
 args = ['rsa', '-in', '{challenge_file}', '-text', '-noout']
@@ -26690,7 +26483,6 @@ output = 'lines'
 network = false
 stage = 2
 probe = true
-timeout = 60
 [[capability.provider]]
 binary = 'base64'
 [[capability.provider.operation]]
@@ -26699,7 +26491,6 @@ args = ['-d', '{challenge_file}']
 output = 'lines'
 network = false
 probe = true
-timeout = 30
 [[capability.provider]]
 binary = 'base32'
 [[capability.provider.operation]]
@@ -26708,7 +26499,6 @@ args = ['-d', '{challenge_file}']
 output = 'lines'
 network = false
 probe = true
-timeout = 30
 [[capability.provider]]
 binary = 'xxd'
 [[capability.provider.operation]]
@@ -26717,7 +26507,6 @@ args = ['{challenge_file}']
 output = 'lines'
 network = false
 probe = true
-timeout = 30
 [[capability.provider]]
 binary = 'factor'
 [[capability.provider.operation]]
@@ -26726,7 +26515,6 @@ args = ['{n_value}']
 output = 'lines'
 network = false
 probe = true
-timeout = 30
 [[capability.provider]]
 binary = 'hashid'
 [[capability.provider.operation]]
@@ -26735,7 +26523,6 @@ args = ['{token}']
 output = 'lines'
 network = false
 probe = true
-timeout = 30
 [[capability.provider]]
 binary = 'hash-identifier'
 [[capability.provider.operation]]
@@ -26744,7 +26531,6 @@ args = ['{challenge_file}']
 output = 'lines'
 network = false
 probe = true
-timeout = 30
 [[capability.provider]]
 binary = 'john'
 [[capability.provider.operation]]
@@ -26754,7 +26540,6 @@ output = 'lines'
 network = false
 stage = 3
 probe = true
-timeout = 300
 [[capability.provider]]
 binary = 'hashcat'
 [[capability.provider.operation]]
@@ -26764,7 +26549,6 @@ output = 'lines'
 network = false
 stage = 3
 probe = true
-timeout = 300
 [[capability.provider]]
 binary = 'ssh2john'
 [[capability.provider.operation]]
@@ -26774,7 +26558,6 @@ output = 'lines'
 network = false
 stage = 2
 probe = true
-timeout = 30
 [[capability.provider]]
 binary = 'zip2john'
 [[capability.provider.operation]]
@@ -26784,7 +26567,6 @@ output = 'lines'
 network = false
 stage = 2
 probe = true
-timeout = 30
 [[capability.provider]]
 binary = 'fcrackzip'
 [[capability.provider.operation]]
@@ -26794,7 +26576,6 @@ output = 'lines'
 network = false
 stage = 3
 probe = true
-timeout = 300
 [[capability.provider]]
 binary = '7z'
 [[capability.provider.operation]]
@@ -26803,7 +26584,6 @@ args = ['l', '-slt', '{challenge_file}']
 output = 'lines'
 network = false
 probe = true
-timeout = 60
 [[capability.provider]]
 binary = 'strings'
 [[capability.provider.operation]]
@@ -26812,7 +26592,6 @@ args = ['-a', '{challenge_file}']
 output = 'lines'
 network = false
 probe = true
-timeout = 60
 [[capability.provider]]
 binary = 'grep'
 [[capability.provider.operation]]
@@ -26822,7 +26601,6 @@ output = 'lines'
 network = false
 stage = 2
 probe = true
-timeout = 30
 [[capability]]
 id = 'ctf.steganography'
 phase = 'ctf'
@@ -26841,7 +26619,6 @@ args = ['{media_file}']
 output = 'lines'
 network = false
 probe = true
-timeout = 15
 [[capability.provider]]
 binary = 'exiftool'
 [[capability.provider.operation]]
@@ -26850,7 +26627,6 @@ args = ['-a', '-u', '-g1', '{media_file}']
 output = 'lines'
 network = false
 probe = true
-timeout = 60
 [[capability.provider]]
 binary = 'exiv2'
 [[capability.provider.operation]]
@@ -26859,7 +26635,6 @@ args = ['-pa', '{media_file}']
 output = 'lines'
 network = false
 probe = true
-timeout = 30
 [[capability.provider]]
 binary = 'pngcheck'
 [[capability.provider.operation]]
@@ -26868,7 +26643,6 @@ args = ['-v', '{media_file}']
 output = 'lines'
 network = false
 probe = true
-timeout = 30
 [[capability.provider]]
 binary = 'identify'
 [[capability.provider.operation]]
@@ -26877,7 +26651,6 @@ args = ['-verbose', '{media_file}']
 output = 'lines'
 network = false
 probe = true
-timeout = 30
 [[capability.provider]]
 binary = 'binwalk'
 [[capability.provider.operation]]
@@ -26886,7 +26659,6 @@ args = ['{media_file}']
 output = 'lines'
 network = false
 probe = true
-timeout = 120
 [[capability.provider.operation]]
 name = 'Carve Extraction'
 args = ['-Me', '-C', '{artifacts}/binwalk_stego', '{media_file}']
@@ -26894,7 +26666,6 @@ output = 'lines'
 network = false
 stage = 2
 probe = true
-timeout = 120
 [[capability.provider]]
 binary = 'steghide'
 [[capability.provider.operation]]
@@ -26903,7 +26674,6 @@ args = ['info', '{media_file}']
 output = 'lines'
 network = false
 probe = true
-timeout = 60
 [[capability.provider.operation]]
 name = 'Passphrase Extract'
 args = ['extract', '-sf', '{media_file}', '-p', '{password}']
@@ -26911,7 +26681,6 @@ output = 'lines'
 network = false
 stage = 2
 probe = true
-timeout = 60
 [[capability.provider]]
 binary = 'zsteg'
 [[capability.provider.operation]]
@@ -26920,7 +26689,6 @@ args = ['-a', '{media_file}']
 output = 'lines'
 network = false
 probe = true
-timeout = 60
 [[capability.provider]]
 binary = 'outguess'
 [[capability.provider.operation]]
@@ -26930,7 +26698,6 @@ output = 'lines'
 network = false
 stage = 2
 probe = true
-timeout = 60
 [[capability.provider]]
 binary = 'stegseek'
 [[capability.provider.operation]]
@@ -26940,7 +26707,6 @@ output = 'lines'
 network = false
 stage = 3
 probe = true
-timeout = 300
 [[capability.provider]]
 binary = 'foremost'
 [[capability.provider.operation]]
@@ -26950,7 +26716,6 @@ output = 'lines'
 network = false
 stage = 2
 probe = true
-timeout = 240
 [[capability.provider]]
 binary = 'sox'
 [[capability.provider.operation]]
@@ -26959,7 +26724,6 @@ args = ['--i', '{media_file}']
 output = 'lines'
 network = false
 probe = true
-timeout = 60
 [[capability.provider.operation]]
 name = 'Spectrogram Render'
 args = ['{media_file}', '-n', 'spectrogram', '-o', '{artifacts}/spectrogram.png']
@@ -26967,7 +26731,6 @@ output = 'lines'
 network = false
 stage = 2
 probe = true
-timeout = 60
 [[capability.provider]]
 binary = 'strings'
 [[capability.provider.operation]]
@@ -26976,7 +26739,6 @@ args = ['-a', '-n', '8', '{media_file}']
 output = 'lines'
 network = false
 probe = true
-timeout = 60
 [[capability.provider]]
 binary = 'xxd'
 [[capability.provider.operation]]
@@ -26985,7 +26747,6 @@ args = ['-l', '4096', '{media_file}']
 output = 'lines'
 network = false
 probe = true
-timeout = 30
 [[capability.provider]]
 binary = 'ls'
 [[capability.provider.operation]]
@@ -26995,7 +26756,6 @@ output = 'lines'
 network = false
 stage = 2
 probe = true
-timeout = 15
 [[capability]]
 id = 'ctf.privilege-escalation'
 phase = 'ctf'
@@ -27015,14 +26775,12 @@ args = ['/', '-perm', '-4000', '-type', 'f', '-ls']
 output = 'lines'
 network = false
 probe = true
-timeout = 60
 [[capability.provider.operation]]
 name = 'Sgid Sweep'
 args = ['/', '-perm', '-2000', '-type', 'f']
 output = 'lines'
 network = false
 probe = true
-timeout = 60
 [[capability.provider.operation]]
 name = 'World Writable Hunt'
 args = ['/', '-writable', '-type', 'f']
@@ -27030,7 +26788,6 @@ output = 'lines'
 network = false
 stage = 2
 probe = true
-timeout = 60
 [[capability.provider]]
 binary = 'getcap'
 [[capability.provider.operation]]
@@ -27039,7 +26796,6 @@ args = ['-r', '/']
 output = 'lines'
 network = false
 probe = true
-timeout = 15
 [[capability.provider]]
 binary = 'getfacl'
 [[capability.provider.operation]]
@@ -27048,7 +26804,6 @@ args = ['{priv_dir}']
 output = 'lines'
 network = false
 probe = true
-timeout = 30
 [[capability.provider]]
 binary = 'id'
 [[capability.provider.operation]]
@@ -27057,7 +26812,6 @@ args = []
 output = 'lines'
 network = false
 probe = true
-timeout = 10
 [[capability.provider]]
 binary = 'env'
 [[capability.provider.operation]]
@@ -27066,7 +26820,6 @@ args = []
 output = 'lines'
 network = false
 probe = true
-timeout = 10
 [[capability.provider]]
 binary = 'ps'
 [[capability.provider.operation]]
@@ -27075,7 +26828,6 @@ args = ['auxww']
 output = 'lines'
 network = false
 probe = true
-timeout = 15
 [[capability.provider]]
 binary = 'ss'
 [[capability.provider.operation]]
@@ -27084,7 +26836,6 @@ args = ['-tulpn']
 output = 'lines'
 network = false
 probe = true
-timeout = 15
 [[capability.provider]]
 binary = 'crontab'
 [[capability.provider.operation]]
@@ -27093,7 +26844,6 @@ args = ['-l']
 output = 'lines'
 network = false
 probe = true
-timeout = 15
 [[capability.provider]]
 binary = 'sudo'
 [[capability.provider.operation]]
@@ -27102,7 +26852,6 @@ args = ['-l']
 output = 'lines'
 network = false
 probe = true
-timeout = 15
 [[capability.provider]]
 binary = 'strace'
 [[capability.provider.operation]]
@@ -27112,7 +26861,6 @@ output = 'lines'
 network = false
 stage = 3
 probe = true
-timeout = 60
 [[capability.provider]]
 binary = 'objdump'
 [[capability.provider.operation]]
@@ -27122,7 +26870,6 @@ output = 'lines'
 network = false
 stage = 2
 probe = true
-timeout = 60
 [[capability.provider]]
 binary = 'strings'
 [[capability.provider.operation]]
@@ -27131,7 +26878,6 @@ args = ['-a', '{priv_target}']
 output = 'lines'
 network = false
 probe = true
-timeout = 60
 [[capability.provider]]
 binary = 'ltrace'
 [[capability.provider.operation]]
@@ -27141,7 +26887,6 @@ output = 'lines'
 network = false
 stage = 2
 probe = true
-timeout = 60
 [[capability.provider]]
 binary = 'sqlite3'
 [[capability.provider.operation]]
@@ -27151,7 +26896,6 @@ output = 'lines'
 network = false
 stage = 2
 probe = true
-timeout = 60
 [[capability.provider]]
 binary = 'openssl'
 [[capability.provider.operation]]
@@ -27161,7 +26905,6 @@ output = 'lines'
 network = false
 stage = 2
 probe = true
-timeout = 60
 [[capability.provider]]
 binary = 'getfacl'
 [[capability.provider.operation]]
@@ -27170,7 +26913,6 @@ args = ['{priv_target}']
 output = 'lines'
 network = false
 probe = true
-timeout = 30
 [[capability]]
 id = 'ctf.wireless-iot'
 phase = 'ctf'
@@ -27190,7 +26932,6 @@ args = ['{capture_file}']
 output = 'lines'
 network = false
 probe = true
-timeout = 300
 [[capability.provider.operation]]
 name = 'Handshake Crack'
 args = ['-w', '{wl:wifi/passphrases.txt}', '-b', '{target}', '{capture_file}']
@@ -27198,7 +26939,6 @@ output = 'lines'
 network = false
 stage = 3
 probe = true
-timeout = 300
 [[capability.provider]]
 binary = 'airdecap-ng'
 [[capability.provider.operation]]
@@ -27208,7 +26948,6 @@ output = 'lines'
 network = false
 stage = 3
 probe = true
-timeout = 60
 [[capability.provider]]
 binary = 'airodump-ng'
 [[capability.provider.operation]]
@@ -27218,7 +26957,6 @@ output = 'lines'
 network = true
 stage = 2
 probe = true
-timeout = 120
 [[capability.provider]]
 binary = 'airbase-ng'
 [[capability.provider.operation]]
@@ -27228,7 +26966,6 @@ output = 'lines'
 network = true
 stage = 3
 probe = true
-timeout = 120
 [[capability.provider]]
 binary = 'hcxdumptool'
 [[capability.provider.operation]]
@@ -27238,7 +26975,6 @@ output = 'lines'
 network = true
 stage = 3
 probe = true
-timeout = 120
 [[capability.provider]]
 binary = 'hcxpcapngtool'
 [[capability.provider.operation]]
@@ -27248,7 +26984,6 @@ output = 'lines'
 network = false
 stage = 2
 probe = true
-timeout = 60
 [[capability.provider]]
 binary = 'wash'
 [[capability.provider.operation]]
@@ -27258,7 +26993,6 @@ output = 'lines'
 network = true
 stage = 2
 probe = true
-timeout = 60
 [[capability.provider]]
 binary = 'reaver'
 [[capability.provider.operation]]
@@ -27268,7 +27002,6 @@ output = 'lines'
 network = true
 stage = 3
 probe = true
-timeout = 300
 [[capability.provider]]
 binary = 'bully'
 [[capability.provider.operation]]
@@ -27278,7 +27011,6 @@ output = 'lines'
 network = true
 stage = 3
 probe = true
-timeout = 300
 [[capability.provider]]
 binary = 'mdk4'
 [[capability.provider.operation]]
@@ -27288,7 +27020,6 @@ output = 'lines'
 network = true
 stage = 3
 probe = true
-timeout = 120
 [[capability.provider]]
 binary = 'bettercap'
 [[capability.provider.operation]]
@@ -27298,7 +27029,6 @@ output = 'lines'
 network = true
 stage = 2
 probe = true
-timeout = 120
 [[capability.provider]]
 binary = 'bluetoothctl'
 [[capability.provider.operation]]
@@ -27307,7 +27037,6 @@ args = ['devices']
 output = 'lines'
 network = false
 probe = true
-timeout = 30
 [[capability.provider]]
 binary = 'wavemon'
 [[capability.provider.operation]]
@@ -27316,7 +27045,6 @@ args = ['-d', '{interface}']
 output = 'lines'
 network = false
 probe = true
-timeout = 30
 [[capability.provider]]
 binary = 'tshark'
 [[capability.provider.operation]]
@@ -27325,14 +27053,12 @@ args = ['-r', '{capture_file}', '-q', '-z', 'conv,wlan']
 output = 'lines'
 network = false
 probe = true
-timeout = 60
 [[capability.provider.operation]]
 name = 'Beacon Survey'
 args = ['-r', '{capture_file}', '-Y', 'wlan.fc.type == 0', '-T', 'fields', '-e', 'wlan.ssid']
 output = 'lines'
 network = false
 probe = true
-timeout = 60
 [[capability.provider.operation]]
 name = 'Handshake Export'
 args = ['-r', '{capture_file}', '--export-objects', 'eapol,{artifacts}/handshakes', '-q']
@@ -27340,7 +27066,6 @@ output = 'lines'
 network = false
 stage = 2
 probe = true
-timeout = 60
 [[capability.provider]]
 binary = 'tcpdump'
 [[capability.provider.operation]]
@@ -27349,7 +27074,6 @@ args = ['-nn', '-r', '{capture_file}']
 output = 'lines'
 network = false
 probe = true
-timeout = 120
 [[capability.provider]]
 binary = 'capinfos'
 [[capability.provider.operation]]
@@ -27358,7 +27082,6 @@ args = ['{capture_file}']
 output = 'lines'
 network = false
 probe = true
-timeout = 30
 [[capability]]
 id = 'ctf.scripting-misc'
 phase = 'ctf'
@@ -27378,7 +27101,6 @@ args = ['{challenge_file}']
 output = 'lines'
 network = false
 probe = true
-timeout = 15
 [[capability.provider]]
 binary = 'base64'
 [[capability.provider.operation]]
@@ -27387,7 +27109,6 @@ args = ['-d', '{challenge_file}']
 output = 'lines'
 network = false
 probe = true
-timeout = 30
 [[capability.provider]]
 binary = 'base32'
 [[capability.provider.operation]]
@@ -27396,7 +27117,6 @@ args = ['-d', '{challenge_file}']
 output = 'lines'
 network = false
 probe = true
-timeout = 30
 [[capability.provider]]
 binary = 'xxd'
 [[capability.provider.operation]]
@@ -27405,7 +27125,6 @@ args = ['{challenge_file}']
 output = 'lines'
 network = false
 probe = true
-timeout = 30
 [[capability.provider]]
 binary = 'gzip'
 [[capability.provider.operation]]
@@ -27414,7 +27133,6 @@ args = ['-dc', '{challenge_file}']
 output = 'lines'
 network = false
 probe = true
-timeout = 30
 [[capability.provider]]
 binary = '7z'
 [[capability.provider.operation]]
@@ -27423,7 +27141,6 @@ args = ['l', '{challenge_file}']
 output = 'lines'
 network = false
 probe = true
-timeout = 60
 [[capability.provider.operation]]
 name = 'Archive Extract'
 args = ['x', '-y', '-o{artifacts}/misc_extract', '{challenge_file}']
@@ -27431,7 +27148,6 @@ output = 'lines'
 network = false
 stage = 2
 probe = true
-timeout = 60
 [[capability.provider]]
 binary = 'unzip'
 [[capability.provider.operation]]
@@ -27440,7 +27156,6 @@ args = ['-l', '{challenge_file}']
 output = 'lines'
 network = false
 probe = true
-timeout = 60
 [[capability.provider.operation]]
 name = 'Zip Extract'
 args = ['-o', '{challenge_file}', '-d', '{artifacts}/zip_extract']
@@ -27448,7 +27163,6 @@ output = 'lines'
 network = false
 stage = 2
 probe = true
-timeout = 60
 [[capability.provider]]
 binary = 'sqlite3'
 [[capability.provider.operation]]
@@ -27457,7 +27171,6 @@ args = ['{challenge_file}', '.schema']
 output = 'lines'
 network = false
 probe = true
-timeout = 60
 [[capability.provider.operation]]
 name = 'Table Dump'
 args = ['{challenge_file}', '.dump']
@@ -27465,7 +27178,6 @@ output = 'lines'
 network = false
 stage = 2
 probe = true
-timeout = 60
 [[capability.provider]]
 binary = 'strings'
 [[capability.provider.operation]]
@@ -27474,7 +27186,6 @@ args = ['-a', '{challenge_file}']
 output = 'lines'
 network = false
 probe = true
-timeout = 60
 [[capability.provider]]
 binary = 'exiftool'
 [[capability.provider.operation]]
@@ -27483,7 +27194,6 @@ args = ['-a', '-g1', '{challenge_file}']
 output = 'lines'
 network = false
 probe = true
-timeout = 60
 [[capability.provider.operation]]
 name = 'Extracted Metadata Sweep'
 args = ['-r', '{artifacts}/misc_extract/']
@@ -27491,7 +27201,6 @@ output = 'lines'
 network = false
 stage = 2
 probe = true
-timeout = 60
 [[capability.provider]]
 binary = 'binwalk'
 [[capability.provider.operation]]
@@ -27500,7 +27209,6 @@ args = ['{challenge_file}']
 output = 'lines'
 network = false
 probe = true
-timeout = 120
 [[capability.provider]]
 binary = 'python3'
 [[capability.provider.operation]]
@@ -27510,7 +27218,6 @@ output = 'lines'
 network = false
 stage = 3
 probe = true
-timeout = 60
 [[capability.provider]]
 binary = 'openssl'
 [[capability.provider.operation]]
@@ -27519,7 +27226,6 @@ args = ['x509', '-in', '{challenge_file}', '-text', '-noout']
 output = 'lines'
 network = false
 probe = true
-timeout = 60
 [[capability.provider.operation]]
 name = 'Der To Pem'
 args = ['pkey', '-inform', 'DER', '-in', '{challenge_file}', '-text', '-noout']
@@ -27527,7 +27233,6 @@ output = 'lines'
 network = false
 stage = 2
 probe = true
-timeout = 60
 [[capability.provider]]
 binary = 'jq'
 [[capability.provider.operation]]
@@ -27536,7 +27241,6 @@ args = ['.', '{challenge_file}']
 output = 'lines'
 network = false
 probe = true
-timeout = 30
 [[capability.provider]]
 binary = 'md5sum'
 [[capability.provider.operation]]
@@ -27545,7 +27249,6 @@ args = ['{challenge_file}']
 output = 'lines'
 network = false
 probe = true
-timeout = 30
 [[capability.provider]]
 binary = 'sha256sum'
 [[capability.provider.operation]]
@@ -27554,7 +27257,6 @@ args = ['{challenge_file}']
 output = 'lines'
 network = false
 probe = true
-timeout = 30
 [[capability.provider]]
 binary = 'factor'
 [[capability.provider.operation]]
@@ -27563,7 +27265,6 @@ args = ['{token}']
 output = 'lines'
 network = false
 probe = true
-timeout = 30
 [[capability.provider]]
 binary = 'curl'
 [[capability.provider.operation]]
@@ -27572,7 +27273,6 @@ args = ['-sS', '{target}']
 output = 'lines'
 network = true
 probe = true
-timeout = 60
 [[capability.provider]]
 binary = 'wget'
 [[capability.provider.operation]]
@@ -27582,7 +27282,6 @@ output = 'lines'
 network = true
 stage = 2
 probe = true
-timeout = 60
 [[capability.provider]]
 binary = 'tshark'
 [[capability.provider.operation]]
@@ -27592,7 +27291,6 @@ output = 'lines'
 network = false
 stage = 2
 probe = true
-timeout = 60
 [[capability.provider]]
 binary = 'grep'
 [[capability.provider.operation]]
@@ -27602,7 +27300,6 @@ output = 'lines'
 network = false
 stage = 2
 probe = true
-timeout = 30
 
 [[capability]]
 id = 'ctf.flag-scanning'
@@ -27623,21 +27320,18 @@ args = ['-rInEi', '{braced_pattern}', '{scan_dir}']
 output = 'lines'
 network = false
 probe = true
-timeout = 120
 [[capability.provider.operation]]
 name = 'Bare Prefix Sweep'
 args = ['-rInwi', '{flag_format}', '{scan_dir}']
 output = 'lines'
 network = false
 probe = true
-timeout = 120
 [[capability.provider.operation]]
 name = 'Flag Shape Sweep'
 args = ['-rInE', '{shape_pattern}', '{scan_dir}']
 output = 'lines'
 network = false
 probe = true
-timeout = 180
 [[capability.provider]]
 binary = 'rg'
 [[capability.provider.operation]]
@@ -27646,5 +27340,4 @@ args = ['-iIn', '-e', '{braced_pattern}', '{scan_dir}']
 output = 'lines'
 network = false
 probe = true
-timeout = 120
 

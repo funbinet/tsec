@@ -773,80 +773,6 @@ struct Runtime<'a> {
     catalog: &'a Catalog,
 }
 
-/// The tempo a CTF run runs at, chosen once at the start. It scales every
-/// operation's time budget: `Fast` hunts for the quick win, `Deep` gives a
-/// slow target the patience it deserves.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum Speed {
-    Fast,
-    Normal,
-    Deep,
-}
-
-impl Speed {
-    /// Scale one operation's time budget, never below 10 seconds: even FAST
-    /// gives every tool a real attempt rather than a hair-trigger kill.
-    fn scale_secs(&self, secs: u64) -> u64 {
-        match self {
-            Speed::Fast => (secs / 3).max(10),
-            Speed::Normal => secs,
-            Speed::Deep => secs.saturating_mul(2),
-        }
-    }
-}
-
-/// Ask the operator how hard to hunt. `Esc` withdraws the capability, like
-/// every other prompt.
-/// Ask the operator how hard to hunt — a selection, like every other menu:
-/// `FAST`, `NORMAL`, `DEEP`. `Esc` withdraws the capability, like every
-/// other prompt.
-fn ask_speed(
-    theme: &Theme,
-    renderer: &mut Renderer,
-    out: &mut io::Stdout,
-    capability: &str,
-    stack: &[Frame],
-) -> Result<Option<Speed>> {
-    let items = [
-        Item::new("FAST — time budgets cut to a third, never under 10s"),
-        Item::new("NORMAL — the declared budgets"),
-        Item::new("DEEP — budgets doubled, for a patient target"),
-    ];
-    let pick = menu(
-        theme,
-        renderer,
-        out,
-        &format!("SPEED · {}", capability),
-        &items,
-        "-[I/K] MOVE   -[J] BACK   -[L/ENTER] SELECT   -[ESC] EXIT",
-        stack,
-    )?;
-    let index = match pick.decision {
-        Decision::Back => return Ok(None),
-        Decision::Exit => return Err(crate::error::TsecError::flow_exit()),
-        Decision::Chosen(index) => index,
-    };
-    renderer.freeze(&pick.panel);
-    let speed = match index {
-        0 => Speed::Fast,
-        1 => Speed::Normal,
-        _ => Speed::Deep,
-    };
-    let committed = crate::ui::input::committed_input_box(
-        theme,
-        capability,
-        "SPEED",
-        match speed {
-            Speed::Fast => "FAST",
-            Speed::Normal => "NORMAL",
-            Speed::Deep => "DEEP",
-        },
-        false,
-    );
-    renderer.freeze(&committed);
-    Ok(Some(speed))
-}
-
 /// Execute a capability: input collection, concurrent execution, 6-stage
 /// harvest, output display and raw artifact storage.
 ///
@@ -882,44 +808,12 @@ fn run_capability(
         }
     };
 
-    // A CTF run is a hunt: how long each tool is allowed to look decides how
-    // long the whole hunt takes. The operator picks the tempo once, up front,
-    // and every operation's time budget scales with it.
-    let speed = if cap.phase == "ctf" {
-        match ask_speed(theme, renderer, out, &cap.label, stack)? {
-            Some(speed) => speed,
-            None => return Ok(Flow::Continue),
-        }
-    } else {
-        Speed::Normal
-    };
-
     let phase_word = phase_label(&cap.phase).unwrap_or(&cap.phase);
 
-    // Every job's time budget: the operation's own `timeout` key if it
-    // declared one, else the per-binary override, else the configured
-    // default — with CTF runs falling back to a 300s baseline when
-    // configuration leaves timeouts disabled, and the chosen speed scaling
-    // whatever budget applies.
-    let job_timeout = |operation: &crate::catalog::Operation, binary: &str| -> Duration {
-        let secs = match operation.timeout_secs() {
-            Some(secs) => secs,
-            None => {
-                let per_binary = cfg
-                    .execution
-                    .tool_timeout_secs
-                    .get(binary)
-                    .copied()
-                    .filter(|s| *s > 0);
-                match per_binary {
-                    Some(secs) => secs,
-                    None if cap.phase == "ctf" => 300,
-                    None => cfg.execution.timeout_secs,
-                }
-            }
-        };
-        Duration::from_secs(speed.scale_secs(secs))
-    };
+    // Jobs run to completion: no time budget kills a tool mid-hunt. The
+    // operator watches the live monitor and can cancel with `Esc`; a long
+    // command is a decision the operator makes, not one the framework makes
+    // for them.
     let run_id = RunId::for_run(phase_word, &cap.label);
     let mut store = RunStore::open(&cfg.general.output_dir, &run_id)?;
 
@@ -983,7 +877,7 @@ fn run_capability(
                     provider: binding.binary.clone(),
                     operation: operation.name.clone(),
                     label: format!("{} · {}", binding.binary, operation.name),
-                    timeout: job_timeout(operation, &binding.binary),
+                    timeout: Duration::ZERO,
                     artifacts: RawArtifact {
                         primary: store.raw_stdout(&stem),
                         stderr: store.raw_stderr(&stem),
@@ -1063,7 +957,7 @@ fn run_capability(
                             "{} · {} (installed mid-run)",
                             binding.binary, operation.name
                         ),
-                        timeout: job_timeout(operation, &binding.binary),
+                        timeout: Duration::ZERO,
                         artifacts: RawArtifact {
                             primary: store.raw_stdout(&stem),
                             stderr: store.raw_stderr(&stem),
