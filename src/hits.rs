@@ -145,9 +145,16 @@ pub fn scan(artifact: &Path, provenance: &Provenance) -> Vec<Finding> {
     let mut seen: std::collections::HashSet<(Category, String)> = std::collections::HashSet::new();
     for (line_no, line) in text.lines().enumerate() {
         let context: String = line.chars().take(250).collect();
+        // Subresource-integrity hashes (`integrity="sha512-…"`) are the page
+        // vouching for its own CDN script — not an encoded secret.
+        let sri_line = line.contains("integrity=");
         for (regex, category) in scanners() {
             for m in regex.find_iter(line) {
                 let value = m.as_str().to_string();
+                // An SRI hash is base64-shaped but never a payload.
+                if *category == Category::Comment && sri_line {
+                    continue;
+                }
                 if !seen.insert((*category, value.clone())) {
                     continue;
                 }

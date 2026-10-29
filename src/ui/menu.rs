@@ -680,7 +680,7 @@ fn flag_scan_inputs(
         .get(index)
         .ok_or_else(|| TsecError::internal("category picker index out of range"))?;
 
-    // 3. The run to sweep, or the whole category. Runs are named
+    // 3. The run whose raw evidence to sweep. Runs are named
     // `{stamp}_{PHASE}_{CAPABILITY}`, so a category's runs are a suffix
     // match on its cleaned label.
     let suffix = format!(
@@ -717,14 +717,16 @@ fn flag_scan_inputs(
         )?;
         return Ok(None);
     }
-    let mut items: Vec<Item> = vec![Item::new("WHOLE CATEGORY (every run)")];
-    items.extend(runs.iter().map(|run| {
-        Item::new(
-            run.file_name()
-                .map(|name| name.to_string_lossy().to_string())
-                .unwrap_or_else(|| run.display().to_string()),
-        )
-    }));
+    let items: Vec<Item> = runs
+        .iter()
+        .map(|run| {
+            Item::new(
+                run.file_name()
+                    .map(|name| name.to_string_lossy().to_string())
+                    .unwrap_or_else(|| run.display().to_string()),
+            )
+        })
+        .collect();
     let pick = menu(
         theme,
         renderer,
@@ -734,24 +736,29 @@ fn flag_scan_inputs(
         "-[I/K] MOVE   -[J] BACK   -[L/ENTER] SELECT   -[ESC] EXIT",
         stack,
     )?;
-    match pick.decision {
-        Decision::Back => Ok(None),
-        Decision::Exit => Err(crate::error::TsecError::flow_exit()),
-        Decision::Chosen(index) => {
-            renderer.freeze(&pick.panel);
-            let scan_dir = if index == 0 {
-                cfg.general.output_dir.clone()
-            } else {
-                runs.get(index - 1)
-                    .ok_or_else(|| TsecError::internal("run picker index out of range"))?
-                    .clone()
-            };
-            let mut values = InputValues::new();
-            values.insert("flag_format", declared);
-            values.insert("scan_dir", scan_dir.display().to_string());
-            Ok(Some(values))
-        }
-    }
+    let index = match pick.decision {
+        Decision::Back => return Ok(None),
+        Decision::Exit => return Err(crate::error::TsecError::flow_exit()),
+        Decision::Chosen(index) => index,
+    };
+    renderer.freeze(&pick.panel);
+    let scan_dir = runs
+        .get(index)
+        .ok_or_else(|| TsecError::internal("run picker index out of range"))?
+        .clone();
+    // The sweep patterns are composed here, from the validated word — the
+    // catalog only names the inputs; the braces are added at input time so
+    // the catalog never has to carry regex brace literals through the
+    // placeholder grammar.
+    let word = declared.trim();
+    let braced_pattern = format!(r"{word}\{{[^{{}}]{{1,256}}\}}");
+    let shape_pattern = r"[A-Za-z][A-Za-z0-9_]{1,31}\{[^{}\n]{4,256}\}".to_string();
+    let mut values = InputValues::new();
+    values.insert("flag_format", declared);
+    values.insert("scan_dir", scan_dir.display().to_string());
+    values.insert("braced_pattern", braced_pattern);
+    values.insert("shape_pattern", shape_pattern);
+    Ok(Some(values))
 }
 
 /// Everything a run needs from the installed framework, in one place.
@@ -790,51 +797,54 @@ impl Speed {
 
 /// Ask the operator how hard to hunt. `Esc` withdraws the capability, like
 /// every other prompt.
+/// Ask the operator how hard to hunt — a selection, like every other menu:
+/// `FAST`, `NORMAL`, `DEEP`. `Esc` withdraws the capability, like every
+/// other prompt.
 fn ask_speed(
     theme: &Theme,
     renderer: &mut Renderer,
     out: &mut io::Stdout,
     capability: &str,
+    stack: &[Frame],
 ) -> Result<Option<Speed>> {
-    let mut error: Option<String> = None;
-    loop {
-        let prompt = crate::ui::input::Prompt {
-            label: "SPEED [fast / normal / deep]",
-            help: Some(
-                "fast cuts every time budget to a third (never under 10s); \
-                 deep doubles it for a patient target",
-            ),
-            default: Some("normal"),
-            sensitive: false,
-            error: error.as_deref(),
-        };
-        match crate::ui::input::ask(out, renderer, theme, capability, &prompt)
-            .map_err(|e| TsecError::io("drawing the speed box", &e))?
-        {
-            crate::ui::input::Answer::Cancelled => return Ok(None),
-            crate::ui::input::Answer::Given(raw) => {
-                let raw = raw.trim();
-                let speed = match raw.to_ascii_lowercase().as_str() {
-                    "" | "normal" | "n" => Speed::Normal,
-                    "fast" | "f" => Speed::Fast,
-                    "deep" | "d" => Speed::Deep,
-                    _ => {
-                        error = Some("answer fast, normal or deep (Enter accepts normal)".into());
-                        continue;
-                    }
-                };
-                let committed = crate::ui::input::committed_input_box(
-                    theme,
-                    capability,
-                    "SPEED [fast / normal / deep]",
-                    if raw.is_empty() { "normal" } else { raw },
-                    false,
-                );
-                renderer.freeze(&committed);
-                return Ok(Some(speed));
-            }
-        }
-    }
+    let items = [
+        Item::new("FAST — time budgets cut to a third, never under 10s"),
+        Item::new("NORMAL — the declared budgets"),
+        Item::new("DEEP — budgets doubled, for a patient target"),
+    ];
+    let pick = menu(
+        theme,
+        renderer,
+        out,
+        &format!("SPEED · {}", capability),
+        &items,
+        "-[I/K] MOVE   -[J] BACK   -[L/ENTER] SELECT   -[ESC] EXIT",
+        stack,
+    )?;
+    let index = match pick.decision {
+        Decision::Back => return Ok(None),
+        Decision::Exit => return Err(crate::error::TsecError::flow_exit()),
+        Decision::Chosen(index) => index,
+    };
+    renderer.freeze(&pick.panel);
+    let speed = match index {
+        0 => Speed::Fast,
+        1 => Speed::Normal,
+        _ => Speed::Deep,
+    };
+    let committed = crate::ui::input::committed_input_box(
+        theme,
+        capability,
+        "SPEED",
+        match speed {
+            Speed::Fast => "FAST",
+            Speed::Normal => "NORMAL",
+            Speed::Deep => "DEEP",
+        },
+        false,
+    );
+    renderer.freeze(&committed);
+    Ok(Some(speed))
 }
 
 /// Execute a capability: input collection, concurrent execution, 6-stage
@@ -876,7 +886,7 @@ fn run_capability(
     // long the whole hunt takes. The operator picks the tempo once, up front,
     // and every operation's time budget scales with it.
     let speed = if cap.phase == "ctf" {
-        match ask_speed(theme, renderer, out, &cap.label)? {
+        match ask_speed(theme, renderer, out, &cap.label, stack)? {
             Some(speed) => speed,
             None => return Ok(Flow::Continue),
         }
@@ -2004,5 +2014,32 @@ mod tests {
                 Role::Muted,
             ),
         ]
+    }
+}
+
+#[cfg(test)]
+mod flag_scan_tests {
+    // No `use super::*`: the patterns under test are built from string
+    // literals, so the module needs nothing from the parent.
+
+    #[test]
+    fn the_braced_sweep_pattern_composes_from_the_bare_word() {
+        // Exactly what flag_scan_inputs builds: the catalog only names
+        // {braced_pattern}; the regex — braces and all — is composed here
+        // from the validated bare word.
+        let word = "247CTF";
+        let braced_pattern = format!(r"{word}\{{[^{{}}]{{1,256}}\}}");
+        assert_eq!(braced_pattern, r"247CTF\{[^{}]{1,256}\}");
+        let re = regex::Regex::new(&braced_pattern).unwrap();
+        assert!(re.is_match("flag: 247CTF{64b3c32a6856093faed367149ecaafb7} here"));
+        assert!(!re.is_match("247CTF is the platform name"));
+    }
+
+    #[test]
+    fn the_shape_sweep_pattern_is_bounded() {
+        let shape_pattern = r"[A-Za-z][A-Za-z0-9_]{1,31}\{[^{}\n]{4,256}\}".to_string();
+        let re = regex::Regex::new(&shape_pattern).unwrap();
+        assert!(re.is_match("value=otherflag{a1b2c3d4}"));
+        assert!(!re.is_match("plain text without braces"));
     }
 }

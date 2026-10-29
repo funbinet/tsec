@@ -291,10 +291,12 @@ than a live target. It replaces the ordinary input form with its own flow:
 1. **Flag format** — the bare prefix word; the braces are added for you.
 2. **Category** — which CTF category's evidence to sweep (a picker of the
    other fourteen).
-3. **Run** — one recorded run of that category, or `WHOLE CATEGORY (every
-   run)`, which sweeps the entire output directory.
+3. **Run** — one recorded run of that category, listed by name.
 
-The run's grep and ripgrep operations then sweep the recorded raw evidence for
+The sweep patterns are composed at input time from the validated word — the
+catalog only names `{braced_pattern}` and `{shape_pattern}` as inputs; the
+regex brace literals never pass through the placeholder grammar. The run's
+grep and ripgrep operations then sweep the recorded raw evidence for
 the braced flag value, the bare prefix, and any flag-shaped string, writing the
 matched lines to the run document. Flag scanning needs nothing but evidence:
 it is how a hunt that stalled is revived from what earlier runs already

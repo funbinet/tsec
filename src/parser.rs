@@ -655,9 +655,19 @@ fn classify_line(line: &str, lineno: usize, h: &mut Harvest) {
         return;
     }
 
-    // A credential-shaped token that is not an email: `user:pass`.
+    // A credential-shaped token that is not an email: `user:pass`. The line
+    // must be a single token — a bare `user:pass` as hydra, john and nxc emit
+    // it — and both sides must read like words, not timestamps (`07:25:27`),
+    // ports (`host:443`) or URL remainders (`https://…`).
     if let Some((user, pass)) = line.split_once(':') {
-        if !user.is_empty() && !pass.is_empty() && !pass.contains(' ') {
+        if !user.is_empty()
+            && !pass.is_empty()
+            && !pass.contains(' ')
+            && !user.contains(' ')
+            && !user.starts_with("http")
+            && user.chars().any(|c| c.is_ascii_alphabetic())
+            && pass.chars().any(|c| c.is_ascii_alphabetic())
+        {
             h.push(
                 Category::Credential,
                 format!("{user}:{pass}"),

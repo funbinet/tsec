@@ -1245,6 +1245,30 @@ mod tests {
     }
 
     #[test]
+    fn a_brace_bearing_value_substitutes_verbatim() {
+        // The FLAG SCANNING shape: the pattern is composed at input time and
+        // carried as a value, so the catalog never has to carry regex brace
+        // literals through the placeholder grammar. The substituted value is
+        // inserted whole — never re-scanned for placeholders.
+        let toml = full_catalog_with_args("args = ['-rInEi', '{target}', '{target}']");
+        let cat = Catalog::from_toml(&toml, Path::new("t.toml")).unwrap();
+        let cap = cat.get("surface.x").unwrap();
+        let op = &cap.providers[0].operations[0];
+        let mut values = InputValues::new();
+        values.insert("target", r"247CTF\{[^{}]{1,256}\}");
+        let cmd = op
+            .command(
+                Path::new("grep"),
+                &cap.inputs,
+                &values,
+                Path::new("t.toml"),
+                None,
+            )
+            .unwrap();
+        assert_eq!(cmd.args()[1], r"247CTF\{[^{}]{1,256}\}");
+    }
+
+    #[test]
     fn a_capability_outside_the_ten_phases_is_rejected() {
         let e =
             Catalog::from_toml(&one_cap("pwnage", "DO THING"), Path::new("t.toml")).unwrap_err();

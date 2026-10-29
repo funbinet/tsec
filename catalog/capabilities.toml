@@ -27612,12 +27612,14 @@ summary = 'Hunt the flag across finished runs: sweep recorded raw evidence for t
 inputs = [
   { key = 'flag_format', type = 'ctf_flag_format', required = true },
   { key = 'scan_dir', type = 'path', required = true },
+  { key = 'braced_pattern', type = 'text', required = false, default = '' },
+  { key = 'shape_pattern', type = 'text', required = false, default = '' },
 ]
 [[capability.provider]]
 binary = 'grep'
 [[capability.provider.operation]]
 name = 'Braced Value Sweep'
-args = ['-rInEi', '{flag_format}\{[^{}]{1,256}\}', '{scan_dir}']
+args = ['-rInEi', '{braced_pattern}', '{scan_dir}']
 output = 'lines'
 network = false
 probe = true
@@ -27631,7 +27633,7 @@ probe = true
 timeout = 120
 [[capability.provider.operation]]
 name = 'Flag Shape Sweep'
-args = ['-rInE', '[A-Za-z][A-Za-z0-9_]{1,31}\{[^{}\n]{4,256}\}', '{scan_dir}']
+args = ['-rInE', '{shape_pattern}', '{scan_dir}']
 output = 'lines'
 network = false
 probe = true
@@ -27640,7 +27642,7 @@ timeout = 180
 binary = 'rg'
 [[capability.provider.operation]]
 name = 'Ripgrep Braced Sweep'
-args = ['-iIn', '-e', '{flag_format}\{[^{}]{1,256}\}', '{scan_dir}']
+args = ['-iIn', '-e', '{braced_pattern}', '{scan_dir}']
 output = 'lines'
 network = false
 probe = true
