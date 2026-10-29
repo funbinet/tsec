@@ -7576,13 +7576,6 @@ args = ['implants']
 output = 'lines'
 network = false
 [[capability.provider]]
-binary = 'havoc'
-[[capability.provider.operation]]
-name = 'Demon Build'
-args = ['{c2host}:{c2port}', 'generate', 'demon', '--os', 'windows', '--arch', 'x64', '--format', 'exe', '--output', '{artifacts}/havoc_demon.exe']
-output = 'lines'
-network = true
-[[capability.provider]]
 binary = 'go'
 [[capability.provider.operation]]
 name = 'Source Build Implant'
@@ -16665,13 +16658,6 @@ binary = 'tcpdump'
 [[capability.provider.operation]]
 name = 'Broadcast Traffic Sample'
 args = ['-i', '{iface}', '-nn', '-c', '100', 'broadcast']
-output = 'lines'
-network = false
-[[capability.provider]]
-binary = 'networkminer'
-[[capability.provider.operation]]
-name = 'PCAP Artifact Extract'
-args = ['-r', '{artifacts}/smb.pcap']
 output = 'lines'
 network = false
 [[capability.provider]]

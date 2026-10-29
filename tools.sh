@@ -225,7 +225,6 @@ pkg_info() {
         hash-identifier) echo "hash-identifier|hash-identifier" ;;
         hashcat) echo "hashcat|hashcat" ;;
         hashid) echo "hashid|hashid" ;;
-        havoc) echo "havoc|havoc" ;;
         hcxdumptool|hcxhashtool|hcxpcapngtool|hcxtools) echo "hcxtools|hcxtools" ;;
         head) echo "coreutils|coreutils" ;;
         horst) echo "horst|horst" ;;
@@ -306,7 +305,6 @@ pkg_info() {
         ncrack) echo "ncrack|ncrack" ;;
         one-sixtyone) echo "onesixtyone|onesixtyone" ;;
         netdiscover) echo "netdiscover|netdiscover" ;;
-        networkminer) echo "networkminer|networkminer" ;;
         nikto) echo "nikto|nikto" ;;
         nm|nmcli) echo "networkmanager|network-manager" ;;
         nmap|nping) echo "nmap|nmap" ;;
