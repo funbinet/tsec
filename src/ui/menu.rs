@@ -766,13 +766,6 @@ struct Runtime<'a> {
     catalog: &'a Catalog,
 }
 
-/// Execute a capability: input collection, concurrent execution, 6-stage
-/// harvest, output display and raw artifact storage.
-///
-/// The pipeline branches after execution:
-///   - **All tasks failed** → `RUN FAILURE` terminal state (no processing, no output)
-///   - **Some/all succeeded** → `PROCESSING` → harvest → `OUTPUT`
-///
 /// The tempo a CTF run runs at, chosen once at the start. It scales every
 /// operation's time budget: `Fast` hunts for the quick win, `Deep` gives a
 /// slow target the patience it deserves.
@@ -844,6 +837,12 @@ fn ask_speed(
     }
 }
 
+/// Execute a capability: input collection, concurrent execution, 6-stage
+/// harvest, output display and raw artifact storage.
+///
+/// The pipeline branches after execution:
+///   - **All tasks failed** → `RUN FAILURE` terminal state (no processing, no output)
+///   - **Some/all succeeded** → `PROCESSING` → harvest → `OUTPUT`
 fn run_capability(
     theme: &Theme,
     renderer: &mut Renderer,

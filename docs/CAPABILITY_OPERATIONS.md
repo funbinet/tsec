@@ -49,6 +49,17 @@ Important operation keys:
 - `confirm` — optional, default `false`. Gates the operation behind an explicit
   operator go-ahead before it dispatches. Only valid on stages 2 and 3; setting
   it on a baseline operation is a load failure.
+- `timeout` — optional, 1-86400 seconds. The operation's own time budget; a run
+  that exceeds it is stopped and its raw output is still harvested. When absent,
+  the per-binary configuration override applies, then the configured default.
+  Every CTF operation declares one, and the operator's SPEED choice at the start
+  of a CTF run scales it (fast = a third, never under 10 s; deep = double).
+- `probe` — optional, default `false`. Marks an operation whose non-zero exit is
+  an *answer*, not a failure: a decoder handed non-base64, an extractor handed a
+  non-archive, a grep that found nothing. Such a run completes as
+  `PROBE_NEGATIVE` with its raw output preserved as evidence. Only a
+  process-level failure to launch still counts as a failure. Every CTF
+  operation is a probe — in a hunt, a negative answer is a result.
 
 ## How templates become commands
 
@@ -193,10 +204,29 @@ Two things are deliberately not findings:
 The `ctf` phase adds one input type and one output artefact that the other phases
 do not have.
 
+## CTF runs: flag formats, speed and the sidecar
+
+The `ctf` phase adds one input type, a speed choice, and one output artefact
+that the other phases do not have.
+
 **The `ctf_flag_format` input.** Inputs of this type compile through
 `src/ctf.rs` before the run starts; a pattern that will not compile, or one with
-no discriminating power, stops the run before any tool executes. Two spellings
-are accepted, decided by shape rather than a mode flag:
+no discriminating power, stops the run before any tool executes. The usual
+spelling is a **bare word**: type the flag's prefix alone and the framework adds
+the braces. The bare word `safctf` compiles three tiers of search:
+
+- **Braced value** — the escaped prefix plus a bounded body,
+  `safctf\{[^{}]{1,256}\}`, matched case-insensitively. This is the tier that
+  finds the real flag value, e.g. `safctf{09x2kc249c235cg3v45554}`, and it is
+  the only tier subject to the indiscriminate-pattern check.
+- **Terms** — the prefix itself and derived words (including its `ctf` tail, so
+  `safctf` also hunts `ctf`), word-bounded and case-insensitive. A bare
+  `safctf` string without braces is a *flag lead*: the flag's vocabulary
+  surfaced, so the value is probably close.
+- **Flag shape** — any generic `word{body}` string, so a flag using a prefix
+  you did not declare is still reported.
+
+Two further spellings are accepted, decided by shape rather than a mode flag:
 
 - **Shorthand** — `safctf{...}` or `flag{...}`: a literal, case-sensitive prefix
   ending in `{...}`. It expands to the escaped prefix plus a bounded identifier
@@ -208,23 +238,67 @@ are accepted, decided by shape rather than a mode flag:
 
 A pattern that matches the empty string, or matches ordinary text everywhere,
 is refused: a pattern that matches everything turns every artifact into
-thousands of false candidates.
+thousands of false candidates. Reports and documents always show the real
+matched value — the flag itself, never the pattern.
+
+**The SPEED choice.** Every CTF run opens by asking `SPEED [fast / normal /
+deep]`. The answer scales every operation's time budget for that run: `fast`
+cuts each budget to a third (never below 10 seconds, so every tool still gets a
+real attempt), `normal` keeps the declared budgets, `deep` doubles them for a
+patient target. `Esc` at the prompt withdraws the capability, like every other
+prompt.
 
 **Extraction and classification.** Every raw artifact is scanned line by line
 against the compiled pattern; each match is recorded with up to 250 characters
 of surrounding context, so a candidate can be judged without re-running the
 tool. Candidates are classified as verified (inside a value-shaped finding),
 candidate (a bare match), or reviewed-out — the classification travels with the
-match in the report.
+match in the report. A CTF run harvests its failed tasks too: a tool that died
+mid-dump may already have printed the flag, and a run interrupted by the
+operator still shows everything the finished tools found.
+
+**The hits engine.** Beyond the operator's flag pattern, `src/hits.rs` scans
+every CTF run's raw evidence — completed and failed tasks, stdout, stderr and
+every file in the artifacts directory — for everything else a hunt cares about:
+hashes (md5/sha lengths, crypt and `$NT$` formats), `user=`/`password=`
+credential pairs, private keys, API tokens, shell material (`/bin/sh`,
+`pty.spawn`, meterpreter), suspicious endpoints, CVE identifiers, interesting
+file names, and long base64 blobs. Each hit is deduplicated by class and value
+and lands as an ordinary finding under its own heading (`HASHES`,
+`CREDENTIAL PAIRS`, `SHELL MATERIAL`, …), so the document, `output.json` and
+the next-steps brain all see it.
+
+**Next steps.** The recommendation engine reads a CTF harvest with hunting
+eyes: every hit class maps to the exact CTF category to run next with the
+inputs to supply — a hash sends you to CRYPTO CHALLENGES with the hash or its
+challenge file, a credential to ACTIVE DIRECTORY with the target, a flag lead
+to FLAG SCANNING over this run. The steps appear in the document's NEXT STEPS
+section and in `ctf.json` under `next_steps`.
 
 **The `ctf.json` sidecar.** Every CTF run writes `ctf.json` beside
 `manifest.json` and `output.json` — including runs where nothing matched, since
 an empty candidate list is a result. It records the challenge context as the
 operator declared it (flag format, `challenge_desc` objective,
 `authorized_scope` statement), a command-by-command account of every attempted
-operation with its outcome classification, and every flag candidate with the
-artifact path it came from. Every claim in the CTF report can be checked
-against the bytes a tool actually produced.
+operation with its outcome classification, every flag candidate with the
+artifact path it came from, and `next_steps`: the exact follow-up
+(capability, why, and what to feed it) derived from the run's hits. Every claim
+in the CTF report can be checked against the bytes a tool actually produced.
+
+**FLAG SCANNING.** The fifteenth CTF category sweeps *finished* runs rather
+than a live target. It replaces the ordinary input form with its own flow:
+
+1. **Flag format** — the bare prefix word; the braces are added for you.
+2. **Category** — which CTF category's evidence to sweep (a picker of the
+   other fourteen).
+3. **Run** — one recorded run of that category, or `WHOLE CATEGORY (every
+   run)`, which sweeps the entire output directory.
+
+The run's grep and ripgrep operations then sweep the recorded raw evidence for
+the braced flag value, the bare prefix, and any flag-shaped string, writing the
+matched lines to the run document. Flag scanning needs nothing but evidence:
+it is how a hunt that stalled is revived from what earlier runs already
+captured.
 
 **Stages in a CTF run.** The same 1-3 staging applies: baseline enumeration on
 stage 1, decoding and analysis on stage 2, consequential actions (a downloaded
@@ -242,6 +316,7 @@ until stage 1 has dumped something.
 | Catalog will not load: `has no operations` | A `[[capability.provider]]` block with nothing under it |
 | Catalog will not load: `escapes the wordlist directory` | A `{wl:…}` reference uses `..` |
 | `RUN ABORTED` naming the flag format | The `ctf_flag_format` input did not compile, or had no discriminating power |
+| A CTF task reads `PROBE_NEGATIVE` | A probe operation exited non-zero: the tool ran, its premise was wrong (nothing to decode, nothing to extract). Its raw output is still evidence |
 | Stage 2 or 3 shows `STAGE_WITHDRAWN` | The previous stage completed nothing, so the dependent stage was not run |
 | `CATALOG NOTES` in `--status` names an operation | Its `args` contains a shell operator as a whole argument |
 | Capability shows as unavailable, reason names a wordlist | Run `wordlists/fetch-wordlists.sh`, or set `TSEC_WORDLIST_ROOT` |
