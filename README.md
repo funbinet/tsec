@@ -14,7 +14,7 @@ Reference docs:
 - [`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md)
 - [`docs/CAPABILITY_OPERATIONS.md`](docs/CAPABILITY_OPERATIONS.md)
 
-The framework is organised as **eleven phases, 240 capabilities**. Every phase is
+The framework is organised as **eleven phases, 241 capabilities**. Every phase is
 mandatory: a catalog that leaves one empty is rejected at startup rather than
 shipped half-finished.
 
@@ -25,7 +25,7 @@ shipped half-finished.
 | 03 | `VULNERABILITY` | 22 | | 08 | `PERSISTENCE` | 19 |
 | 04 | `PAYLOAD` | 20 | | 09 | `EXPLOITATION` | 27 |
 | 05 | `ESCALATION` | 24 | | 10 | `WIRELESS` | 16 |
-| — | | | | 11 | `CTF CHALLENGES` | 14 |
+| — | | | | 11 | `CTF CHALLENGES` | 15 |
 
 A phase holds what it needs to hold. The counts differ because a phase with more
 distinct things to do carries more capabilities, not because some are padded.

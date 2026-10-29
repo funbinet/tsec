@@ -243,6 +243,7 @@ fn phase_menu(
                             cfg,
                             registry,
                             catalog_source: catalog.source(),
+                            catalog,
                         },
                         cap,
                         &[],
@@ -598,6 +599,161 @@ fn collect_inputs(
     Ok(Answers::Given(values))
 }
 
+/// The FLAG SCANNING input flow, replacing the ordinary form: the flag format
+/// as a plain word, then which CTF category's evidence to sweep, then which
+/// run of that category — or the whole category. Returns the values that
+/// satisfy the capability's declared inputs, or `None` when the operator
+/// backs out.
+fn flag_scan_inputs(
+    theme: &Theme,
+    renderer: &mut Renderer,
+    out: &mut io::Stdout,
+    cfg: &Config,
+    catalog: &Catalog,
+    stack: &[Frame],
+) -> Result<Option<InputValues>> {
+    // 1. The flag format: a plain word is enough — the braces are added here.
+    let mut error_of: Option<String> = None;
+    let declared = loop {
+        let prompt = crate::ui::input::Prompt {
+            label: "FLAG FORMAT [flag-format]",
+            help: Some(
+                "type the flag prefix, e.g. the challenge's own word — {…} is added for you",
+            ),
+            default: None,
+            sensitive: false,
+            error: error_of.as_deref(),
+        };
+        match crate::ui::input::ask(out, renderer, theme, "FLAG SCANNING", &prompt)
+            .map_err(|e| TsecError::io("drawing the flag format box", &e))?
+        {
+            crate::ui::input::Answer::Cancelled => return Ok(None),
+            crate::ui::input::Answer::Given(raw) => {
+                let raw = raw.trim().to_string();
+                if raw.is_empty() {
+                    continue;
+                }
+                if let Err(e) = crate::ctf::FlagPattern::compile(&raw) {
+                    error_of = Some(e.reason().to_string());
+                    continue;
+                }
+                let committed = crate::ui::input::committed_input_box(
+                    theme,
+                    "FLAG SCANNING",
+                    "FLAG FORMAT [flag-format]",
+                    &raw,
+                    false,
+                );
+                renderer.freeze(&committed);
+                break raw;
+            }
+        }
+    };
+
+    // 2. The category whose runs to sweep.
+    let caps: Vec<&Capability> = catalog
+        .in_phase("ctf")
+        .iter()
+        .copied()
+        .filter(|c| c.id != "ctf.flag-scanning")
+        .collect();
+    let items: Vec<Item> = caps.iter().map(|c| Item::new(c.label.clone())).collect();
+    let pick = menu(
+        theme,
+        renderer,
+        out,
+        "FLAG SCANNING",
+        &items,
+        "-[I/K] MOVE   -[J] BACK   -[L/ENTER] SELECT   -[ESC] EXIT",
+        stack,
+    )?;
+    let index = match pick.decision {
+        Decision::Back => None,
+        Decision::Exit => return Err(crate::error::TsecError::flow_exit()),
+        Decision::Chosen(index) => Some(index),
+    };
+    let Some(index) = index else {
+        return Ok(None);
+    };
+    renderer.freeze(&pick.panel);
+    let category = caps
+        .get(index)
+        .ok_or_else(|| TsecError::internal("category picker index out of range"))?;
+
+    // 3. The run to sweep, or the whole category. Runs are named
+    // `{stamp}_{PHASE}_{CAPABILITY}`, so a category's runs are a suffix
+    // match on its cleaned label.
+    let suffix = format!(
+        "_CTF_CHALLENGES_{}",
+        category
+            .label
+            .to_ascii_uppercase()
+            .chars()
+            .map(|c| if c.is_ascii_alphanumeric() { c } else { '_' })
+            .collect::<String>()
+    );
+    let runs: Vec<PathBuf> = recorded_runs(&cfg.general.output_dir)
+        .into_iter()
+        .filter(|run| {
+            run.file_name()
+                .map(|name| name.to_string_lossy().ends_with(&suffix))
+                .unwrap_or(false)
+        })
+        .collect();
+    if runs.is_empty() {
+        show_notice(
+            theme,
+            renderer,
+            out,
+            "FLAG SCANNING",
+            &[(
+                format!(
+                    "no recorded runs for {}; run that category first, then scan it",
+                    category.label
+                ),
+                Role::Muted,
+            )],
+            stack,
+        )?;
+        return Ok(None);
+    }
+    let mut items: Vec<Item> = vec![Item::new("WHOLE CATEGORY (every run)")];
+    items.extend(runs.iter().map(|run| {
+        Item::new(
+            run.file_name()
+                .map(|name| name.to_string_lossy().to_string())
+                .unwrap_or_else(|| run.display().to_string()),
+        )
+    }));
+    let pick = menu(
+        theme,
+        renderer,
+        out,
+        &format!("FLAG SCANNING · {}", category.label),
+        &items,
+        "-[I/K] MOVE   -[J] BACK   -[L/ENTER] SELECT   -[ESC] EXIT",
+        stack,
+    )?;
+    match pick.decision {
+        Decision::Back => Ok(None),
+        Decision::Exit => Err(crate::error::TsecError::flow_exit()),
+        Decision::Chosen(index) => {
+            renderer.freeze(&pick.panel);
+            let scan_dir = if index == 0 {
+                cfg.general.output_dir.clone()
+            } else {
+                runs.get(index - 1)
+                    .ok_or_else(|| TsecError::internal("run picker index out of range"))?
+                    .clone()
+            };
+            let mut values = InputValues::new();
+            values.insert("flag_format", declared);
+            values.insert("scan_dir", scan_dir.display().to_string());
+            Ok(Some(values))
+        }
+    }
+}
+
 /// Everything a run needs from the installed framework, in one place.
 ///
 /// Grouped because these three travel together through the whole run flow, and
@@ -607,6 +763,7 @@ struct Runtime<'a> {
     cfg: &'a Config,
     registry: &'a Registry,
     catalog_source: &'a Path,
+    catalog: &'a Catalog,
 }
 
 /// Execute a capability: input collection, concurrent execution, 6-stage
@@ -615,6 +772,78 @@ struct Runtime<'a> {
 /// The pipeline branches after execution:
 ///   - **All tasks failed** → `RUN FAILURE` terminal state (no processing, no output)
 ///   - **Some/all succeeded** → `PROCESSING` → harvest → `OUTPUT`
+///
+/// The tempo a CTF run runs at, chosen once at the start. It scales every
+/// operation's time budget: `Fast` hunts for the quick win, `Deep` gives a
+/// slow target the patience it deserves.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Speed {
+    Fast,
+    Normal,
+    Deep,
+}
+
+impl Speed {
+    /// Scale one operation's time budget, never below 10 seconds: even FAST
+    /// gives every tool a real attempt rather than a hair-trigger kill.
+    fn scale_secs(&self, secs: u64) -> u64 {
+        match self {
+            Speed::Fast => (secs / 3).max(10),
+            Speed::Normal => secs,
+            Speed::Deep => secs.saturating_mul(2),
+        }
+    }
+}
+
+/// Ask the operator how hard to hunt. `Esc` withdraws the capability, like
+/// every other prompt.
+fn ask_speed(
+    theme: &Theme,
+    renderer: &mut Renderer,
+    out: &mut io::Stdout,
+    capability: &str,
+) -> Result<Option<Speed>> {
+    let mut error: Option<String> = None;
+    loop {
+        let prompt = crate::ui::input::Prompt {
+            label: "SPEED [fast / normal / deep]",
+            help: Some(
+                "fast cuts every time budget to a third (never under 10s); \
+                 deep doubles it for a patient target",
+            ),
+            default: Some("normal"),
+            sensitive: false,
+            error: error.as_deref(),
+        };
+        match crate::ui::input::ask(out, renderer, theme, capability, &prompt)
+            .map_err(|e| TsecError::io("drawing the speed box", &e))?
+        {
+            crate::ui::input::Answer::Cancelled => return Ok(None),
+            crate::ui::input::Answer::Given(raw) => {
+                let raw = raw.trim();
+                let speed = match raw.to_ascii_lowercase().as_str() {
+                    "" | "normal" | "n" => Speed::Normal,
+                    "fast" | "f" => Speed::Fast,
+                    "deep" | "d" => Speed::Deep,
+                    _ => {
+                        error = Some("answer fast, normal or deep (Enter accepts normal)".into());
+                        continue;
+                    }
+                };
+                let committed = crate::ui::input::committed_input_box(
+                    theme,
+                    capability,
+                    "SPEED [fast / normal / deep]",
+                    if raw.is_empty() { "normal" } else { raw },
+                    false,
+                );
+                renderer.freeze(&committed);
+                return Ok(Some(speed));
+            }
+        }
+    }
+}
+
 fn run_capability(
     theme: &Theme,
     renderer: &mut Renderer,
@@ -627,13 +856,61 @@ fn run_capability(
         cfg,
         registry,
         catalog_source,
+        catalog,
     } = *rt;
-    let values = match collect_inputs(theme, renderer, out, cap, stack)? {
-        Answers::Given(values) => values,
-        Answers::Cancelled => return Ok(Flow::Continue),
+    // FLAG SCANNING replaces the ordinary input form with its own flow:
+    // flag format, then the CTF category to sweep, then the run (or the
+    // whole category) whose raw evidence to search.
+    let values = if cap.id == "ctf.flag-scanning" {
+        match flag_scan_inputs(theme, renderer, out, cfg, catalog, stack)? {
+            Some(values) => values,
+            None => return Ok(Flow::Continue),
+        }
+    } else {
+        match collect_inputs(theme, renderer, out, cap, stack)? {
+            Answers::Given(values) => values,
+            Answers::Cancelled => return Ok(Flow::Continue),
+        }
+    };
+
+    // A CTF run is a hunt: how long each tool is allowed to look decides how
+    // long the whole hunt takes. The operator picks the tempo once, up front,
+    // and every operation's time budget scales with it.
+    let speed = if cap.phase == "ctf" {
+        match ask_speed(theme, renderer, out, &cap.label)? {
+            Some(speed) => speed,
+            None => return Ok(Flow::Continue),
+        }
+    } else {
+        Speed::Normal
     };
 
     let phase_word = phase_label(&cap.phase).unwrap_or(&cap.phase);
+
+    // Every job's time budget: the operation's own `timeout` key if it
+    // declared one, else the per-binary override, else the configured
+    // default — with CTF runs falling back to a 300s baseline when
+    // configuration leaves timeouts disabled, and the chosen speed scaling
+    // whatever budget applies.
+    let job_timeout = |operation: &crate::catalog::Operation, binary: &str| -> Duration {
+        let secs = match operation.timeout_secs() {
+            Some(secs) => secs,
+            None => {
+                let per_binary = cfg
+                    .execution
+                    .tool_timeout_secs
+                    .get(binary)
+                    .copied()
+                    .filter(|s| *s > 0);
+                match per_binary {
+                    Some(secs) => secs,
+                    None if cap.phase == "ctf" => 300,
+                    None => cfg.execution.timeout_secs,
+                }
+            }
+        };
+        Duration::from_secs(speed.scale_secs(secs))
+    };
     let run_id = RunId::for_run(phase_word, &cap.label);
     let mut store = RunStore::open(&cfg.general.output_dir, &run_id)?;
 
@@ -697,7 +974,7 @@ fn run_capability(
                     provider: binding.binary.clone(),
                     operation: operation.name.clone(),
                     label: format!("{} · {}", binding.binary, operation.name),
-                    timeout: cfg.execution.timeout_for(&binding.binary),
+                    timeout: job_timeout(operation, &binding.binary),
                     artifacts: RawArtifact {
                         primary: store.raw_stdout(&stem),
                         stderr: store.raw_stderr(&stem),
@@ -707,6 +984,7 @@ fn run_capability(
                 command,
                 stage: operation.stage(),
                 confirm: operation.confirm,
+                probe: operation.is_probe(),
             });
         }
     }
@@ -776,7 +1054,7 @@ fn run_capability(
                             "{} · {} (installed mid-run)",
                             binding.binary, operation.name
                         ),
-                        timeout: cfg.execution.timeout_for(&binding.binary),
+                        timeout: job_timeout(operation, &binding.binary),
                         artifacts: RawArtifact {
                             primary: store.raw_stdout(&stem),
                             stderr: store.raw_stderr(&stem),
@@ -786,6 +1064,7 @@ fn run_capability(
                     command,
                     stage: operation.stage(),
                     confirm: operation.confirm,
+                    probe: operation.is_probe(),
                 });
             }
             missing_providers.retain(|m| m != &binding.binary);
@@ -803,7 +1082,11 @@ fn run_capability(
     // dispatch: indistinguishable from the behaviour before stages existed.
     let mut stage_of: BTreeMap<String, u8> = BTreeMap::new();
     let mut stage_groups: BTreeMap<u8, Vec<Job>> = BTreeMap::new();
+    let mut probe_ops: std::collections::HashSet<String> = std::collections::HashSet::new();
     for job in jobs.into_iter().chain(late_jobs) {
+        if job.probe {
+            probe_ops.insert(job.spec.id.to_string());
+        }
         stage_of.insert(job.spec.id.to_string(), job.stage);
         stage_groups.entry(job.stage).or_default().push(job);
     }
@@ -932,6 +1215,26 @@ fn run_capability(
         )
         .map_err(|e| TsecError::io("running the execution monitor", &e))?;
         cancelled |= batch.cancelled;
+        let mut batch = batch;
+        // Probe operations are expected to exit non-zero when their premise
+        // is wrong — a decoder handed non-base64, an extractor handed a
+        // non-archive. That is a completed negative result, not a failure:
+        // the tool ran, answered the question, and its raw output is
+        // evidence like any other. Only a process-level failure to launch
+        // (spawn errors carry no EXIT_STATUS) still counts as a failure.
+        for (_, record) in &mut batch.records {
+            if probe_ops.contains(&record.task_id)
+                && record.status == crate::domain::execution::TaskStatus::Failed
+                && record.error_code.as_deref() == Some("EXIT_STATUS")
+            {
+                record.status = crate::domain::execution::TaskStatus::Complete;
+                record.error_code = Some("PROBE_NEGATIVE".to_string());
+                record.error_message = record
+                    .error_message
+                    .as_ref()
+                    .map(|m| format!("probe answer: negative ({m})"));
+            }
+        }
         prior_completed = batch
             .records
             .iter()
@@ -1021,7 +1324,13 @@ fn run_capability(
     // ── Branch: all tasks failed → RUN FAILURE (no processing, no output) ──
     // Only real attempts count. A capability whose every provider was missing has
     // not "failed"; it has not run, and it is shown as such.
-    if all_tasks_failed(&outcome.records) {
+    //
+    // A CTF run never takes this branch. A hunt that came back empty-handed
+    // is a result — and a hunt stopped early still carries everything the
+    // finished tools found — so a CTF run always reaches the harvest and its
+    // document, even when nothing completed. The honest empty case is a
+    // document that says so, not a missing one.
+    if !(cap.phase == "ctf") && all_tasks_failed(&outcome.records) {
         return show_run_failure(theme, renderer, out, &outcome.records);
     }
 

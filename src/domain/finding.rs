@@ -55,6 +55,9 @@ pub enum Category {
     Cookie,
     /// A password hash, ready for an offline attack.
     Hash,
+    /// Shell material in evidence: a reverse-shell path, a spawned pty,
+    /// a meterpreter string.
+    Shell,
     /// A CVE or CWE identifier.
     Cve,
     /// A filesystem path, or a file whose exposure matters.
@@ -70,6 +73,13 @@ pub enum Category {
     /// the report separates candidates from verified evidence. See
     /// [`crate::ctf`].
     FlagCandidate,
+    /// A weaker flag-format signal: the prefix word mentioned bare, or a
+    /// generic `word{body}` shape with an unrecognised prefix.
+    ///
+    /// A lead, not a candidate: it names the flag's vocabulary without
+    /// producing a submittable value, and the report keeps leads below
+    /// candidates. See [`crate::ctf`].
+    FlagLead,
     /// Verbatim evidence retained from the raw stream.
     ///
     /// Counted and kept in `output.json`, never presented as a finding. A line
@@ -114,11 +124,13 @@ impl Category {
             Category::Token => "TOKENS",
             Category::Cookie => "COOKIES",
             Category::Hash => "HASHES",
+            Category::Shell => "SHELL MATERIAL",
             Category::Cve => "VULNERABILITIES",
             Category::File => "FILES",
             Category::Comment => "COMMENTS",
             Category::Email => "EMAILS",
             Category::FlagCandidate => "FLAG CANDIDATES",
+            Category::FlagLead => "FLAG LEADS",
             Category::Evidence => "EVIDENCE",
             Category::Noise => "NOISE",
             Category::Metadata => "METADATA",
@@ -138,6 +150,7 @@ impl Category {
             Category::Token => 2,
             Category::Cookie => 3,
             Category::Hash => 4,
+            Category::Shell => 4, // shell material ranks with hashes
             Category::Cve => 5,
             Category::Username => 6,
             Category::Credential => 7,
@@ -158,6 +171,7 @@ impl Category {
             Category::Tls => 22,
             Category::Evidence => 23,
             Category::FlagCandidate => 2, // flag candidates rank with credentials and tokens
+            Category::FlagLead => 3,      // leads rank just under candidates
             Category::Metadata => 24,
             Category::Noise => 25,
             Category::Error => 26,

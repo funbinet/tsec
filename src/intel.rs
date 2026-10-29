@@ -910,6 +910,137 @@ pub fn recommend(findings: &[(Category, String)]) -> Vec<NextStep> {
     steps
 }
 
+/// The CTF next-steps brain: read a hunt's harvest with hunting eyes.
+///
+/// Where [`recommend`] answers "which generic capability applies", this
+/// answers "which CTF category to run next, with what inputs, and what to
+/// expect" — the exact follow-up for every hit class the hits engine
+/// surfaced. Appended to the generic steps for CTF runs only, so ordinary
+/// phases never receive hunting advice.
+pub fn recommend_ctf(findings: &[(Category, String)]) -> Vec<NextStep> {
+    let any = |c: Category| findings.iter().any(|(k, v)| *k == c && !v.is_empty());
+
+    let mut steps: Vec<NextStep> = Vec::new();
+    let mut push = |confidence: u8, capability: &'static str, because: String, needs: &str| {
+        steps.push(NextStep {
+            confidence,
+            phase: "ctf",
+            capability,
+            because,
+            needs: needs.to_string(),
+        });
+    };
+
+    if any(Category::FlagCandidate) {
+        push(
+            3,
+            "FLAG SCANNING",
+            "flag candidates exist in this run — sweep the run's raw evidence to \
+             confirm the braced value and find every sighting"
+                .into(),
+            "the flag format (prefix word) and this run",
+        );
+    }
+    if any(Category::FlagLead) {
+        push(
+            3,
+            "FLAG SCANNING",
+            "the flag's vocabulary appeared without a flag shape — the flag is \
+             close; sweep the raw evidence for the braced form"
+                .into(),
+            "the flag format (prefix word) and this run",
+        );
+    }
+    if any(Category::Hash) {
+        push(
+            3,
+            "CRYPTO CHALLENGES",
+            "a hash was recovered; identify its format and attack it — a cracked \
+             hash is often a password, a token, or the flag body itself"
+                .into(),
+            "the hash or the challenge file it came from",
+        );
+    }
+    if any(Category::Credential) {
+        push(
+            3,
+            "ACTIVE DIRECTORY",
+            "a credential pair surfaced; try it against every login surface the \
+             run found — reused passwords are the fastest path through a box"
+                .into(),
+            "the target and the recovered credential",
+        );
+    }
+    if any(Category::Shell) {
+        push(
+            3,
+            "PRIVILEGE ESCALATION",
+            "shell material was observed; an interactive foothold usually sits \
+             near the flag — enumerate the session's privileges next"
+                .into(),
+            "the endpoint or payload that produced it",
+        );
+    }
+    if any(Category::Endpoint) {
+        push(
+            2,
+            "WEB APP SECURITY",
+            "suspicious endpoints were discovered; fetch them directly and sweep \
+             their source, backups and metadata for the flag"
+                .into(),
+            "the base URL of the target",
+        );
+    }
+    if any(Category::File) {
+        push(
+            2,
+            "DIGITAL FORENSICS",
+            "interesting files were recovered; identify their types and run the \
+             extraction tools over them — flags hide in recovered artifacts"
+                .into(),
+            "the recovered file path",
+        );
+    }
+    if any(Category::Comment) {
+        push(
+            2,
+            "SCRIPTING MISC",
+            "long encoded blobs were observed; they may be the flag in disguise — \
+             run the decoding ladder over the artifact"
+                .into(),
+            "the artifact containing the blob",
+        );
+    }
+    if any(Category::Cve) {
+        push(
+            2,
+            "NETWORK RECON",
+            "a CVE was named; match it to the exact service version and target \
+             the affected service directly"
+                .into(),
+            "the affected host and port",
+        );
+    }
+    if any(Category::Secret) || any(Category::Token) {
+        push(
+            2,
+            "SCRIPTING MISC",
+            "key material or a token was recovered; inspect and decode it — a key \
+             often opens the challenge's next layer"
+                .into(),
+            "the recovered material's artifact",
+        );
+    }
+
+    steps.sort_by(|a, b| {
+        b.confidence
+            .cmp(&a.confidence)
+            .then_with(|| a.capability.cmp(b.capability))
+    });
+    steps.dedup_by(|a, b| a.capability == b.capability && a.because == b.because);
+    steps
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1314,5 +1445,23 @@ mod tests {
     #[test]
     fn an_empty_harvest_proposes_nothing() {
         assert!(recommend(&[]).is_empty());
+    }
+
+    #[test]
+    fn the_ctf_brain_names_the_exact_next_category() {
+        let steps = recommend_ctf(&[
+            (
+                Category::Hash,
+                "5d41402abc4b2a76b9719d911017c592".to_string(),
+            ),
+            (Category::FlagLead, "safctf".to_string()),
+        ]);
+        // Hash and lead each name a concrete CTF category with inputs to
+        // supply; everything stays inside the ctf phase.
+        assert!(steps.iter().any(|s| s.capability == "CRYPTO CHALLENGES"));
+        assert!(steps.iter().any(|s| s.capability == "FLAG SCANNING"));
+        assert!(steps.iter().all(|s| s.phase == "ctf"));
+        assert!(steps.iter().all(|s| !s.needs.is_empty()));
+        assert!(recommend_ctf(&[]).is_empty());
     }
 }

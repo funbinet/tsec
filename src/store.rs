@@ -206,6 +206,15 @@ impl RunStore {
                     record.task_id.clone(),
                     crate::ctf::Outcome::classify(record, 0, false),
                 );
+                let provenance = crate::domain::finding::Provenance {
+                    boundary: record.boundary,
+                    provider: record.provider.clone(),
+                    operation: record.operation.clone(),
+                    task_id: record.task_id.clone(),
+                    command: record.command.clone(),
+                    observed_at: record.finished_at,
+                    artifact: record.raw_output.clone(),
+                };
                 sections.push(crate::domain::finding::Finding {
                     category: crate::domain::finding::Category::Metadata,
                     value: format!(
@@ -215,17 +224,27 @@ impl RunStore {
                         record.status.label()
                     ),
                     detail: Some(record.failure_reason()),
-                    provenance: crate::domain::finding::Provenance {
-                        boundary: record.boundary,
-                        provider: record.provider.clone(),
-                        operation: record.operation.clone(),
-                        task_id: record.task_id.clone(),
-                        command: record.command.clone(),
-                        observed_at: record.finished_at,
-                        artifact: record.raw_output.clone(),
-                    },
+                    provenance: provenance.clone(),
                     occurrences: 1,
                 });
+                if let (Some(pattern), Some(_)) = (flags, header.ctf.as_ref()) {
+                    let mut hits = pattern.extract(&record.raw_output, &provenance);
+                    if let Some(stderr) = &record.stderr_output {
+                        hits.extend(pattern.extract(stderr, &provenance));
+                    }
+                    flag_candidates += hits.len();
+                    merged.absorb(crate::parser::Harvest::from_findings(hits));
+                }
+                // And the hits engine reads a failed attempt's raw output too:
+                // a tool that died mid-dump may have surfaced hash material,
+                // credentials or a flag-shaped string before it died.
+                if header.ctf.is_some() {
+                    let mut hits = crate::hits::scan(&record.raw_output, &provenance);
+                    if let Some(stderr) = &record.stderr_output {
+                        hits.extend(crate::hits::scan(stderr, &provenance));
+                    }
+                    merged.absorb(crate::parser::Harvest::from_findings(hits));
+                }
                 continue;
             }
             let format = formats
@@ -303,6 +322,30 @@ impl RunStore {
                         record.task_id.clone(),
                         crate::ctf::Outcome::classify(record, found, false),
                     );
+
+                    // The hits engine scans the same evidence for everything
+                    // else a hunt cares about: hashes, credentials, keys,
+                    // shell material, suspicious endpoints, CVEs, encoded
+                    // blobs. These land as ordinary findings — HASHES,
+                    // CREDENTIAL PAIRS, SHELL MATERIAL — so the document,
+                    // output.json and the recommendation brain all see them.
+                    if header.ctf.is_some() {
+                        let mut hits = crate::hits::scan(&record.raw_output, &provenance);
+                        if let Ok(entries) = std::fs::read_dir(self.artifacts_dir()) {
+                            for entry in entries.flatten() {
+                                let path = entry.path();
+                                if !path.is_file() {
+                                    continue;
+                                }
+                                let artifact_provenance = crate::domain::finding::Provenance {
+                                    artifact: path.clone(),
+                                    ..provenance.clone()
+                                };
+                                hits.extend(crate::hits::scan(&path, &artifact_provenance));
+                            }
+                        }
+                        merged.absorb(crate::parser::Harvest::from_findings(hits));
+                    }
                 }
                 Err(e) => {
                     parse_failures += 1;
@@ -341,6 +384,27 @@ impl RunStore {
                 .map(|f| (f.category, f.value.clone()))
                 .collect::<Vec<_>>(),
         );
+        // A CTF hunt's harvest is read with hunting eyes: the hits the
+        // engine surfaced each get their exact CTF follow-up, appended to
+        // the generic steps.
+        let recommendation = if header.ctf.is_some() {
+            let mut steps = recommendation;
+            steps.extend(crate::intel::recommend_ctf(
+                &deduped
+                    .iter()
+                    .map(|f| (f.category, f.value.clone()))
+                    .collect::<Vec<_>>(),
+            ));
+            steps.sort_by(|a, b| {
+                b.confidence
+                    .cmp(&a.confidence)
+                    .then_with(|| a.capability.cmp(b.capability))
+            });
+            steps.dedup_by(|a, b| a.capability == b.capability && a.because == b.because);
+            steps
+        } else {
+            recommendation
+        };
         report(HarvestStage::Recommending)?;
 
         // ── CORRELATING ────────────────────────────────────────────────────
@@ -634,6 +698,19 @@ impl RunStore {
             },
             "operations": operations,
             "flag_candidates": candidates,
+            "next_steps": outcome
+                .recommendation
+                .iter()
+                .map(|step| {
+                    serde_json::json!({
+                        "capability": step.capability,
+                        "phase": step.phase,
+                        "confidence": step.confidence,
+                        "because": step.because,
+                        "needs": step.needs,
+                    })
+                })
+                .collect::<Vec<_>>(),
         });
 
         write_atomic(

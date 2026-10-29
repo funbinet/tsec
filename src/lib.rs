@@ -48,6 +48,7 @@ pub mod ctf;
 pub mod domain;
 pub mod error;
 pub mod exec;
+pub mod hits;
 pub mod install;
 pub mod intel;
 pub mod parser;

@@ -158,6 +158,17 @@ pub struct Operation {
     /// dispatches. Meaningful only on stages 2 and 3.
     #[serde(default)]
     pub confirm: bool,
+    /// Per-operation time budget in seconds, overriding the per-binary
+    /// timeout from configuration. Absent means the configured default.
+    #[serde(default)]
+    pub timeout: Option<u64>,
+    /// Whether a non-zero exit is an expected negative result rather than a
+    /// failure. Probe operations — a decoder tried against a file it may not
+    /// decode, an extractor run against a file that may not be that archive —
+    /// classify as complete-with-negative instead of failed, and their raw
+    /// output is harvested: what the tool said on the way out is evidence.
+    #[serde(default)]
+    pub probe: bool,
 }
 
 fn default_network() -> bool {
@@ -178,6 +189,17 @@ impl Operation {
             2 => "analysis",
             _ => "baseline",
         }
+    }
+
+    /// The operation's own time budget in seconds, if it declared one.
+    pub fn timeout_secs(&self) -> Option<u64> {
+        self.timeout
+    }
+
+    /// Whether a non-zero exit is an expected negative result. See the
+    /// `probe` field.
+    pub fn is_probe(&self) -> bool {
+        self.probe
     }
 }
 
@@ -888,6 +910,19 @@ impl Catalog {
                              confirmation belongs to consequential work (stage 2 or 3)",
                             prov.binary, op.name
                         )));
+                    }
+                    // A time budget must be a positive, sane number of
+                    // seconds: zero would disable the timeout the catalog
+                    // meant to set, and a budget measured in days is an
+                    // authoring slip, not a scan.
+                    if let Some(secs) = op.timeout {
+                        if secs == 0 || secs > 86_400 {
+                            return Err(fail(format!(
+                                "{where_} provider `{}` operation `{}` sets timeout {secs}; \
+                                 it must be between 1 and 86400 seconds",
+                                prov.binary, op.name
+                            )));
+                        }
                     }
                     // An empty argument vector is legitimate: `id`, `env`,
                     // `printenv` and `klist` are run for what they print, and
@@ -1616,6 +1651,8 @@ mod tests {
             network: true,
             stage: None,
             confirm: false,
+            timeout: None,
+            probe: false,
         };
         let specs = vec![spec("rhost", InputType::Target)];
         let mut values = InputValues::new();
@@ -1648,6 +1685,8 @@ mod tests {
             network: true,
             stage: None,
             confirm: false,
+            timeout: None,
+            probe: false,
         };
         let cmd = op
             .command(Path::new("ffuf"), &[], &InputValues::new(), &catalog, None)
@@ -1778,6 +1817,8 @@ mod tests {
             network: true,
             stage: None,
             confirm: false,
+            timeout: None,
+            probe: false,
         };
         let specs = vec![spec("target", InputType::Target)];
         let mut values = InputValues::new();
@@ -1808,6 +1849,8 @@ mod tests {
             network: true,
             stage: None,
             confirm: false,
+            timeout: None,
+            probe: false,
         };
         let specs = vec![
             spec("username", InputType::Username),
@@ -1835,6 +1878,8 @@ mod tests {
             network: true,
             stage: None,
             confirm: false,
+            timeout: None,
+            probe: false,
         };
         let specs = vec![spec("url", InputType::Url)];
         let mut values = InputValues::new();
@@ -1867,6 +1912,8 @@ mod tests {
             network: false,
             stage: None,
             confirm: false,
+            timeout: None,
+            probe: false,
         };
         let specs = vec![spec("rate", InputType::Integer)];
         let mut values = InputValues::new();

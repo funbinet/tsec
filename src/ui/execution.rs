@@ -61,6 +61,10 @@ pub struct Job {
     /// Whether the operation requires the operator's explicit go-ahead before
     /// it dispatches (catalog `confirm = true`).
     pub confirm: bool,
+    /// Whether a non-zero exit is an expected negative result (catalog
+    /// `probe = true`): the task completes as a negative finding rather than
+    /// failing the run.
+    pub probe: bool,
 }
 
 /// What a worker reports to the monitor. Workers render nothing themselves.
