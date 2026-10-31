@@ -49,6 +49,20 @@ if ! find_cargo; then
 fi
 
 # 3. Compile as the invoking user, so the build tree is not left root-owned.
+#    That only works if the invoking user can actually write to the project
+#    directory. A repo cloned with `sudo git clone` is root-owned throughout,
+#    and cargo then dies with a bare "Permission denied (os error 13)" on a
+#    scratch path, which explains nothing. Catch it and say what to do.
+PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
+if [ -n "$SUDO_USER" ] && ! sudo -u "$SUDO_USER" test -w "$PROJECT_DIR"; then
+    echo "[!] $PROJECT_DIR is not writable by $SUDO_USER."
+    echo "    This usually means the repository was cloned with sudo, which"
+    echo "    left every file owned by root. Fix it and run the installer again:"
+    echo "      sudo chown -R \"$SUDO_USER:\$(id -gn \"$SUDO_USER\")\" \"$PROJECT_DIR\""
+    echo "      $0"
+    exit 1
+fi
+
 echo "[..] compiling in release mode"
 if [ -n "$SUDO_USER" ]; then
     USER_HOME=$(getent passwd "$SUDO_USER" | cut -d: -f6)
